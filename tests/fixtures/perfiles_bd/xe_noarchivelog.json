@@ -1,0 +1,386 @@
+{
+  "nombre": "XE",
+  "nombre_instancia": "xe",
+  "dbid": 1234567890,
+  "host": "SERVIDOR-PRUEBAS",
+  "version": "21.3.0.0.0",
+  "edicion": "XE",
+  "es_cdb": true,
+  "log_mode": "NOARCHIVELOG",
+  "open_mode": "READ WRITE",
+  "estado_instancia": "OPEN",
+  "oracle_home": "C:\\oracle\\product\\21c\\dbhomeXE",
+  "diagnostic_dest": "C:\\ORACLE",
+  "capturado_en": "2026-09-24T15:30:00",
+  "contenedores": [
+    {
+      "con_id": 1,
+      "nombre": "CDB$ROOT",
+      "open_mode": "READ WRITE"
+    },
+    {
+      "con_id": 2,
+      "nombre": "PDB$SEED",
+      "open_mode": "READ ONLY"
+    },
+    {
+      "con_id": 3,
+      "nombre": "XEPDB1",
+      "open_mode": "READ WRITE"
+    }
+  ],
+  "tablespaces": [
+    {
+      "con_id": 1,
+      "nombre": "SYSAUX",
+      "contenido": "PERMANENT",
+      "estado": "ONLINE",
+      "bigfile": false
+    },
+    {
+      "con_id": 1,
+      "nombre": "SYSTEM",
+      "contenido": "PERMANENT",
+      "estado": "ONLINE",
+      "bigfile": false
+    },
+    {
+      "con_id": 1,
+      "nombre": "TEMP",
+      "contenido": "TEMPORARY",
+      "estado": "ONLINE",
+      "bigfile": false
+    },
+    {
+      "con_id": 1,
+      "nombre": "UNDOTBS1",
+      "contenido": "UNDO",
+      "estado": "ONLINE",
+      "bigfile": false
+    },
+    {
+      "con_id": 1,
+      "nombre": "USERS",
+      "contenido": "PERMANENT",
+      "estado": "ONLINE",
+      "bigfile": false
+    },
+    {
+      "con_id": 2,
+      "nombre": "SYSAUX",
+      "contenido": "DESCONOCIDO",
+      "estado": null,
+      "bigfile": false
+    },
+    {
+      "con_id": 2,
+      "nombre": "SYSTEM",
+      "contenido": "DESCONOCIDO",
+      "estado": null,
+      "bigfile": false
+    },
+    {
+      "con_id": 2,
+      "nombre": "TEMP",
+      "contenido": "TEMPORARY",
+      "estado": null,
+      "bigfile": false
+    },
+    {
+      "con_id": 2,
+      "nombre": "UNDOTBS1",
+      "contenido": "DESCONOCIDO",
+      "estado": null,
+      "bigfile": false
+    },
+    {
+      "con_id": 3,
+      "nombre": "CLOUDCR_STRESS_TS",
+      "contenido": "PERMANENT",
+      "estado": "ONLINE",
+      "bigfile": false
+    },
+    {
+      "con_id": 3,
+      "nombre": "SYSAUX",
+      "contenido": "PERMANENT",
+      "estado": "ONLINE",
+      "bigfile": false
+    },
+    {
+      "con_id": 3,
+      "nombre": "SYSTEM",
+      "contenido": "PERMANENT",
+      "estado": "ONLINE",
+      "bigfile": false
+    },
+    {
+      "con_id": 3,
+      "nombre": "TEMP",
+      "contenido": "TEMPORARY",
+      "estado": "ONLINE",
+      "bigfile": false
+    },
+    {
+      "con_id": 3,
+      "nombre": "UNDOTBS1",
+      "contenido": "UNDO",
+      "estado": "ONLINE",
+      "bigfile": false
+    },
+    {
+      "con_id": 3,
+      "nombre": "USERS",
+      "contenido": "PERMANENT",
+      "estado": "ONLINE",
+      "bigfile": false
+    }
+  ],
+  "datafiles": [
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\SYSAUX01.DBF",
+      "file_id": 3,
+      "con_id": 1,
+      "tablespace": "SYSAUX",
+      "bytes": 775946240,
+      "estado": "ONLINE",
+      "autoextensible": true,
+      "max_bytes": 34359721984,
+      "bytes_libres": 42008576
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\SYSTEM01.DBF",
+      "file_id": 1,
+      "con_id": 1,
+      "tablespace": "SYSTEM",
+      "bytes": 1415577600,
+      "estado": "SYSTEM",
+      "autoextensible": true,
+      "max_bytes": 34359721984,
+      "bytes_libres": 5701632
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\UNDOTBS01.DBF",
+      "file_id": 4,
+      "con_id": 1,
+      "tablespace": "UNDOTBS1",
+      "bytes": 120586240,
+      "estado": "ONLINE",
+      "autoextensible": true,
+      "max_bytes": 34359721984,
+      "bytes_libres": 109838336
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\USERS01.DBF",
+      "file_id": 7,
+      "con_id": 1,
+      "tablespace": "USERS",
+      "bytes": 5242880,
+      "estado": "ONLINE",
+      "autoextensible": true,
+      "max_bytes": 34359721984,
+      "bytes_libres": 2424832
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\PDBSEED\\SYSAUX01.DBF",
+      "file_id": 6,
+      "con_id": 2,
+      "tablespace": "SYSAUX",
+      "bytes": 335544320,
+      "estado": "ONLINE",
+      "autoextensible": null,
+      "max_bytes": null,
+      "bytes_libres": null
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\PDBSEED\\SYSTEM01.DBF",
+      "file_id": 5,
+      "con_id": 2,
+      "tablespace": "SYSTEM",
+      "bytes": 283115520,
+      "estado": "SYSTEM",
+      "autoextensible": null,
+      "max_bytes": null,
+      "bytes_libres": null
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\PDBSEED\\UNDOTBS01.DBF",
+      "file_id": 8,
+      "con_id": 2,
+      "tablespace": "UNDOTBS1",
+      "bytes": 104857600,
+      "estado": "ONLINE",
+      "autoextensible": null,
+      "max_bytes": null,
+      "bytes_libres": null
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\XEPDB1\\CLOUDCR_STRESS_TS.DBF",
+      "file_id": 13,
+      "con_id": 3,
+      "tablespace": "CLOUDCR_STRESS_TS",
+      "bytes": 52428800,
+      "estado": "ONLINE",
+      "autoextensible": false,
+      "max_bytes": 0,
+      "bytes_libres": 51380224
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\XEPDB1\\SYSAUX01.DBF",
+      "file_id": 10,
+      "con_id": 3,
+      "tablespace": "SYSAUX",
+      "bytes": 471859200,
+      "estado": "ONLINE",
+      "autoextensible": true,
+      "max_bytes": 34359721984,
+      "bytes_libres": 27852800
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\XEPDB1\\SYSTEM01.DBF",
+      "file_id": 9,
+      "con_id": 3,
+      "tablespace": "SYSTEM",
+      "bytes": 293601280,
+      "estado": "SYSTEM",
+      "autoextensible": true,
+      "max_bytes": 34359721984,
+      "bytes_libres": 0
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\XEPDB1\\UNDOTBS01.DBF",
+      "file_id": 11,
+      "con_id": 3,
+      "tablespace": "UNDOTBS1",
+      "bytes": 104857600,
+      "estado": "ONLINE",
+      "autoextensible": true,
+      "max_bytes": 34359721984,
+      "bytes_libres": 98238464
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\XEPDB1\\USERS01.DBF",
+      "file_id": 12,
+      "con_id": 3,
+      "tablespace": "USERS",
+      "bytes": 5242880,
+      "estado": "ONLINE",
+      "autoextensible": true,
+      "max_bytes": 34359721984,
+      "bytes_libres": 4194304
+    }
+  ],
+  "tempfiles": [
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\TEMP01.DBF",
+      "file_id": 1,
+      "con_id": 1,
+      "tablespace": "TEMP",
+      "bytes": 248512512,
+      "estado": "ONLINE"
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\PDBSEED\\TEMP012026-08-23_23-50-36-747-PM.DBF",
+      "file_id": 2,
+      "con_id": 2,
+      "tablespace": "TEMP",
+      "bytes": 36700160,
+      "estado": "ONLINE"
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\XEPDB1\\TEMP01.DBF",
+      "file_id": 3,
+      "con_id": 3,
+      "tablespace": "TEMP",
+      "bytes": 222298112,
+      "estado": "ONLINE"
+    }
+  ],
+  "controlfiles": [
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\CONTROL01.CTL",
+      "bytes": 18710528,
+      "estado": null
+    },
+    {
+      "ruta": "C:\\ORACLE\\ORADATA\\XE\\CONTROL02.CTL",
+      "bytes": 18710528,
+      "estado": null
+    }
+  ],
+  "redo_grupos": [
+    {
+      "grupo": 1,
+      "hilo": 1,
+      "secuencia": 28,
+      "bytes": 209715200,
+      "estado": "CURRENT",
+      "archivado": false,
+      "miembros": [
+        {
+          "ruta": "C:\\ORACLE\\ORADATA\\XE\\REDO01.LOG",
+          "estado": null,
+          "tipo": "ONLINE"
+        }
+      ]
+    },
+    {
+      "grupo": 2,
+      "hilo": 1,
+      "secuencia": 26,
+      "bytes": 209715200,
+      "estado": "INACTIVE",
+      "archivado": false,
+      "miembros": [
+        {
+          "ruta": "C:\\ORACLE\\ORADATA\\XE\\REDO02.LOG",
+          "estado": null,
+          "tipo": "ONLINE"
+        }
+      ]
+    },
+    {
+      "grupo": 3,
+      "hilo": 1,
+      "secuencia": 27,
+      "bytes": 209715200,
+      "estado": "INACTIVE",
+      "archivado": false,
+      "miembros": [
+        {
+          "ruta": "C:\\ORACLE\\ORADATA\\XE\\REDO03.LOG",
+          "estado": null,
+          "tipo": "ONLINE"
+        }
+      ]
+    }
+  ],
+  "archivos_parametros": [
+    {
+      "ruta": "C:\\ORACLE\\DATABASE\\SPFILEXE.ORA",
+      "tipo": "SPFILE"
+    },
+    {
+      "ruta": "C:\\ORACLE\\admin\\XE\\pfile\\init.ora.7232026235414",
+      "tipo": "PFILE_CREACION"
+    },
+    {
+      "ruta": "C:\\ORACLE\\DATABASE\\initXE.ora",
+      "tipo": "PFILE_INSTANCIA"
+    },
+    {
+      "ruta": "C:\\oracle\\product\\21c\\dbhomeXE\\dbs\\init.ora",
+      "tipo": "PFILE_EJEMPLO"
+    }
+  ],
+  "destinos_archivado": [
+    {
+      "nombre": "LOG_ARCHIVE_DEST_1",
+      "destino": "C:\\oracle\\homes\\OraDB21Home1\\RDBMS",
+      "estado": "VALID"
+    }
+  ],
+  "destino_archivado_configurado": false,
+  "area_recuperacion": null,
+  "archivelogs_sin_respaldo": 0
+}

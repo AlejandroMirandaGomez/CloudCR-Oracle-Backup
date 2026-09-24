@@ -1,0 +1,40 @@
+Instancia XE  ·  Oracle Database 21.3.0.0.0 Express Edition
+Base XE · CDB (multitenant) · DBID 1234567890 · host SERVIDOR-PRUEBAS · READ WRITE
+Modo de archivado: NOARCHIVELOG
+├── RECOMENDACIÓN: Datafiles, control files y redo logs están todos en la misma unidad (C:\).
+├── Archivos de la instancia (compartidos por todos los contenedores)
+│   ├── Control files (2)
+│   │   ├── RECOMENDACIÓN: Todas las copias del control file están en el mismo directorio.
+│   │   ├── CONTROL01.CTL  ·  17.8 MB   C:\ORACLE\ORADATA\XE
+│   │   └── CONTROL02.CTL  ·  17.8 MB   C:\ORACLE\ORADATA\XE
+│   ├── Redo logs  (3 grupos · 200 MB c/u · 1 miembro por grupo)
+│   │   ├── RECOMENDACIÓN: Los grupos de redo 1, 2, 3 tienen un solo miembro (no están multiplexados).
+│   │   ├── Grupo 1  ·  CURRENT  ·  hilo 1 · secuencia 28 · 200 MB · archivado: no
+│   │   │   └── REDO01.LOG   C:\ORACLE\ORADATA\XE
+│   │   ├── Grupo 2  ·  INACTIVE  ·  hilo 1 · secuencia 26 · 200 MB · archivado: no
+│   │   │   └── REDO02.LOG   C:\ORACLE\ORADATA\XE
+│   │   └── Grupo 3  ·  INACTIVE  ·  hilo 1 · secuencia 27 · 200 MB · archivado: no
+│   │       └── REDO03.LOG   C:\ORACLE\ORADATA\XE
+│   ├── Archivos de parámetros
+│   │   ├── SPFILEXE.ORA  ·  SPFILE (en uso)   C:\ORACLE\DATABASE
+│   │   ├── init.ora.7232026235414  ·  PFILE de creación   C:\ORACLE\admin\XE\pfile
+│   │   ├── initXE.ora  ·  PFILE de la instancia   C:\ORACLE\DATABASE
+│   │   └── init.ora  ·  PFILE de ejemplo de Oracle   C:\oracle\product\21c\dbhomeXE\dbs
+│   └── Archived redo logs
+│       ├── ADVERTENCIA: La base de datos se encuentra en modo NOARCHIVELOG. Las posibilidades de recuperación son más limitadas. Revise la estrategia de respaldo y los requerimientos de recuperación antes de continuar.
+│       ├── RECOMENDACIÓN: No hay un destino de archivado definido explícitamente (LOG_ARCHIVE_DEST_n ni área de recuperación). Los archived logs irían a C:\oracle\homes\OraDB21Home1\RDBMS.
+│       ├── No se generan: la base está en NOARCHIVELOG.
+│       └── LOG_ARCHIVE_DEST_1 (por defecto): C:\oracle\homes\OraDB21Home1\RDBMS  ·  VALID
+└── XEPDB1  ·  PDB  ·  READ WRITE
+    ├── SYSTEM  ·  permanente  ·  280 MB  ·  1 % usado
+    │   └── SYSTEM01.DBF  ·  #9  ·  280 MB  ·  1 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE\XEPDB1
+    ├── SYSAUX  ·  permanente  ·  450 MB  ·  1 % usado
+    │   └── SYSAUX01.DBF  ·  #10  ·  450 MB  ·  1 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE\XEPDB1
+    ├── UNDOTBS1  ·  undo  ·  100 MB  ·  0 % usado
+    │   └── UNDOTBS01.DBF  ·  #11  ·  100 MB  ·  0 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE\XEPDB1
+    ├── CLOUDCR_STRESS_TS  ·  permanente  ·  50 MB  ·  2 % usado
+    │   └── CLOUDCR_STRESS_TS.DBF  ·  #13  ·  50 MB  ·  2 % de 50 MB   C:\ORACLE\ORADATA\XE\XEPDB1
+    ├── USERS  ·  permanente  ·  5 MB  ·  0 % usado
+    │   └── USERS01.DBF  ·  #12  ·  5 MB  ·  0 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE\XEPDB1
+    └── TEMP  ·  temporal  ·  212 MB
+        └── TEMP01.DBF  ·  tempfile  ·  212 MB   C:\ORACLE\ORADATA\XE\XEPDB1
