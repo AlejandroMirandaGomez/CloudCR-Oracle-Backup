@@ -1,0 +1,28 @@
+from enum import StrEnum
+
+
+class Severidad(StrEnum):
+    ERROR = "ERROR"
+    ADVERTENCIA = "ADVERTENCIA"
+    RECOMENDACION = "RECOMENDACION"
+    INFORMATIVA = "INFORMATIVA"
+
+
+class LogMode(StrEnum):
+    ARCHIVELOG = "ARCHIVELOG"
+    NOARCHIVELOG = "NOARCHIVELOG"
+
+
+class TipoArchivoParametros(StrEnum):
+    SPFILE = "SPFILE"
+    PFILE_INSTANCIA = "PFILE_INSTANCIA"
+    PFILE_CREACION = "PFILE_CREACION"
+    PFILE_EJEMPLO = "PFILE_EJEMPLO"
+    PFILE_OTRO = "PFILE_OTRO"
+
+
+class ContenidoTablespace(StrEnum):
+    PERMANENTE = "PERMANENT"
+    UNDO = "UNDO"
+    TEMPORAL = "TEMPORARY"
+    DESCONOCIDO = "DESCONOCIDO"
