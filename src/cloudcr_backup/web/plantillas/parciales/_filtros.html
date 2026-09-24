@@ -1,0 +1,25 @@
+<section class="filtros" aria-label="Filtros">
+  <form id="formulario-filtros" class="formulario-filtros"
+        action="/instancias/{{ sid | urlencode }}/arbol" method="get"
+        hx-get="/instancias/{{ sid | urlencode }}/arbol"
+        hx-target="#zona-arbol"
+        hx-trigger="change"
+        hx-push-url="true"
+        hx-indicator="#cargando">
+    {% if oracle_home %}<input type="hidden" name="oracle_home" value="{{ oracle_home }}">{% endif %}
+    <label>Contenedor
+      <select name="pdb">
+        <option value="">Todos</option>
+        {% for contenedor in perfil.contenedores %}
+        <option value="{{ contenedor.nombre }}"{% if opciones.pdb and opciones.pdb | upper == contenedor.nombre | upper %} selected{% endif %}>{{ contenedor.nombre }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="casilla"><input type="checkbox" name="sin_seed" value="true"{% if opciones.sin_seed %} checked{% endif %}> Ocultar PDB$SEED</label>
+    <label class="casilla"><input type="checkbox" name="rutas_completas" value="true"{% if opciones.rutas_completas %} checked{% endif %}> Rutas completas</label>
+    <noscript><button class="boton" type="submit">Aplicar</button></noscript>
+  </form>
+  <label class="buscador">Buscar
+    <input type="search" id="buscar" placeholder="Archivo, tablespace o contenedor…" autocomplete="off" spellcheck="false">
+  </label>
+</section>

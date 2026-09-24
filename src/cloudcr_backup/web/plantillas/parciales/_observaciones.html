@@ -1,0 +1,24 @@
+<details class="observaciones" aria-label="Observaciones">
+  <summary>
+    <span class="observaciones-titulo">Observaciones</span>
+    <span class="contador">{{ hallazgos | length }}</span>
+    <span class="pildoras-severidad">
+      {% for conteo in resumen.observaciones %}
+      <span class="severidad-{{ conteo.severidad | lower }}"><span class="insignia">{{ conteo_severidad(conteo.severidad, conteo.cantidad) }}</span></span>
+      {% endfor %}
+    </span>
+  </summary>
+  <div class="observaciones-lista">
+    {% if not hallazgos %}
+    <p class="vacio">Sin observaciones sobre la instancia.</p>
+    {% endif %}
+    {% for h in hallazgos %}
+    <article class="observacion severidad-{{ h.severidad | lower }}">
+      <header><span class="insignia">{{ h.severidad | etiqueta_severidad }}</span> <code>{{ h.codigo }}</code></header>
+      <p>{{ h.mensaje }}</p>
+      {% if h.accion_sugerida %}<p class="accion"><strong>Acción sugerida:</strong> {{ h.accion_sugerida }}</p>{% endif %}
+      <a class="ir-a" href="#nodo-{{ h.sujeto | id_nodo }}" data-ir-a="nodo-{{ h.sujeto | id_nodo }}">Ir al nodo</a>
+    </article>
+    {% endfor %}
+  </div>
+</details>

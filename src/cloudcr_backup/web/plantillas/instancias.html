@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titulo %}Instancias · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <h1>Instancias Oracle en este equipo</h1>
+    <div class="acciones">
+      <span id="cargando" class="htmx-indicator">Buscando instancias…</span>
+      <button type="button" class="boton" hx-get="/instancias?refrescar=true" hx-target="#tabla-instancias" hx-indicator="#cargando">Volver a buscar</button>
+    </div>
+  </section>
+  <div id="tabla-instancias">{% include "parciales/_tabla_instancias.html" %}</div>
+  <section class="panel">
+    <h2>Explorar manualmente</h2>
+    <p class="nota">Para una instancia que no aparece en la lista. Por seguridad, la interfaz web solo acepta un ORACLE_HOME detectado en este equipo.</p>
+    <form class="formulario" action="/explorar" method="get">
+      <label>SID <input name="sid" required autocomplete="off" spellcheck="false"></label>
+      <label>ORACLE_HOME
+        <select name="oracle_home">
+          <option value="">Detectar automáticamente</option>
+          {% for home in homes %}<option value="{{ home }}">{{ home }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="boton primario" type="submit">Explorar</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

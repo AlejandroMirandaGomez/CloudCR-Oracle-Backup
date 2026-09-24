@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowEval": false, "historyCacheSize": 0, "refreshOnHistoryMiss": true}'>
+  <title>{% block titulo %}CloudCR Oracle Backup{% endblock %}</title>
+  <link rel="stylesheet" href="/estaticos/app.css">
+  <script src="/estaticos/htmx.min.js" defer></script>
+  <script src="/estaticos/app.js" defer></script>
+</head>
+<body>
+  <header class="cabecera">
+    <a class="marca" href="/"><span class="marca-nombre">CloudCR</span> <span class="marca-producto">Oracle Backup</span></a>
+    <nav class="navegacion" aria-label="Secciones">
+      <a href="/instancias">Instancias</a>
+    </nav>
+  </header>
+  <main id="principal">{% block contenido %}{% endblock %}</main>
+  <footer class="pie">CloudCR Oracle Backup {{ version }} · solo lectura</footer>
+</body>
+</html>

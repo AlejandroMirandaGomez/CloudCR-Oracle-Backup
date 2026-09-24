@@ -1,0 +1,46 @@
+{% macro etiqueta(n) -%}
+<span class="titulo tipo-{{ n.tipo }}{% if n.tono_titulo %} tono-{{ n.tono_titulo }}{% endif %}">{{ n.titulo }}</span>
+{%- if n.detalles or n.porcentaje_uso is not none %}
+<span class="nodo-meta">
+{%- for d in n.detalles %}<span class="detalle tono-{{ d.tono }}">{{ d.texto }}</span>{% endfor -%}
+{%- if n.porcentaje_uso is not none %}<meter class="uso" min="0" max="100" low="85" high="95" optimum="0" value="{{ '%.1f' | format(n.porcentaje_uso) }}" title="{{ '%.0f' | format(n.porcentaje_uso) }} % usado"></meter>{% endif -%}
+</span>
+{%- endif %}
+{%- if n.ubicacion %}<code class="ubicacion">{{ n.ubicacion }}</code>{% endif %}
+{%- for linea in n.lineas_extra %}<span class="linea-extra">{% for d in linea %}<span class="tono-{{ d.tono }}">{{ d.texto }}</span>{% endfor %}</span>{% endfor %}
+{%- endmacro %}
+
+{% macro insignias_hallazgos(n) -%}
+{% if n.hallazgos %}
+<details class="hallazgos-nodo">
+  <summary>
+    {% for h in n.hallazgos %}<span class="severidad-{{ h.severidad | lower }}"><span class="insignia">{{ h.severidad | etiqueta_severidad }}</span></span>{% endfor %}
+  </summary>
+  <div class="hallazgos-detalle">
+    {% for h in n.hallazgos %}
+    <div class="hallazgo-item severidad-{{ h.severidad | lower }}">
+      <p class="hallazgo"><span class="insignia">{{ h.severidad | etiqueta_severidad }}</span> {{ h.mensaje }}</p>
+      {% if h.accion_sugerida %}<p class="accion"><strong>Acción sugerida:</strong> {{ h.accion_sugerida }}</p>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+{%- endmacro %}
+
+{% macro nodo(n) -%}
+{% if n.es_hoja %}
+<div class="nodo hoja tipo-{{ n.tipo }}" id="nodo-{{ n.id }}" data-texto="{{ (n.titulo ~ ' ' ~ (n.ubicacion or '')) | lower }}">{{ etiqueta(n) }}</div>
+{% elif not n.hijos %}
+<details class="nodo hoja tipo-{{ n.tipo }}" id="nodo-{{ n.id }}" data-texto="{{ (n.titulo ~ ' ' ~ (n.ubicacion or '')) | lower }}">
+  <summary>{{ etiqueta(n) }}</summary>
+  {{ insignias_hallazgos(n) }}
+</details>
+{% else %}
+<details class="nodo tipo-{{ n.tipo }}" id="nodo-{{ n.id }}" data-texto="{{ '' if n.tipo == 'instancia' else n.titulo | lower }}"{% if n.abierto %} open{% endif %}>
+  <summary>{{ etiqueta(n) }}</summary>
+  {{ insignias_hallazgos(n) }}
+  <div class="hijos">{% for hijo in n.hijos %}{{ nodo(hijo) }}{% endfor %}</div>
+</details>
+{% endif %}
+{%- endmacro %}

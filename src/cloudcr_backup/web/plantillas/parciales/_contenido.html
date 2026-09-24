@@ -1,0 +1,23 @@
+<div id="contenido" class="contenido">
+  <section class="barra-instancia">
+    <nav class="pildoras" aria-label="Instancias">
+      {% for instancia in instancias %}
+      <a class="pildora{% if instancia.sid | upper == sid %} activa{% endif %}"
+         href="/instancias/{{ instancia.sid | urlencode }}"
+         hx-get="/instancias/{{ instancia.sid | urlencode }}"
+         hx-target="#principal"
+         hx-push-url="true"
+         hx-indicator="#cargando"><span class="punto {{ 'encendido' if instancia.en_ejecucion else 'apagado' }}"></span>{{ instancia.sid }}</a>
+      {% endfor %}
+    </nav>
+    <div class="acciones">
+      <span id="cargando" class="htmx-indicator">Inspeccionando la instancia…</span>
+      <button type="button" class="boton"
+              hx-get="/instancias/{{ sid | urlencode }}?{% if consulta %}{{ consulta }}&amp;{% endif %}refrescar=true"
+              hx-target="#principal"
+              hx-indicator="#cargando">Actualizar</button>
+    </div>
+  </section>
+  {% include "parciales/_filtros.html" %}
+  <div id="zona-arbol">{% include "parciales/_zona_arbol.html" %}</div>
+</div>

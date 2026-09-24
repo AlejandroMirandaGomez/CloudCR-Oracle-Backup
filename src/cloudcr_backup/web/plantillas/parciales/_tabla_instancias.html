@@ -1,0 +1,23 @@
+{% if instancias %}
+<table class="tabla">
+  <thead>
+    <tr><th>SID</th><th>Estado</th><th>ORACLE_HOME</th><th>Detectada por</th><th><span class="oculto">Acción</span></th></tr>
+  </thead>
+  <tbody>
+    {% for instancia in instancias %}
+    <tr>
+      <td><strong>{{ instancia.sid }}</strong></td>
+      <td><span class="punto {{ 'encendido' if instancia.en_ejecucion else 'apagado' }}"></span>{{ 'En ejecución' if instancia.en_ejecucion else 'Detenida o desconocido' }}</td>
+      <td><code>{{ instancia.oracle_home or 'desconocido' }}</code></td>
+      <td>{{ instancia.origenes | join(', ') }}</td>
+      <td><a class="boton primario" href="/instancias/{{ instancia.sid | urlencode }}">Explorar</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="vacio">
+  <p><strong>No se encontró ninguna instancia Oracle en este equipo.</strong></p>
+  <p>Verifique que Oracle esté instalado y su servicio iniciado, o use “Explorar manualmente”.</p>
+</div>
+{% endif %}

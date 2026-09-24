@@ -1,0 +1,17 @@
+{% from "parciales/_nodo.html" import nodo %}
+{% if aviso_pdb %}<p class="aviso" role="status">{{ aviso_pdb }}</p>{% endif %}
+<div class="herramientas">
+  <div class="grupo-botones">
+    <button type="button" class="boton" data-accion="expandir">Expandir todo</button>
+    <button type="button" class="boton" data-accion="contraer">Contraer todo</button>
+  </div>
+  <div class="grupo-botones">
+    <span class="etiqueta">Exportar</span>
+    {% for formato, texto in [("json", "JSON"), ("md", "Markdown"), ("html", "HTML")] %}
+    <a class="boton" href="/instancias/{{ sid | urlencode }}/exportar/{{ formato }}{% if consulta %}?{{ consulta }}{% endif %}" download>{{ texto }}</a>
+    {% endfor %}
+  </div>
+</div>
+<section id="arbol" class="arbol" aria-label="Estructura física de la instancia">{{ nodo(raiz) }}</section>
+{% include "parciales/_observaciones.html" %}
+<p class="captura">Capturado el {{ perfil.capturado_en.strftime("%Y-%m-%d %H:%M:%S") }} en {{ perfil.host }} · datos de hace {{ antiguedad }} s</p>

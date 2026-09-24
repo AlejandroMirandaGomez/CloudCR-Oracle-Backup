@@ -1,0 +1,9 @@
+<section class="error" role="alert">
+  <h2>No se pudo inspeccionar{% if sid %} la instancia {{ sid }}{% endif %}</h2>
+  <p>{{ mensaje }}</p>
+  {% if sugerencia %}<p class="sugerencia"><strong>Sugerencia:</strong> {{ sugerencia }}</p>{% endif %}
+  <p class="grupo-botones">
+    <a class="boton" href="/instancias">Ver instancias</a>
+    {% if sid %}<a class="boton primario" href="/instancias/{{ sid | urlencode }}?refrescar=true">Reintentar</a>{% endif %}
+  </p>
+</section>
