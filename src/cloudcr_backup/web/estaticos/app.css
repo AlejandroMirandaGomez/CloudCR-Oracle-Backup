@@ -303,7 +303,8 @@ input:focus-visible {
 }
 
 .formulario-filtros,
-.formulario {
+.formulario,
+.grupo-filtros {
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -575,29 +576,10 @@ input:not([type]) {
 
 .hallazgos-nodo {
   grid-column: 1 / -1;
-  margin: 0.15rem 0 0.15rem 0.2rem;
-}
-
-.hallazgos-nodo > summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  cursor: pointer;
-  list-style: none;
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  background: var(--superficie-2);
-}
-
-.hallazgos-nodo > summary::-webkit-details-marker {
-  display: none;
-}
-
-.hallazgos-detalle {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  margin: 0.5rem 0 0.35rem 0.3rem;
+  margin: 0.35rem 0 0.35rem 0.2rem;
   padding-left: 0.65rem;
   border-left: 2px solid var(--borde);
 }
@@ -613,6 +595,14 @@ input:not([type]) {
   font-size: 0.86rem;
 }
 
+.arbol.oculta-severidad-advertencia .hallazgo-item.severidad-advertencia {
+  display: none;
+}
+
+.arbol.oculta-severidad-recomendacion .hallazgo-item.severidad-recomendacion {
+  display: none;
+}
+
 .observaciones {
   padding: 0;
   overflow: hidden;
@@ -626,7 +616,7 @@ input:not([type]) {
   flex-wrap: wrap;
   cursor: pointer;
   list-style: none;
-  padding: 0.85rem 1rem 0.85rem 1.75rem;
+  padding: 0.85rem 1rem 0.85rem 1.7rem;
 }
 
 .observaciones > summary::-webkit-details-marker {
@@ -636,10 +626,10 @@ input:not([type]) {
 .observaciones > summary::before {
   content: "";
   position: absolute;
-  left: 1rem;
+  left: 0.8rem;
   top: 50%;
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-right: 1.5px solid var(--texto-suave);
   border-bottom: 1.5px solid var(--texto-suave);
   transform: translateY(-65%) rotate(-45deg);

@@ -32,10 +32,6 @@
     if (destino.tagName === "DETAILS") {
       destino.open = true;
     }
-    const insignia = destino.querySelector(":scope > details.hallazgos-nodo");
-    if (insignia) {
-      insignia.open = true;
-    }
     destino.scrollIntoView({ behavior: "smooth", block: "center" });
     resaltar(destino);
     return true;
@@ -104,6 +100,17 @@
     });
   }
 
+  function aplicarFiltrosSeveridad() {
+    const raiz = arbol();
+    if (!raiz) {
+      return;
+    }
+    const ocultarAdvertencias = document.getElementById("ocultar-advertencias");
+    const ocultarRecomendaciones = document.getElementById("ocultar-recomendaciones");
+    raiz.classList.toggle("oculta-severidad-advertencia", !!ocultarAdvertencias && ocultarAdvertencias.checked);
+    raiz.classList.toggle("oculta-severidad-recomendacion", !!ocultarRecomendaciones && ocultarRecomendaciones.checked);
+  }
+
   document.addEventListener("click", function (evento) {
     const objetivo = evento.target instanceof Element ? evento.target : null;
     if (!objetivo) {
@@ -126,5 +133,17 @@
     }
   });
 
-  document.addEventListener("htmx:afterSettle", aplicarBusqueda);
+  document.addEventListener("change", function (evento) {
+    if (
+      evento.target instanceof Element &&
+      (evento.target.id === "ocultar-advertencias" || evento.target.id === "ocultar-recomendaciones")
+    ) {
+      aplicarFiltrosSeveridad();
+    }
+  });
+
+  document.addEventListener("htmx:afterSettle", function () {
+    aplicarBusqueda();
+    aplicarFiltrosSeveridad();
+  });
 })();

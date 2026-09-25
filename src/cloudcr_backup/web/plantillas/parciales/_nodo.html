@@ -12,19 +12,14 @@
 
 {% macro insignias_hallazgos(n) -%}
 {% if n.hallazgos %}
-<details class="hallazgos-nodo">
-  <summary>
-    {% for h in n.hallazgos %}<span class="severidad-{{ h.severidad | lower }}"><span class="insignia">{{ h.severidad | etiqueta_severidad }}</span></span>{% endfor %}
-  </summary>
-  <div class="hallazgos-detalle">
-    {% for h in n.hallazgos %}
-    <div class="hallazgo-item severidad-{{ h.severidad | lower }}">
-      <p class="hallazgo"><span class="insignia">{{ h.severidad | etiqueta_severidad }}</span> {{ h.mensaje }}</p>
-      {% if h.accion_sugerida %}<p class="accion"><strong>Acción sugerida:</strong> {{ h.accion_sugerida }}</p>{% endif %}
-    </div>
-    {% endfor %}
+<div class="hallazgos-nodo">
+  {% for h in n.hallazgos %}
+  <div class="hallazgo-item severidad-{{ h.severidad | lower }}">
+    <p class="hallazgo"><span class="insignia">{{ h.severidad | etiqueta_severidad }}</span> {{ h.mensaje }}</p>
+    {% if h.accion_sugerida %}<p class="accion"><strong>Acción sugerida:</strong> {{ h.accion_sugerida }}</p>{% endif %}
   </div>
-</details>
+  {% endfor %}
+</div>
 {% endif %}
 {%- endmacro %}
 
