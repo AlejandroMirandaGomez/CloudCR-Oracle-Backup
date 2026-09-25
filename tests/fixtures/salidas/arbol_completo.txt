@@ -25,36 +25,55 @@ Modo de archivado: NOARCHIVELOG
 │       ├── RECOMENDACIÓN: No hay un destino de archivado definido explícitamente (LOG_ARCHIVE_DEST_n ni área de recuperación). Los archived logs irían a C:\oracle\homes\OraDB21Home1\RDBMS.
 │       ├── No se generan: la base está en NOARCHIVELOG.
 │       └── LOG_ARCHIVE_DEST_1 (por defecto): C:\oracle\homes\OraDB21Home1\RDBMS  ·  VALID
-├── CDB$ROOT  ·  contenedor raíz  ·  READ WRITE
-│   ├── SYSTEM  ·  permanente  ·  1.3 GB  ·  4 % usado
-│   │   └── SYSTEM01.DBF  ·  #1  ·  1.3 GB  ·  4 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE
-│   ├── SYSAUX  ·  permanente  ·  740 MB  ·  2 % usado
-│   │   └── SYSAUX01.DBF  ·  #3  ·  740 MB  ·  2 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE
-│   ├── UNDOTBS1  ·  undo  ·  115 MB  ·  0 % usado
-│   │   └── UNDOTBS01.DBF  ·  #4  ·  115 MB  ·  0 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE
-│   ├── USERS  ·  permanente  ·  5 MB  ·  0 % usado
-│   │   └── USERS01.DBF  ·  #7  ·  5 MB  ·  0 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE
-│   └── TEMP  ·  temporal  ·  237 MB
-│       └── TEMP01.DBF  ·  tempfile  ·  237 MB   C:\ORACLE\ORADATA\XE
-├── PDB$SEED  ·  plantilla para crear PDBs  ·  READ ONLY
-│   ├── SYSTEM  ·  270 MB
-│   │   └── SYSTEM01.DBF  ·  #5  ·  270 MB   C:\ORACLE\ORADATA\XE\PDBSEED
-│   ├── SYSAUX  ·  320 MB
-│   │   └── SYSAUX01.DBF  ·  #6  ·  320 MB   C:\ORACLE\ORADATA\XE\PDBSEED
-│   ├── UNDOTBS1  ·  100 MB
-│   │   └── UNDOTBS01.DBF  ·  #8  ·  100 MB   C:\ORACLE\ORADATA\XE\PDBSEED
-│   └── TEMP  ·  temporal  ·  35 MB
-│       └── TEMP012026-08-23_23-50-36-747-PM.DBF  ·  tempfile  ·  35 MB   C:\ORACLE\ORADATA\XE\PDBSEED
-└── XEPDB1  ·  PDB  ·  READ WRITE
-    ├── SYSTEM  ·  permanente  ·  280 MB  ·  1 % usado
-    │   └── SYSTEM01.DBF  ·  #9  ·  280 MB  ·  1 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE\XEPDB1
-    ├── SYSAUX  ·  permanente  ·  450 MB  ·  1 % usado
-    │   └── SYSAUX01.DBF  ·  #10  ·  450 MB  ·  1 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE\XEPDB1
-    ├── UNDOTBS1  ·  undo  ·  100 MB  ·  0 % usado
-    │   └── UNDOTBS01.DBF  ·  #11  ·  100 MB  ·  0 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE\XEPDB1
-    ├── CLOUDCR_STRESS_TS  ·  permanente  ·  50 MB  ·  2 % usado
-    │   └── CLOUDCR_STRESS_TS.DBF  ·  #13  ·  50 MB  ·  2 % de 50 MB   C:\ORACLE\ORADATA\XE\XEPDB1
-    ├── USERS  ·  permanente  ·  5 MB  ·  0 % usado
-    │   └── USERS01.DBF  ·  #12  ·  5 MB  ·  0 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE\XEPDB1
-    └── TEMP  ·  temporal  ·  212 MB
-        └── TEMP01.DBF  ·  tempfile  ·  212 MB   C:\ORACLE\ORADATA\XE\XEPDB1
+└── Contenedores (3)
+    ├── CDB$ROOT  ·  contenedor raíz  ·  READ WRITE
+    │   └── Tablespaces (5)
+    │       ├── SYSTEM  ·  permanente  ·  1.3 GB  ·  4 % usado
+    │       │   └── Datafiles (1)
+    │       │       └── SYSTEM01.DBF  ·  #1  ·  1.3 GB  ·  4 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE
+    │       ├── SYSAUX  ·  permanente  ·  740 MB  ·  2 % usado
+    │       │   └── Datafiles (1)
+    │       │       └── SYSAUX01.DBF  ·  #3  ·  740 MB  ·  2 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE
+    │       ├── UNDOTBS1  ·  undo  ·  115 MB  ·  0 % usado
+    │       │   └── Datafiles (1)
+    │       │       └── UNDOTBS01.DBF  ·  #4  ·  115 MB  ·  0 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE
+    │       ├── USERS  ·  permanente  ·  5 MB  ·  0 % usado
+    │       │   └── Datafiles (1)
+    │       │       └── USERS01.DBF  ·  #7  ·  5 MB  ·  0 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE
+    │       └── TEMP  ·  temporal  ·  237 MB
+    │           └── Tempfiles (1)
+    │               └── TEMP01.DBF  ·  tempfile  ·  237 MB   C:\ORACLE\ORADATA\XE
+    ├── PDB$SEED  ·  plantilla para crear PDBs  ·  READ ONLY
+    │   └── Tablespaces (4)
+    │       ├── SYSTEM  ·  270 MB
+    │       │   └── Datafiles (1)
+    │       │       └── SYSTEM01.DBF  ·  #5  ·  270 MB   C:\ORACLE\ORADATA\XE\PDBSEED
+    │       ├── SYSAUX  ·  320 MB
+    │       │   └── Datafiles (1)
+    │       │       └── SYSAUX01.DBF  ·  #6  ·  320 MB   C:\ORACLE\ORADATA\XE\PDBSEED
+    │       ├── UNDOTBS1  ·  100 MB
+    │       │   └── Datafiles (1)
+    │       │       └── UNDOTBS01.DBF  ·  #8  ·  100 MB   C:\ORACLE\ORADATA\XE\PDBSEED
+    │       └── TEMP  ·  temporal  ·  35 MB
+    │           └── Tempfiles (1)
+    │               └── TEMP012026-08-23_23-50-36-747-PM.DBF  ·  tempfile  ·  35 MB   C:\ORACLE\ORADATA\XE\PDBSEED
+    └── XEPDB1  ·  PDB  ·  READ WRITE
+        └── Tablespaces (6)
+            ├── SYSTEM  ·  permanente  ·  280 MB  ·  1 % usado
+            │   └── Datafiles (1)
+            │       └── SYSTEM01.DBF  ·  #9  ·  280 MB  ·  1 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE\XEPDB1
+            ├── SYSAUX  ·  permanente  ·  450 MB  ·  1 % usado
+            │   └── Datafiles (1)
+            │       └── SYSAUX01.DBF  ·  #10  ·  450 MB  ·  1 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE\XEPDB1
+            ├── UNDOTBS1  ·  undo  ·  100 MB  ·  0 % usado
+            │   └── Datafiles (1)
+            │       └── UNDOTBS01.DBF  ·  #11  ·  100 MB  ·  0 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE\XEPDB1
+            ├── CLOUDCR_STRESS_TS  ·  permanente  ·  50 MB  ·  2 % usado
+            │   └── Datafiles (1)
+            │       └── CLOUDCR_STRESS_TS.DBF  ·  #13  ·  50 MB  ·  2 % de 50 MB   C:\ORACLE\ORADATA\XE\XEPDB1
+            ├── USERS  ·  permanente  ·  5 MB  ·  0 % usado
+            │   └── Datafiles (1)
+            │       └── USERS01.DBF  ·  #12  ·  5 MB  ·  0 % de 32 GB  ·  autoextensible   C:\ORACLE\ORADATA\XE\XEPDB1
+            └── TEMP  ·  temporal  ·  212 MB
+                └── Tempfiles (1)
+                    └── TEMP01.DBF  ·  tempfile  ·  212 MB   C:\ORACLE\ORADATA\XE\XEPDB1

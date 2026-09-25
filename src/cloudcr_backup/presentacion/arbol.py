@@ -86,9 +86,6 @@ class NodoArbol:
     def es_hoja(self) -> bool:
         return not self.hijos and not self.hallazgos
 
-    def tiene_hallazgos(self) -> bool:
-        return bool(self.hallazgos) or any(h.tiene_hallazgos() for h in self.hijos)
-
 
 def id_nodo(sujeto: str) -> str:
     return CARACTERES_NO_VALIDOS_ID.sub("_", sujeto.replace(":", "-"))
@@ -132,8 +129,17 @@ class ConstructorNodos:
     def construir(self) -> NodoArbol:
         raiz = self._raiz()
         raiz.hijos.append(self._archivos_instancia())
-        raiz.hijos.extend(self._contenedor(c) for c in self.contenedores_visibles())
+        raiz.hijos.append(self._containers())
         return raiz
+
+    def _containers(self) -> NodoArbol:
+        contenedores = self.contenedores_visibles()
+        return NodoArbol(
+            id=id_nodo("containers"),
+            tipo=TipoNodo.GRUPO_PRINCIPAL,
+            titulo=f"Contenedores ({len(contenedores)})",
+            hijos=[self._contenedor(c) for c in contenedores],
+        )
 
     def contenedores_visibles(self) -> list[ContenedorInfo]:
         visibles = []
@@ -337,7 +343,16 @@ class ConstructorNodos:
                 Detalle(contenedor.open_mode, Tono.EXITO if contenedor.abierto else Tono.ADVERTENCIA),
             ],
             hallazgos=self._hallazgos(sujeto),
-            hijos=[self._tablespace(t) for t in ordenar_tablespaces(self._perfil.tablespaces_de(contenedor.con_id))],
+            hijos=[self._tablespaces(contenedor)],
+        )
+
+    def _tablespaces(self, contenedor: ContenedorInfo) -> NodoArbol:
+        tablespaces = ordenar_tablespaces(self._perfil.tablespaces_de(contenedor.con_id))
+        return NodoArbol(
+            id=id_nodo(f"tablespaces:{contenedor.con_id}"),
+            tipo=TipoNodo.GRUPO,
+            titulo=f"Tablespaces ({len(tablespaces)})",
+            hijos=[self._tablespace(t) for t in tablespaces],
         )
 
     def _tablespace(self, tablespace: TablespaceInfo) -> NodoArbol:
@@ -363,7 +378,19 @@ class ConstructorNodos:
             detalles=detalles,
             porcentaje_uso=uso,
             hallazgos=self._hallazgos(sujeto),
-            hijos=[*(self._datafile(d) for d in datafiles), *(self._tempfile(t) for t in tempfiles)],
+            hijos=[self._archivos_tablespace(tablespace, datafiles, tempfiles)],
+        )
+
+    def _archivos_tablespace(
+        self, tablespace: TablespaceInfo, datafiles: list[DatafileInfo], tempfiles: list[TempfileInfo]
+    ) -> NodoArbol:
+        hijos = [*(self._datafile(d) for d in datafiles), *(self._tempfile(t) for t in tempfiles)]
+        titulo = "Datafiles" if datafiles else "Tempfiles" if tempfiles else "Archivos"
+        return NodoArbol(
+            id=id_nodo(f"archivos-tablespace:{tablespace.con_id}:{tablespace.nombre}"),
+            tipo=TipoNodo.GRUPO,
+            titulo=f"{titulo} ({len(hijos)})",
+            hijos=hijos,
         )
 
     def _datafile(self, datafile: DatafileInfo) -> NodoArbol:
@@ -390,12 +417,7 @@ class ConstructorNodos:
 def _marcar_abiertos_web(nodo: NodoArbol) -> None:
     for hijo in nodo.hijos:
         _marcar_abiertos_web(hijo)
-    if nodo.tipo in (TipoNodo.INSTANCIA, TipoNodo.GRUPO_PRINCIPAL):
-        nodo.abierto = True
-    elif nodo.tipo is TipoNodo.CONTENEDOR:
-        nodo.abierto = not nodo.titulo.upper().endswith("$SEED") or nodo.tiene_hallazgos()
-    else:
-        nodo.abierto = nodo.tiene_hallazgos()
+    nodo.abierto = nodo.tipo is TipoNodo.INSTANCIA
 
 
 def construir_nodos(exploracion: Exploracion, opciones: OpcionesArbol, modo: Modo = "cli") -> NodoArbol:
