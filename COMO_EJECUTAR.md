@@ -209,6 +209,46 @@ La terminal muestra una dirección con `?token=...`. Esa dirección es la que se
 
 Por seguridad, la web solo acepta un `ORACLE_HOME` detectado en el equipo. Para usar otro, hay que usar la terminal: `cloudcr explorar <SID> --oracle-home <ORACLE_HOME>`. Si en el equipo hay instancias con distintos `ORACLE_HOME`, cada `cloudcr web` explora las de un solo `ORACLE_HOME`; para las otras, abrir otro `cloudcr web` con otro `--puerto`.
 
+## Instalar el repositorio (PDB BKPCAT)
+
+El repositorio guarda estrategias, scripts RMAN, ejecuciones y alertas en una PDB propia (`BKPCAT`) dentro de la misma XE, con su propio usuario (`BKP_ADMIN`). Se crea una sola vez por instalación de Oracle, conectado como `SYSDBA` con `sqlplus`.
+
+**1. Crear la PDB** (pide el nombre de la PDB, un usuario administrador temporal y su clave)
+
+```powershell
+sqlplus / as sysdba @sql\setup\01_crear_pdb_bkpcat.sql
+```
+
+**2. Crear el usuario del repositorio dentro de esa PDB** (pide el nombre de la PDB, el usuario del repositorio, su clave y la cuota)
+
+```powershell
+sqlplus / as sysdba @sql\setup\02_crear_usuario_repositorio.sql
+```
+
+**3. Crear las 12 tablas**, conectado ya como el usuario del repositorio en la PDB (reemplazando `<PDB>` y `<USUARIO>`)
+
+```powershell
+sqlplus <USUARIO>/<CLAVE>@localhost:1521/<PDB> @sql\setup\03_esquema_bkp_admin.sql
+```
+
+Este script es idempotente: si las tablas ya existen las elimina primero, así que se puede ejecutar de nuevo sin dejar el esquema a medias.
+
+**4. Cargar los parámetros iniciales** (mismo usuario y conexión que el paso 3)
+
+```powershell
+sqlplus <USUARIO>/<CLAVE>@localhost:1521/<PDB> @sql\setup\04_parametros_iniciales.sql
+```
+
+**5. (Opcional) Usuario común de solo lectura para inspección sin SYSDBA**
+
+```powershell
+sqlplus / as sysdba @sql\setup\05_usuario_monitor.sql
+```
+
+**6. Configurar las credenciales del repositorio**
+
+Copiar `.env.example` a `.env` (o exportar las variables en la sesión de PowerShell) y completar al menos `CLOUDCR_REPO_CLAVE` con la clave del usuario del repositorio. Esta clave **nunca** va en `cloudcr.yaml` ni en el código.
+
 ## Pruebas
 
 ```powershell
