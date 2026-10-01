@@ -3,7 +3,7 @@ from typing import Annotated
 import typer
 
 from cloudcr_backup import __version__
-from cloudcr_backup.cli import cmd_explorar
+from cloudcr_backup.cli import cmd_estrategia, cmd_explorar, cmd_tarea
 from cloudcr_backup.presentacion.terminal import consola
 
 app = typer.Typer(
@@ -14,6 +14,8 @@ app = typer.Typer(
 )
 
 app.registered_commands.extend(cmd_explorar.app.registered_commands)
+app.add_typer(cmd_estrategia.app, name="estrategia", help="Crear, validar, activar y consultar estrategias.")
+app.add_typer(cmd_tarea.app, name="tarea", help="Agregar, editar o eliminar tareas dentro de una estrategia.")
 
 
 @app.callback(invoke_without_command=True)
