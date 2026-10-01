@@ -92,6 +92,7 @@ def validar(
     codigo: Annotated[str | None, typer.Option("--codigo", help="Código de la estrategia ya guardada.")] = None,
     sid: Annotated[str | None, typer.Option("--sid", help="SID de la instancia local. Se detecta si se omite.")] = None,
 ) -> None:
+    perfil = _perfil_local(sid)
     if archivo is not None:
         estrategia = _cargar_desde_archivo(archivo)
     else:
@@ -100,7 +101,7 @@ def validar(
         conexion = _conectar_repositorio()
         estrategia = _obtener_o_fallar(conexion, _bd_id_de(conexion, bd), bd, codigo)
 
-    contexto = ContextoValidacion(estrategia=estrategia, perfil=_perfil_local(sid))
+    contexto = ContextoValidacion(estrategia=estrategia, perfil=perfil)
     hallazgos = motor.validar(contexto)
     salida = consola()
     salida.print(f"\nValidación de [bold]{estrategia.codigo}[/] — {estrategia.nombre}", markup=True)
