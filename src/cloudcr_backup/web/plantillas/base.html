@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/estaticos/app.css">
   <script src="/estaticos/htmx.min.js" defer></script>
   <script src="/estaticos/app.js" defer></script>
+  {% block cabecera %}{% endblock %}
 </head>
 <body>
   <header class="cabecera">
@@ -17,6 +18,6 @@
     </nav>
   </header>
   <main id="principal">{% block contenido %}{% endblock %}</main>
-  <footer class="pie">CloudCR Oracle Backup {{ version }} · solo lectura</footer>
+  <footer class="pie">CloudCR Oracle Backup {{ version }}</footer>
 </body>
 </html>

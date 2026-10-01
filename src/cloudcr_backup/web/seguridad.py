@@ -1,4 +1,5 @@
 import secrets
+from urllib.parse import urlsplit
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
@@ -6,6 +7,7 @@ from starlette.responses import PlainTextResponse, Response
 from starlette.types import ASGIApp
 
 from cloudcr_backup.web.config import ConfigWeb
+from cloudcr_backup.web.errores_api import ErrorApi
 
 COOKIE_TOKEN = "cloudcr_token"
 POLITICA_CONTENIDO = (
@@ -19,6 +21,14 @@ CABECERAS_SEGURIDAD = {
     "Referrer-Policy": "no-referrer",
     "Cache-Control": "no-store",
 }
+
+
+def exigir_origen_confiable(request: Request) -> None:
+    if request.headers.get("sec-fetch-site") == "cross-site":
+        raise ErrorApi(403, "Solicitud rechazada: proviene de otro sitio.")
+    origen = request.headers.get("origin")
+    if origen is not None and urlsplit(origen).netloc != request.headers.get("host", ""):
+        raise ErrorApi(403, "Solicitud rechazada: el origen no coincide con el de esta interfaz.")
 
 
 def nombre_host(cabecera_host: str) -> str:

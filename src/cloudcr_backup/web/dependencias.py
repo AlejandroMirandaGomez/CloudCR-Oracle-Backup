@@ -6,6 +6,7 @@ from typing import Protocol
 
 from fastapi import Request
 
+from cloudcr_backup.config.ajustes import Ajustes, cargar_ajustes
 from cloudcr_backup.oracle.discovery import InstanciaDescubierta, descubrir_instancias
 from cloudcr_backup.oracle.explorador import Exploracion, explorar_local, resolver_instancia
 
@@ -56,3 +57,11 @@ class ServicioExploracion:
 def obtener_servicio(request: Request) -> ProveedorExploracion:
     servicio: ProveedorExploracion = request.app.state.servicio
     return servicio
+
+
+def obtener_ajustes(request: Request) -> Ajustes:
+    ajustes: Ajustes | None = request.app.state.ajustes
+    if ajustes is None:
+        ajustes = cargar_ajustes()
+        request.app.state.ajustes = ajustes
+    return ajustes

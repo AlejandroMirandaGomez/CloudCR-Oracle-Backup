@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% from "parciales/_nodo.html" import nodo %}
+{% block titulo %}Nueva estrategia · {{ sid }} · CloudCR Oracle Backup{% endblock %}
+{% block cabecera %}
+  <link rel="stylesheet" href="/estaticos/estrategia.css">
+  <script src="/estaticos/estrategia.js" defer></script>
+{% endblock %}
+{% block contenido %}
+<div class="contenido pagina-estrategia" id="pagina-estrategia" data-sid="{{ sid }}" data-oracle-home="{{ oracle_home }}">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Crear estrategia de respaldo</h1>
+      <p class="nota">Instancia <strong>{{ sid }}</strong> · Oracle {{ perfil.version }} · modo <strong>{{ perfil.log_mode.value }}</strong></p>
+    </div>
+    <a class="boton" href="/instancias/{{ sid | urlencode }}{% if oracle_home %}?oracle_home={{ oracle_home | urlencode }}{% endif %}">Volver al explorador</a>
+  </section>
+
+  <noscript><p class="aviso" role="alert">Este formulario necesita JavaScript habilitado para funcionar.</p></noscript>
+
+  <ol class="pasos" id="indicador-pasos" aria-label="Pasos de la estrategia">
+    <li><button type="button" class="paso-boton activo" data-ir-paso="1" aria-current="step"><span class="paso-numero">1</span>General</button></li>
+    <li><button type="button" class="paso-boton" data-ir-paso="2"><span class="paso-numero">2</span>Qué respaldar</button></li>
+    <li><button type="button" class="paso-boton" data-ir-paso="3"><span class="paso-numero">3</span>Cómo y cuándo</button></li>
+    <li><button type="button" class="paso-boton" data-ir-paso="4"><span class="paso-numero">4</span>Destino y retención</button></li>
+    <li><button type="button" class="paso-boton" data-ir-paso="5"><span class="paso-numero">5</span>Revisar y guardar</button></li>
+  </ol>
+
+  <div id="avisos-formulario" class="avisos-formulario" role="alert" hidden></div>
+
+  <form id="formulario-estrategia" class="formulario-estrategia" novalidate autocomplete="off">
+    <section class="panel paso" data-paso="1" aria-labelledby="titulo-paso-1">
+      <h2 id="titulo-paso-1">1. General</h2>
+      <div class="campos">
+        <label class="campo">
+          <span class="rotulo">Código</span>
+          <input type="text" id="campo-codigo" maxlength="20" value="{{ catalogo.codigo_sugerido }}" spellcheck="false" autocapitalize="characters" required>
+          <span class="ayuda">Letras, números, guion y guion bajo. Máximo 20 caracteres.</span>
+          <span class="error-campo" data-error-de="codigo" hidden></span>
+        </label>
+        <label class="campo campo-ancho">
+          <span class="rotulo">Nombre</span>
+          <input type="text" id="campo-nombre" maxlength="200" placeholder="Por ejemplo: Producción diaria" required>
+          <span class="error-campo" data-error-de="nombre" hidden></span>
+        </label>
+        <label class="campo campo-completo">
+          <span class="rotulo">Descripción <span class="opcional">(opcional)</span></span>
+          <textarea id="campo-descripcion" rows="2" maxlength="1000"></textarea>
+          <span class="error-campo" data-error-de="descripcion" hidden></span>
+        </label>
+        <label class="campo">
+          <span class="rotulo">Responsable</span>
+          <input type="text" id="campo-responsable" maxlength="100" value="{{ catalogo.responsable_sugerido }}" required>
+          <span class="error-campo" data-error-de="creada_por" hidden></span>
+        </label>
+      </div>
+      <fieldset class="grupo-opciones">
+        <legend>Prioridad</legend>
+        <div class="tarjetas">
+          {% for p in catalogo.prioridades %}
+          <label class="tarjeta">
+            <input type="radio" name="prioridad" value="{{ p.valor }}"{% if loop.first %} checked{% endif %}>
+            <span class="tarjeta-titulo">{{ p.valor }}</span>
+            <span class="tarjeta-dato">RPO ≤ {{ '%g' | format(p.rpo_horas) }} h · RTO ≤ {{ '%g' | format(p.rto_horas) }} h</span>
+            <span class="ayuda">{{ p.descripcion }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <span class="error-campo" data-error-de="prioridad" hidden></span>
+      </fieldset>
+    </section>
+
+    <section class="panel paso" data-paso="2" aria-labelledby="titulo-paso-2" hidden>
+      <h2 id="titulo-paso-2">2. Qué respaldar</h2>
+      <p class="nota">Marque en el árbol los objetos de la instancia <strong>{{ sid }}</strong> que forman parte de la estrategia. Al marcar un elemento quedan incluidos todos los que contiene.</p>
+      <span class="error-campo" data-error-de="alcance" hidden></span>
+      <div class="seleccion-contenedor">
+        <div class="seleccion-arbol">
+          <div class="herramientas herramientas-compactas">
+            <div class="grupo-botones">
+              <button type="button" class="boton" data-accion="expandir">Expandir todo</button>
+              <button type="button" class="boton" data-accion="contraer">Contraer todo</button>
+              <label class="casilla"><input type="checkbox" id="ocultar-advertencias"> Ocultar advertencias</label>
+              <label class="casilla"><input type="checkbox" id="ocultar-recomendaciones"> Ocultar recomendaciones</label>
+            </div>
+            <label class="buscador">Buscar
+              <input type="search" id="buscar" placeholder="Archivo, tablespace o contenedor…" autocomplete="off" spellcheck="false">
+            </label>
+          </div>
+          <section id="arbol" class="arbol arbol-seleccion" aria-label="Estructura física de la instancia con casillas de selección">{{ nodo(raiz, seleccion) }}</section>
+        </div>
+        <aside class="seleccion-resumen" aria-label="Objetos seleccionados">
+          <h3>Seleccionado <span class="contador" id="contador-seleccion">0</span></h3>
+          <p class="nota" id="seleccion-vacia">Todavía no ha marcado nada.</p>
+          <ul class="lista-seleccion" id="lista-seleccion"></ul>
+          <p class="nota">Cada objeto lleva su propia prioridad; por defecto, la de la estrategia.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="panel paso" data-paso="3" aria-labelledby="titulo-paso-3" hidden>
+      <h2 id="titulo-paso-3">3. Cómo y cuándo</h2>
+      <p class="aviso aviso-modo" id="aviso-noarchivelog" hidden>La base está en <strong>NOARCHIVELOG</strong>: los respaldos en modo automático se ejecutan como <strong>consistentes</strong> (apagan la base mientras duran) y los respaldos en línea no son posibles.</p>
+      <fieldset class="grupo-opciones">
+        <legend>Cómo definir las tareas</legend>
+        <div class="opciones-en-linea">
+          <label class="casilla"><input type="radio" name="modo-tareas" value="esquema" checked> Usar un esquema predefinido</label>
+          <label class="casilla"><input type="radio" name="modo-tareas" value="personalizado"> Definir las tareas a mano</label>
+        </div>
+      </fieldset>
+
+      <div id="bloque-esquema">
+        <div class="tarjetas tarjetas-esquema" role="radiogroup" aria-label="Esquema predefinido">
+          {% for e in catalogo.esquemas %}
+          <label class="tarjeta">
+            <input type="radio" name="esquema" value="{{ e.valor }}" data-usa-n1="{{ 'si' if e.usa_n1 else 'no' }}" data-usa-archivelog="{{ 'si' if e.usa_archivelog else 'no' }}"{% if loop.first %} checked{% endif %}>
+            <span class="tarjeta-titulo">{{ e.nombre }}</span>
+            <span class="insignia-recomendado" data-recomendado-de="{{ e.valor }}" hidden>Sugerido</span>
+            <span class="ayuda">{{ e.descripcion }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <div class="campos">
+          <label class="campo">
+            <span class="rotulo">Día del nivel 0 / respaldo principal</span>
+            <select id="esq-dia-n0">
+              {% for d in catalogo.dias_semana %}<option value="{{ d.valor }}"{% if d.valor == 'DOM' %} selected{% endif %}>{{ d.etiqueta }}</option>{% endfor %}
+            </select>
+          </label>
+          <label class="campo">
+            <span class="rotulo">Hora del nivel 0 / respaldo principal</span>
+            <input type="time" id="esq-hora-n0" value="02:00">
+            <span class="error-campo" data-error-de="esquema.hora_n0" hidden></span>
+          </label>
+          <label class="campo" data-solo-n1>
+            <span class="rotulo">Hora del nivel 1 (diario)</span>
+            <input type="time" id="esq-hora-n1" value="15:00">
+            <span class="error-campo" data-error-de="esquema.hora_n1" hidden></span>
+          </label>
+          <label class="campo" data-solo-archivelog>
+            <span class="rotulo">Archived logs cada (minutos)</span>
+            <input type="number" id="esq-intervalo-al" min="1" step="1" value="240">
+            <span class="error-campo" data-error-de="esquema.intervalo_archivelog_minutos" hidden></span>
+          </label>
+          <label class="campo">
+            <span class="rotulo">Ventana de respaldo: desde <span class="opcional">(opcional)</span></span>
+            <input type="time" id="esq-ventana-inicio">
+          </label>
+          <label class="campo">
+            <span class="rotulo">Ventana de respaldo: hasta <span class="opcional">(opcional)</span></span>
+            <input type="time" id="esq-ventana-fin">
+            <span class="error-campo" data-error-de="esquema.ventana" hidden></span>
+          </label>
+          <label class="campo campo-ancho">
+            <span class="rotulo">Si una ejecución se pierde</span>
+            <select id="esq-politica">
+              {% for p in catalogo.politicas_omision %}<option value="{{ p.valor }}">{{ p.etiqueta }}</option>{% endfor %}
+            </select>
+          </label>
+          <label class="campo">
+            <span class="rotulo">Zona horaria</span>
+            <input type="text" id="esq-zona" value="{{ catalogo.zona_horaria }}" spellcheck="false">
+            <span class="error-campo" data-error-de="esquema.zona_horaria" hidden></span>
+          </label>
+        </div>
+      </div>
+
+      <div id="bloque-personalizado" hidden>
+        <span class="error-campo" data-error-de="tareas" hidden></span>
+        <div id="lista-tareas" class="lista-tareas"></div>
+        <button type="button" class="boton" id="agregar-tarea">Agregar tarea</button>
+      </div>
+    </section>
+
+    <section class="panel paso" data-paso="4" aria-labelledby="titulo-paso-4" hidden>
+      <h2 id="titulo-paso-4">4. Destino y retención</h2>
+      <div class="campos">
+        <label class="campo campo-completo">
+          <span class="rotulo">Carpeta de destino de los respaldos</span>
+          <span class="entrada-con-boton">
+            <input type="text" id="campo-destino" value="{{ catalogo.destino_sugerido }}" spellcheck="false" required>
+            <button type="button" class="boton" id="abrir-explorador">Examinar…</button>
+          </span>
+          <span class="ayuda">Puede escribir la ruta o elegirla con el explorador de carpetas de este equipo. Si la carpeta no existe, créela desde el explorador.</span>
+          <span class="error-campo" data-error-de="destino_ruta" hidden></span>
+        </label>
+      </div>
+      <fieldset class="grupo-opciones">
+        <legend>Política de retención</legend>
+        <div class="opciones-retencion">
+          <label class="casilla"><input type="radio" name="retencion" value="ventana" checked> Ventana de días</label>
+          <label class="casilla"><input type="radio" name="retencion" value="redundancia"> Redundancia (cantidad de copias)</label>
+          <label class="casilla"><input type="radio" name="retencion" value="ninguna"> Sin definir (no recomendado)</label>
+        </div>
+        <div class="campos">
+          <label class="campo" id="campo-ret-ventana">
+            <span class="rotulo">¿Cuántos días conservar?</span>
+            <input type="number" id="ret-ventana" min="1" step="1" value="30">
+            <span class="error-campo" data-error-de="retencion.ventana_dias" hidden></span>
+          </label>
+          <label class="campo" id="campo-ret-redundancia" hidden>
+            <span class="rotulo">¿Cuántas copias conservar?</span>
+            <input type="number" id="ret-redundancia" min="1" step="1" value="2">
+            <span class="error-campo" data-error-de="retencion.redundancia" hidden></span>
+          </label>
+          <label class="campo">
+            <span class="rotulo">Días de archived logs a conservar <span class="opcional">(opcional)</span></span>
+            <input type="number" id="ret-archivelog" min="1" step="1">
+            <span class="error-campo" data-error-de="retencion.archived_logs_dias" hidden></span>
+          </label>
+        </div>
+      </fieldset>
+    </section>
+
+    <section class="panel paso" data-paso="5" aria-labelledby="titulo-paso-5" hidden>
+      <h2 id="titulo-paso-5">5. Revisar y guardar</h2>
+      <div id="revision-estado" class="nota" aria-live="polite"></div>
+      <div id="revision-contenido" hidden>
+        <p class="criterio-prioridad" id="revision-criterio"></p>
+        <h3>Validación contra la instancia</h3>
+        <div id="revision-hallazgos"></div>
+        <details class="vista-yaml">
+          <summary>Vista previa de la estrategia (YAML)</summary>
+          <p class="nota">El generador de scripts RMAN todavía no está implementado: esta es la estrategia tal como va a quedar guardada.</p>
+          <pre id="revision-yaml" tabindex="0"></pre>
+        </details>
+        <fieldset class="grupo-opciones" id="bloque-guardado">
+          <legend>Guardado</legend>
+          <label class="casilla bloque-caida" id="bloque-caida" hidden>
+            <input type="checkbox" id="aceptar-caida">
+            <span>Acepto la caída del servicio: una o más tareas se ejecutarán en modo <strong>consistente</strong> y apagarán la base de datos mientras dure el respaldo.</span>
+          </label>
+          <label class="casilla"><input type="checkbox" id="opcion-activar"> Activar la estrategia al guardarla</label>
+          <label class="casilla"><input type="checkbox" id="opcion-repositorio" checked> Guardar también en el repositorio (si está disponible)</label>
+          <p class="nota">Siempre se guarda un archivo YAML de la estrategia en la carpeta de trabajo de CloudCR.</p>
+        </fieldset>
+      </div>
+      <div id="resultado-guardado" class="resultado-guardado" role="status" hidden></div>
+    </section>
+  </form>
+
+  <div class="navegacion-pasos" id="navegacion-pasos">
+    <button type="button" class="boton" id="boton-anterior">Anterior</button>
+    <span class="espacio"></span>
+    <button type="button" class="boton" id="boton-validar" hidden>Volver a validar</button>
+    <button type="button" class="boton primario" id="boton-siguiente">Siguiente</button>
+    <button type="button" class="boton primario" id="boton-guardar" hidden>Guardar estrategia</button>
+  </div>
+</div>
+
+<dialog id="dialogo-carpetas" class="dialogo-carpetas" aria-labelledby="titulo-dialogo-carpetas">
+  <form method="dialog" class="dialogo-contenido" id="formulario-carpetas">
+    <header class="dialogo-cabecera">
+      <h2 id="titulo-dialogo-carpetas">Elegir carpeta de destino</h2>
+    </header>
+    <div class="dialogo-ruta">
+      <button type="button" class="boton" id="carpetas-subir" aria-label="Subir un nivel">↑ Subir</button>
+      <input type="text" id="carpetas-ruta" spellcheck="false" aria-label="Ruta actual">
+      <button type="button" class="boton" id="carpetas-ir">Ir</button>
+    </div>
+    <p class="aviso" id="carpetas-aviso" role="status" hidden></p>
+    <p class="error-campo" id="carpetas-error" role="alert" hidden></p>
+    <ul class="lista-carpetas" id="carpetas-lista" aria-label="Carpetas"></ul>
+    <div class="dialogo-nueva">
+      <input type="text" id="carpetas-nueva-nombre" placeholder="Nombre de la carpeta nueva" maxlength="100" spellcheck="false" aria-label="Nombre de la carpeta nueva">
+      <button type="button" class="boton" id="carpetas-crear">Crear carpeta</button>
+    </div>
+    <footer class="dialogo-pie">
+      <button type="button" class="boton" id="carpetas-cancelar">Cancelar</button>
+      <button type="button" class="boton primario" id="carpetas-elegir">Elegir esta carpeta</button>
+    </footer>
+  </form>
+</dialog>
+
+<template id="plantilla-tarea">
+  <article class="tarea" data-tarea>
+    <header class="tarea-cabecera">
+      <h3 data-titulo-tarea>Tarea</h3>
+      <button type="button" class="boton" data-quitar-tarea>Quitar tarea</button>
+    </header>
+    <div class="campos">
+      <label class="campo">
+        <span class="rotulo">Tipo de respaldo</span>
+        <select data-campo="tipo_respaldo"></select>
+      </label>
+      <label class="campo">
+        <span class="rotulo">Modo</span>
+        <select data-campo="modo_respaldo"></select>
+      </label>
+      <label class="campo">
+        <span class="rotulo">Compresión</span>
+        <select data-campo="compresion"></select>
+      </label>
+      <label class="campo casilla-campo">
+        <span class="rotulo">Opciones</span>
+        <span class="casilla"><input type="checkbox" data-campo="omitir_solo_lectura"> Omitir tablespaces de solo lectura</span>
+      </label>
+    </div>
+    <p class="nota" data-descripcion-tipo></p>
+    <p class="nota" data-descripcion-modo></p>
+    <div class="campos">
+      <label class="campo">
+        <span class="rotulo">Frecuencia</span>
+        <select data-campo="tipo_frecuencia"></select>
+      </label>
+      <label class="campo" data-visible-para="UNA_VEZ,MENSUAL">
+        <span class="rotulo" data-rotulo-fecha>Fecha</span>
+        <input type="date" data-campo="fecha_inicio">
+      </label>
+      <label class="campo" data-visible-para="INTERVALO">
+        <span class="rotulo">Cada (minutos)</span>
+        <input type="number" min="1" step="1" data-campo="intervalo_minutos" value="240">
+      </label>
+    </div>
+    <fieldset class="grupo-opciones" data-visible-para="SEMANAL">
+      <legend>Días de la semana</legend>
+      <div class="opciones-en-linea" data-lista-dias></div>
+    </fieldset>
+    <div class="bloque-horas" data-visible-para="UNA_VEZ,DIARIA,SEMANAL,MENSUAL">
+      <span class="rotulo">Horas de ejecución</span>
+      <div class="lista-horas" data-lista-horas></div>
+      <button type="button" class="boton" data-agregar-hora>Agregar hora</button>
+    </div>
+    <div class="campos">
+      <label class="campo">
+        <span class="rotulo">Ventana: desde <span class="opcional">(opcional)</span></span>
+        <input type="time" data-campo="ventana_inicio">
+      </label>
+      <label class="campo">
+        <span class="rotulo">Ventana: hasta <span class="opcional">(opcional)</span></span>
+        <input type="time" data-campo="ventana_fin">
+      </label>
+      <label class="campo campo-ancho">
+        <span class="rotulo">Si una ejecución se pierde</span>
+        <select data-campo="politica_omision"></select>
+      </label>
+      <label class="campo">
+        <span class="rotulo">Zona horaria</span>
+        <input type="text" data-campo="zona_horaria" spellcheck="false">
+      </label>
+    </div>
+    <p class="error-campo" data-error-tarea hidden></p>
+  </article>
+</template>
+
+<script type="application/json" id="datos-estrategia">{{ {"catalogo": catalogo} | tojson }}</script>
+{% endblock %}
