@@ -1,0 +1,46 @@
+bd_id: 1
+codigo: EST001
+nombre: Producción diaria
+prioridad: ALTA
+estado: INACTIVA
+version: 1
+creada_por: luis
+alcance:
+- tipo: TABLESPACE
+  identificador: XEPDB1:VENTAS
+  prioridad: ALTA
+- tipo: TABLESPACE
+  identificador: XEPDB1:FINANZAS
+  prioridad: ALTA
+- tipo: CONTROLFILE
+  identificador: ''
+  prioridad: ALTA
+- tipo: SPFILE
+  identificador: ''
+  prioridad: ALTA
+tareas:
+- codigo: T1
+  como:
+    tipo_respaldo: INCREMENTAL_N1_ACUMULATIVO
+    modo_respaldo: EN_LINEA
+    opciones:
+      compresion: NINGUNA
+      canales: 1
+      omitir_solo_lectura: false
+  programacion:
+    tipo_frecuencia: DIARIA
+    horas:
+    - '13:00:00'
+    - '15:00:00'
+    - '18:00:00'
+    - '21:00:00'
+    dias_semana: []
+    ventana:
+      inicio: '12:30:00'
+      fin: '22:00:00'
+    zona_horaria: America/Costa_Rica
+    politica_omision: EJECUTAR_EN_VENTANA
+  destino:
+    ruta: C:\backups\XE
+retencion:
+  purga_automatica: false

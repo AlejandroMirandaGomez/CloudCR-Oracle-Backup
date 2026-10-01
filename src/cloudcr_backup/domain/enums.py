@@ -26,3 +26,101 @@ class ContenidoTablespace(StrEnum):
     UNDO = "UNDO"
     TEMPORAL = "TEMPORARY"
     DESCONOCIDO = "DESCONOCIDO"
+
+
+class Prioridad(StrEnum):
+    ALTA = "ALTA"
+    MEDIA = "MEDIA"
+    BAJA = "BAJA"
+
+
+class TipoObjeto(StrEnum):
+    BASE_DATOS = "BASE_DATOS"
+    PDB = "PDB"
+    TABLESPACE = "TABLESPACE"
+    DATAFILE = "DATAFILE"
+    CONTROLFILE = "CONTROLFILE"
+    SPFILE = "SPFILE"
+    ARCHIVELOG = "ARCHIVELOG"
+
+
+class TipoRespaldo(StrEnum):
+    COMPLETO = "COMPLETO"
+    INCREMENTAL_N0 = "INCREMENTAL_N0"
+    INCREMENTAL_N1_DIFERENCIAL = "INCREMENTAL_N1_DIFERENCIAL"
+    INCREMENTAL_N1_ACUMULATIVO = "INCREMENTAL_N1_ACUMULATIVO"
+    ARCHIVELOG = "ARCHIVELOG"
+
+
+class ModoRespaldo(StrEnum):
+    AUTO = "AUTO"
+    EN_LINEA = "EN_LINEA"
+    CONSISTENTE = "CONSISTENTE"
+
+
+class Compresion(StrEnum):
+    NINGUNA = "NINGUNA"
+    BASIC = "BASIC"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
+
+class TipoFrecuencia(StrEnum):
+    UNA_VEZ = "UNA_VEZ"
+    INTERVALO = "INTERVALO"
+    DIARIA = "DIARIA"
+    SEMANAL = "SEMANAL"
+    MENSUAL = "MENSUAL"
+
+
+class DiaSemana(StrEnum):
+    LUNES = "LUN"
+    MARTES = "MAR"
+    MIERCOLES = "MIE"
+    JUEVES = "JUE"
+    VIERNES = "VIE"
+    SABADO = "SAB"
+    DOMINGO = "DOM"
+
+
+class PoliticaOmision(StrEnum):
+    EJECUTAR_EN_VENTANA = "EJECUTAR_EN_VENTANA"
+    OMITIR = "OMITIR"
+    EJECUTAR_SIEMPRE = "EJECUTAR_SIEMPRE"
+
+
+class EstadoEstrategia(StrEnum):
+    ACTIVA = "ACTIVA"
+    INACTIVA = "INACTIVA"
+
+
+class EstadoScript(StrEnum):
+    BORRADOR = "BORRADOR"
+    APROBADO = "APROBADO"
+    RECHAZADO = "RECHAZADO"
+    OBSOLETO = "OBSOLETO"
+
+
+class EstadoEjecucion(StrEnum):
+    PROGRAMADA = "PROGRAMADA"
+    EN_CURSO = "EN_CURSO"
+    EXITOSA = "EXITOSA"
+    CON_ADVERTENCIAS = "CON_ADVERTENCIAS"
+    FALLIDA = "FALLIDA"
+    NO_EJECUTADA = "NO_EJECUTADA"
+    BLOQUEADA = "BLOQUEADA"
+    CANCELADA = "CANCELADA"
+
+
+class EstadoPrueba(StrEnum):
+    PENDIENTE = "PENDIENTE"
+    OK = "OK"
+    FALLIDA = "FALLIDA"
+    NO_APLICA = "NO_APLICA"
+
+
+class EstadoAlerta(StrEnum):
+    ABIERTA = "ABIERTA"
+    RECONOCIDA = "RECONOCIDA"
+    RESUELTA = "RESUELTA"

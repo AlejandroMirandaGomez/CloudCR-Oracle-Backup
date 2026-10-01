@@ -1,0 +1,35 @@
+bd_id: 1
+codigo: EST002
+nombre: Consistente NOARCHIVELOG
+descripcion: Respaldo consistente de referencia, pensado para demostrar el escenario
+  del día 1 mientras la base todavía está en NOARCHIVELOG.
+prioridad: ALTA
+estado: INACTIVA
+version: 1
+creada_por: luis
+alcance:
+- tipo: BASE_DATOS
+  identificador: ''
+  prioridad: ALTA
+tareas:
+- codigo: T1
+  como:
+    tipo_respaldo: INCREMENTAL_N0
+    modo_respaldo: CONSISTENTE
+    opciones:
+      compresion: NINGUNA
+      canales: 1
+      omitir_solo_lectura: false
+  programacion:
+    tipo_frecuencia: UNA_VEZ
+    horas:
+    - '20:00:00'
+    dias_semana: []
+    fecha_inicio: '2026-09-29'
+    zona_horaria: America/Costa_Rica
+    politica_omision: EJECUTAR_EN_VENTANA
+  destino:
+    ruta: C:\backups\XE
+retencion:
+  ventana_dias: 30
+  purga_automatica: false

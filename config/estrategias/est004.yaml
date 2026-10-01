@@ -1,0 +1,88 @@
+bd_id: 1
+codigo: EST004
+nombre: CDB completa con archived logs
+descripcion: Reproduce "EST004 (a)" y "EST004 (b)" de la clase como dos tareas de
+  una misma estrategia.
+prioridad: ALTA
+estado: INACTIVA
+version: 1
+creada_por: luis
+alcance:
+- tipo: BASE_DATOS
+  identificador: ''
+  prioridad: ALTA
+- tipo: CONTROLFILE
+  identificador: ''
+  prioridad: ALTA
+- tipo: SPFILE
+  identificador: ''
+  prioridad: ALTA
+- tipo: ARCHIVELOG
+  identificador: ''
+  prioridad: ALTA
+tareas:
+- codigo: T1
+  como:
+    tipo_respaldo: INCREMENTAL_N0
+    modo_respaldo: AUTO
+    opciones:
+      compresion: NINGUNA
+      canales: 1
+      omitir_solo_lectura: false
+  programacion:
+    tipo_frecuencia: SEMANAL
+    horas:
+    - 02:00:00
+    dias_semana:
+    - DOM
+    ventana:
+      inicio: 01:30:00
+      fin: 05:00:00
+    zona_horaria: America/Costa_Rica
+    politica_omision: EJECUTAR_EN_VENTANA
+  destino:
+    ruta: C:\backups\XE
+- codigo: T2
+  como:
+    tipo_respaldo: INCREMENTAL_N1_DIFERENCIAL
+    modo_respaldo: AUTO
+    opciones:
+      compresion: NINGUNA
+      canales: 1
+      omitir_solo_lectura: false
+  programacion:
+    tipo_frecuencia: SEMANAL
+    horas:
+    - '15:00:00'
+    dias_semana:
+    - LUN
+    - MAR
+    - MIE
+    - JUE
+    - VIE
+    - SAB
+    zona_horaria: America/Costa_Rica
+    politica_omision: EJECUTAR_EN_VENTANA
+  destino:
+    ruta: C:\backups\XE
+- codigo: T3
+  como:
+    tipo_respaldo: ARCHIVELOG
+    modo_respaldo: EN_LINEA
+    opciones:
+      compresion: NINGUNA
+      canales: 1
+      omitir_solo_lectura: false
+  programacion:
+    tipo_frecuencia: INTERVALO
+    horas: []
+    dias_semana: []
+    intervalo_minutos: 240
+    zona_horaria: America/Costa_Rica
+    politica_omision: EJECUTAR_EN_VENTANA
+  destino:
+    ruta: C:\backups\XE
+retencion:
+  ventana_dias: 30
+  archived_logs_dias: 7
+  purga_automatica: false
