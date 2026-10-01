@@ -17,6 +17,7 @@ from cloudcr_backup.oracle.explorador import InstanciaNoEncontrada, explorar_loc
 from cloudcr_backup.presentacion.terminal import consola, tabla_hallazgos
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository import conexion as repositorio_conexion
+from cloudcr_backup.repository.conexion import RepositorioNoConfigurado
 from cloudcr_backup.strategy import servicio
 from cloudcr_backup.strategy.prioridad import criterio_de
 from cloudcr_backup.strategy.vocabulario import etiqueta_doble
@@ -34,11 +35,10 @@ app = typer.Typer(add_completion=False, help="Administra estrategias de respaldo
 def _conectar_repositorio() -> oracledb.Connection:
     try:
         return repositorio_conexion.abrir_repositorio(cargar_ajustes())
-    except NotImplementedError:
-        terminar_con_error(
-            "La conexión al repositorio todavía no está implementada.",
-            "Este comando necesita 'repository/conexion.py' terminado.",
-        )
+    except RepositorioNoConfigurado as error:
+        terminar_con_error(str(error), "Configure CLOUDCR_REPOSITORIO_DSN y CLOUDCR_REPO_CLAVE (vea .env.example).")
+    except ErrorConexionOracle as error:
+        terminar_con_error(str(error), error.sugerencia)
 
 
 def _bd_id_de(conexion: oracledb.Connection, nombre: str) -> int:

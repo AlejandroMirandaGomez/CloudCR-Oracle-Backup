@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,13 @@ from cloudcr_backup.oracle.explorador import Exploracion
 from cloudcr_backup.oracle.observaciones import observar
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture(autouse=True)
+def _sin_configuracion_del_desarrollador(monkeypatch: pytest.MonkeyPatch) -> None:
+    for variable in list(os.environ):
+        if variable.startswith("CLOUDCR_"):
+            monkeypatch.delenv(variable, raising=False)
 
 
 @pytest.fixture
