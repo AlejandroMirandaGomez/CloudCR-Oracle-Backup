@@ -206,6 +206,31 @@ La terminal muestra una dirección con `?token=...`. Esa dirección es la que se
 - "Expandir todo" / "Contraer todo".
 - En el panel de observaciones, "Ir al nodo" despliega y resalta el elemento del árbol al que se refiere.
 - Exportar a JSON, Markdown o HTML con los filtros aplicados.
+- Crear una estrategia de respaldo con el botón **Crear estrategia de respaldo** (ver la sección siguiente).
+
+### Crear una estrategia de respaldo desde la web
+
+El botón **Crear estrategia de respaldo** del explorador abre un asistente de cinco pasos sobre la instancia que se está viendo:
+
+1. **General**: código (se sugiere el siguiente libre), nombre, descripción, responsable y prioridad.
+2. **Qué respaldar**: el mismo árbol del explorador, con datos reales de la instancia y casillas para marcar la base completa, una PDB, tablespaces, datafiles, control files, SPFILE o archived logs. Al marcar un elemento quedan incluidos los que contiene, y cada objeto marcado lleva su propia prioridad.
+3. **Cómo y cuándo**: un esquema predefinido (se sugiere uno según la prioridad y el modo de archivado) o tareas definidas a mano, con frecuencia, horas, días, intervalo, ventana de respaldo, política de omisión y zona horaria.
+4. **Destino y retención**: se escribe la ruta o se elige con el explorador de carpetas de este equipo (con opción de crear una carpeta nueva), y se define la retención.
+5. **Revisar y guardar**: se valida la estrategia contra la instancia real, se muestran los hallazgos por severidad y la vista previa en YAML. Un ERROR impide guardar. Si alguna tarea se ejecuta en modo consistente (apaga la base) hay que aceptar la caída del servicio.
+
+La estrategia se guarda siempre como YAML en `<carpeta de trabajo>\estrategias\<SID>\<CODIGO>.yaml` (por defecto `%LOCALAPPDATA%\cloudcr`) y, si el repositorio está disponible, también en él. Ese archivo se puede abrir con `cloudcr estrategia mostrar --archivo <ruta>`.
+
+Los mismos pasos están disponibles como endpoints JSON, para usarlos sin la pantalla:
+
+| Método y ruta | Para qué |
+|---|---|
+| `GET /api/instancias/<SID>/estrategias/catalogo` | Prioridades, esquemas, tipos de respaldo, frecuencias y valores sugeridos |
+| `POST /api/instancias/<SID>/estrategias/validar` | Valida una estrategia y devuelve los hallazgos y el YAML, sin guardar |
+| `POST /api/instancias/<SID>/estrategias` | Valida y guarda la estrategia |
+| `GET /api/carpetas?ruta=<RUTA>` | Lista las subcarpetas de una ruta de este equipo (sin `ruta`, las unidades) |
+| `POST /api/carpetas` | Crea una carpeta (`{"padre": "...", "nombre": "..."}`) |
+
+Las escrituras rechazan las solicitudes que no vengan de la propia interfaz (cabeceras `Origin` y `Sec-Fetch-Site`).
 
 Por seguridad, la web solo acepta un `ORACLE_HOME` detectado en el equipo. Para usar otro, hay que usar la terminal: `cloudcr explorar <SID> --oracle-home <ORACLE_HOME>`. Si en el equipo hay instancias con distintos `ORACLE_HOME`, cada `cloudcr web` explora las de un solo `ORACLE_HOME`; para las otras, abrir otro `cloudcr web` con otro `--puerto`.
 

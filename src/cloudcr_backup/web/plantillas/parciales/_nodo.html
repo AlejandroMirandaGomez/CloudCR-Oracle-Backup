@@ -1,5 +1,16 @@
-{% macro etiqueta(n) -%}
-<span class="titulo tipo-{{ n.tipo }}{% if n.tono_titulo %} tono-{{ n.tono_titulo }}{% endif %}">{{ n.titulo }}</span>
+{% macro casilla(opcion) -%}
+<input type="checkbox" class="casilla-alcance" id="sel-{{ opcion.nodo_id }}"
+       data-nodo="{{ opcion.nodo_id }}"
+       data-tipo="{{ opcion.tipo.value }}"
+       data-identificador="{{ opcion.identificador }}"
+       data-etiqueta="{{ opcion.etiqueta }}"
+       data-cubierta-por="{{ opcion.cubierta_por | join(' ') }}"
+       aria-label="Respaldar: {{ opcion.etiqueta }}"
+       {%- if not opcion.habilitada %} disabled title="{{ opcion.motivo }}"{% endif %}>
+{%- endmacro %}
+
+{% macro etiqueta(n, opcion=none) -%}
+<span class="titulo tipo-{{ n.tipo }}{% if n.tono_titulo %} tono-{{ n.tono_titulo }}{% endif %}{% if opcion and not opcion.habilitada %} sin-seleccion{% endif %}">{% if opcion %}{{ casilla(opcion) }}{% endif %}{{ n.titulo }}</span>
 {%- if n.detalles or n.porcentaje_uso is not none %}
 <span class="nodo-meta">
 {%- for d in n.detalles %}<span class="detalle tono-{{ d.tono }}">{{ d.texto }}</span>{% endfor -%}
@@ -23,19 +34,20 @@
 {% endif %}
 {%- endmacro %}
 
-{% macro nodo(n) -%}
+{% macro nodo(n, opciones=none) -%}
+{% set opcion = opciones.get(n.id) if opciones else none %}
 {% if n.es_hoja %}
-<div class="nodo hoja tipo-{{ n.tipo }}" id="nodo-{{ n.id }}" data-texto="{{ (n.titulo ~ ' ' ~ (n.ubicacion or '')) | lower }}">{{ etiqueta(n) }}</div>
+<div class="nodo hoja tipo-{{ n.tipo }}" id="nodo-{{ n.id }}" data-texto="{{ (n.titulo ~ ' ' ~ (n.ubicacion or '')) | lower }}">{{ etiqueta(n, opcion) }}</div>
 {% elif not n.hijos %}
 <details class="nodo hoja tipo-{{ n.tipo }}" id="nodo-{{ n.id }}" data-texto="{{ (n.titulo ~ ' ' ~ (n.ubicacion or '')) | lower }}">
-  <summary>{{ etiqueta(n) }}</summary>
+  <summary>{{ etiqueta(n, opcion) }}</summary>
   {{ insignias_hallazgos(n) }}
 </details>
 {% else %}
 <details class="nodo tipo-{{ n.tipo }}" id="nodo-{{ n.id }}" data-texto="{{ '' if n.tipo == 'instancia' else n.titulo | lower }}"{% if n.abierto %} open{% endif %}>
-  <summary>{{ etiqueta(n) }}</summary>
+  <summary>{{ etiqueta(n, opcion) }}</summary>
   {{ insignias_hallazgos(n) }}
-  <div class="hijos">{% for hijo in n.hijos %}{{ nodo(hijo) }}{% endfor %}</div>
+  <div class="hijos">{% for hijo in n.hijos %}{{ nodo(hijo, opciones) }}{% endfor %}</div>
 </details>
 {% endif %}
 {%- endmacro %}

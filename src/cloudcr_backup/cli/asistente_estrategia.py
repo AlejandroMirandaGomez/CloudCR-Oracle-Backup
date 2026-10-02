@@ -36,16 +36,13 @@ from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository import conexion as repositorio_conexion
 from cloudcr_backup.repository.conexion import RepositorioNoConfigurado
 from cloudcr_backup.strategy import servicio
+from cloudcr_backup.strategy.alcance import identificador_tablespace
+from cloudcr_backup.strategy.codigos import siguiente_codigo_sugerido
 from cloudcr_backup.strategy.plantillas_esquema import ParametrosEsquema, tareas_de, todos_los_esquemas
 from cloudcr_backup.strategy.prioridad import criterio_de
 from cloudcr_backup.strategy.yaml_io import estrategia_a_yaml, guardar_estrategia_yaml
 from cloudcr_backup.validation import motor, reglas  # noqa: F401
 from cloudcr_backup.validation.contexto import ContextoValidacion
-
-
-def siguiente_codigo_sugerido(existentes: list[str]) -> str:
-    numeros = [int(codigo[3:]) for codigo in existentes if codigo.startswith("EST") and codigo[3:].isdigit()]
-    return f"EST{max(numeros, default=0) + 1:03d}"
 
 
 def construir_opciones_alcance(perfil: PerfilBD) -> list[tuple[str, TipoObjeto, str]]:
@@ -56,7 +53,7 @@ def construir_opciones_alcance(perfil: PerfilBD) -> list[tuple[str, TipoObjeto, 
         for tablespace in perfil.tablespaces_de(contenedor.con_id):
             if tablespace.contenido is ContenidoTablespace.TEMPORAL:
                 continue
-            identificador = tablespace.nombre if contenedor.es_raiz else f"{contenedor.nombre}:{tablespace.nombre}"
+            identificador = identificador_tablespace(contenedor, tablespace.nombre)
             opciones.append((f"Tablespace {identificador}", TipoObjeto.TABLESPACE, identificador))
     opciones.append(("Control file", TipoObjeto.CONTROLFILE, ""))
     opciones.append(("SPFILE", TipoObjeto.SPFILE, ""))

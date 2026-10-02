@@ -25,6 +25,10 @@ class RutasTrabajo:
         return self.base / "scripts"
 
     @property
+    def estrategias(self) -> Path:
+        return self.base / "estrategias"
+
+    @property
     def ejecuciones(self) -> Path:
         return self.base / "ejecuciones"
 
@@ -41,5 +45,5 @@ class RutasTrabajo:
         return self.base / "logs"
 
     def asegurar(self) -> None:
-        for ruta in (self.scripts, self.ejecuciones, self.recuperacion, self.buzon, self.logs):
+        for ruta in (self.scripts, self.estrategias, self.ejecuciones, self.recuperacion, self.buzon, self.logs):
             ruta.mkdir(parents=True, exist_ok=True)
