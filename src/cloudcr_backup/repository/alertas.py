@@ -110,17 +110,12 @@ def abrir(conexion: oracledb.Connection, condicion: Condicion) -> tuple[AlertaDe
         es_nueva = fila is None
         if fila is not None:
             alerta_id = int(fila[0])
-            cursor.execute(
-                """
-                UPDATE alerta SET mensaje = :mensaje, severidad = :severidad,
-                       ejecucion_id = NVL(:ejecucion_id, ejecucion_id)
-                WHERE id = :id
-                """,
-                mensaje=mensaje,
-                severidad=condicion.severidad.value,
-                ejecucion_id=condicion.ejecucion_id,
-                id=alerta_id,
-            )
+            valores: dict[str, object] = {"mensaje": mensaje, "severidad": condicion.severidad.value, "id": alerta_id}
+            asignaciones = "mensaje = :mensaje, severidad = :severidad"
+            if condicion.ejecucion_id is not None:
+                asignaciones += ", ejecucion_id = :ejecucion_id"
+                valores["ejecucion_id"] = condicion.ejecucion_id
+            cursor.execute(f"UPDATE alerta SET {asignaciones} WHERE id = :id", **valores)
         else:
             id_var = cursor.var(int)
             cursor.execute(

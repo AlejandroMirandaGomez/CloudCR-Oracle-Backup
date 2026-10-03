@@ -228,3 +228,12 @@ def test_el_repositorio_guarda_horas_en_utc() -> None:
         if archivo.name == "esquema.py":
             continue
         assert not sin_convertir.search(archivo.read_text(encoding="utf-8")), archivo.name
+
+
+def test_abrir_alerta_existente_sin_ejecucion_no_toca_la_columna() -> None:
+    conexion = ConexionFalsa([(7,), _fila_alerta()])
+    alertas.abrir(conexion, _condicion(ejecucion_id=None))  # type: ignore[arg-type]
+    assert "ejecucion_id" not in conexion.sql(1)
+    conexion = ConexionFalsa([(7,), _fila_alerta()])
+    alertas.abrir(conexion, _condicion(ejecucion_id=41))  # type: ignore[arg-type]
+    assert conexion.ejecutados[1][1]["ejecucion_id"] == 41
