@@ -168,6 +168,80 @@ cloudcr explorar --help
 cloudcr --version
 ```
 
+## Agente, historial, alertas y estado
+
+Guía completa en `docs/manual_usuario.md`. Resumen:
+
+**Estado general** (semáforo por estrategia, ejecuciones en curso, alertas vigentes, agente)
+
+```powershell
+cloudcr estado
+```
+
+```powershell
+cloudcr estado --bd XE --json
+```
+
+**Historial** (filtros opcionales; horas en la zona de cada tarea)
+
+```powershell
+cloudcr historial --bd XE --estrategia EST001 --estado FALLIDA --desde 2026-10-01 --hasta 2026-10-04
+```
+
+```powershell
+cloudcr historial mostrar <ID>
+```
+
+**Exportar el historial** (CSV para Excel, Markdown, o HTML autocontenido para entregar como evidencia)
+
+```powershell
+cloudcr reporte historial --formato html --archivo exportaciones
+```
+
+```powershell
+cloudcr reporte evidencia <ID> --formato md --archivo exportaciones
+```
+
+**Alertas**
+
+```powershell
+cloudcr alertas
+```
+
+```powershell
+cloudcr alertas reconocer <ID>
+```
+
+```powershell
+cloudcr alertas evaluar
+```
+
+**Próximas ejecuciones de una tarea**
+
+```powershell
+cloudcr tarea proximas EST001 T1 --bd XE -n 10
+```
+
+**Agente** (sin el pipeline de RMAN instalado, solo corre con `--simulado`, y cada ejecución queda rotulada SIMULACION)
+
+```powershell
+cloudcr agente ejecutar --simulado
+```
+
+```powershell
+cloudcr agente ejecutar --simulado --una-vez
+```
+
+```powershell
+cloudcr agente estado
+```
+
+**Agente como tarea programada de Windows** (al iniciar el sistema, con reinicio automático; pide la contraseña de la cuenta con `Get-Credential`)
+
+```powershell
+.\deploy\windows\registrar_tarea_agente.ps1 -Ejecutable "$PWD\.venv\Scripts\cloudcr.exe" -Configuracion "$env:USERPROFILE\cloudcr.yaml" -Usuario "$env:COMPUTERNAME\$env:USERNAME"
+```
+
 ## Interfaz web
 
 Muestra lo mismo que `cloudcr explorar`, pero en el navegador: resumen de la instancia, árbol plegable, filtros, búsqueda, observaciones con "Ir al nodo" y botones para exportar.
@@ -233,6 +307,19 @@ Los mismos pasos están disponibles como endpoints JSON, para usarlos sin la pan
 Las escrituras rechazan las solicitudes que no vengan de la propia interfaz (cabeceras `Origin` y `Sec-Fetch-Site`).
 
 Por seguridad, la web solo acepta un `ORACLE_HOME` detectado en el equipo. Para usar otro, hay que usar la terminal: `cloudcr explorar <SID> --oracle-home <ORACLE_HOME>`. Si en el equipo hay instancias con distintos `ORACLE_HOME`, cada `cloudcr web` explora las de un solo `ORACLE_HOME`; para las otras, abrir otro `cloudcr web` con otro `--puerto`.
+
+### Estado, estrategias, historial y alertas
+
+La barra superior de la interfaz tiene **Estado · Estrategias · Historial · Alertas · Instancias**:
+
+| Pantalla | Qué muestra | API JSON equivalente |
+|---|---|---|
+| `/estado` | Semáforo por estrategia, ejecuciones en curso, alertas vigentes y agente (se actualiza cada 30 s) | `GET /api/estado`, `GET /api/agente` |
+| `/estrategias` y `/estrategias/<BD>/<CÓDIGO>` | Estrategias registradas; detalle con próximas ejecuciones por tarea, retención y vocabulario de clase; botones Activar/Desactivar | `GET /api/estrategias`, `GET /api/estrategias/<BD>/<CÓDIGO>`, `GET …/tareas/<TAREA>/proximas?n=`, `POST …/activar`, `POST …/desactivar` |
+| `/historial` y `/historial/<ID>` | Historial con filtros, paginación y exportación (CSV, MD, HTML); detalle de una ejecución | `GET /api/historial`, `GET /api/historial/<ID>`, `GET /historial/exportar/<formato>` |
+| `/alertas` | Alertas con filtros por estado y severidad; Reconocer, Resolver, Evaluar ahora | `GET /api/alertas`, `POST /api/alertas/<ID>/reconocer`, `POST /api/alertas/<ID>/resolver`, `POST /api/alertas/evaluar` |
+
+Si el repositorio no está configurado o no responde, las pantallas muestran un panel con la sugerencia y la API responde `503` con el mismo mensaje.
 
 ## Instalar el repositorio (PDB BKPCAT)
 

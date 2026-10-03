@@ -10,7 +10,9 @@ Sirve para dos cosas: dejar el sistema funcionando en una máquina nueva, o conf
 
 **Cubre:** entorno Python, `repository/` completo, `cloudcr repo`, `cloudcr db`, `cloudcr param`, `cloudcr doctor`, `cloudcr estrategia` (crear, importar, listar, mostrar, validar, activar, desactivar, exportar, aplicar-recomendacion), y la suite de pruebas automatizadas.
 
-**No cubre todavía** (porque todavía no existe en el código): generación y ejecución de scripts RMAN, el agente automático, alertas automáticas, verificación posterior, recuperación, ni la interfaz web de estrategias/historial. Eso se agrega a esta guía cuando Juan y Alejandro terminen sus carriles.
+**Cubre también** (carril de Alejandro, §8b): próximas ejecuciones, el agente (`cloudcr agente`), las alertas, el historial, el estado con semáforo y las pantallas web de estado, estrategias, historial y alertas.
+
+**No cubre todavía** (porque todavía no existe en el código): generación y ejecución real de scripts RMAN, verificación posterior y recuperación (carril de Juan). Mientras tanto, el agente se prueba con `--simulado` y cada ejecución queda rotulada SIMULACION.
 
 ---
 
@@ -193,6 +195,54 @@ Después de `aplicar-recomendacion`, `EST001` tiene que quedar en **versión 2**
 
 ---
 
+## 8b. Agente, alertas, historial, estado y web (carril de Alejandro)
+
+Requiere los pasos 1 a 8: repositorio instalado, la base registrada e inspeccionada y al menos una estrategia importada.
+
+**8b.1 — Próximas ejecuciones** (no necesita Oracle):
+
+```powershell
+.\.venv\Scripts\cloudcr.exe tarea proximas T1 --archivo config\estrategias\est001.yaml -n 10
+.\.venv\Scripts\cloudcr.exe tarea proximas EST001 T1 --bd XE -n 10
+```
+
+Las dos deben listar solo las 13:00, 15:00, 18:00 y 21:00 de cada día.
+
+**8b.2 — Preparar una tarea que el agente pueda disparar.** El agente solo programa tareas de estrategias ACTIVAS que tengan un script RMAN **aprobado**. Mientras el pipeline de Juan no genere scripts, apruebe uno de prueba (es solo una fila en `SCRIPT_RMAN`; con `--simulado` RMAN no se ejecuta):
+
+```powershell
+.\.venv\Scripts\cloudcr.exe estrategia activar EST001 --bd XE
+.\.venv\Scripts\python.exe -c "from cloudcr_backup.config.ajustes import cargar_ajustes; from cloudcr_backup.repository import conexion, estrategias, bases_datos, scripts; c = conexion.abrir_repositorio(cargar_ajustes()); bd = bases_datos.obtener(c, 'XE'); t = estrategias.obtener_tarea_id(c, bd.id, 'EST001', 'T1'); s = scripts.guardar_borrador(c, t, 'RUN { BACKUP DATABASE; }'); print(scripts.aprobar(c, s.id, 'demo'))"
+```
+
+Para ver disparos seguidos, cree una estrategia de demostración con una tarea `INTERVALO` de 5 minutos (asistente web o `cloudcr tarea agregar … --frecuencia INTERVALO --intervalo-minutos 5`).
+
+**8b.3 — Agente en simulación:**
+
+```powershell
+.\.venv\Scripts\cloudcr.exe agente ejecutar --simulado --una-vez
+.\.venv\Scripts\cloudcr.exe agente estado
+```
+
+Sin `--simulado` debe negarse a correr explicando que falta el pipeline. Con `--simulado` reclama la ocurrencia vencida, la marca EXITOSA con mensaje `SIMULACION` y deja el latido en `%LOCALAPPDATA%\cloudcr\agente\`.
+
+**8b.4 — Ocurrencia perdida (base de E7):** deje el agente corriendo (`cloudcr agente ejecutar --simulado`), deténgalo con Ctrl+C antes de una ocurrencia, espere a que pase la ocurrencia más la gracia (`agente.gracia_omision_min`, 15 min; se puede bajar con `cloudcr param set agente.gracia_omision_min 2`) y vuelva a arrancarlo. Debe registrar `NO_EJECUTADA` con el motivo y abrir `RESPALDO_NO_EJECUTADO` (en consola: `NUEVA ALERTA [ALERTA] RESPALDO_NO_EJECUTADO …`).
+
+**8b.5 — Historial, alertas y estado:**
+
+```powershell
+.\.venv\Scripts\cloudcr.exe historial --bd XE
+.\.venv\Scripts\cloudcr.exe historial mostrar <id>
+.\.venv\Scripts\cloudcr.exe alertas
+.\.venv\Scripts\cloudcr.exe alertas evaluar
+.\.venv\Scripts\cloudcr.exe estado
+.\.venv\Scripts\cloudcr.exe reporte historial --formato html --archivo exportaciones
+```
+
+**8b.6 — Web:** `cloudcr web` y recorra Estado, Estrategias, Historial (filtre por resultado y exporte), Alertas (reconozca una) e Instancias. Pruebe el tema oscuro del sistema y el ancho de teléfono (herramientas de desarrollo del navegador). En la consola del navegador no debe aparecer ningún error de CSP. Abra primero `/historial` y después `/instancias/XE`: el explorador debe seguir funcionando (orden thick/thin, G9).
+
+---
+
 ## 9. Pruebas automatizadas
 
 **9.1 — Suite sin Oracle** (rápida, corre siempre)
@@ -201,7 +251,7 @@ Después de `aplicar-recomendacion`, `EST001` tiene que quedar en **versión 2**
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Tiene que terminar en verde (ahora mismo: 202 pruebas).
+Tiene que terminar en verde (ahora mismo: 659 pruebas recolectadas. Se verificó en Linux, donde fallan 13 pruebas de rutas Windows que dependen de `os.name`; en Windows deben pasar todas — confirmarlo al correrla).
 
 **9.2 — Suite con Oracle** (usa tu `BKPCAT` real; instala y desinstala el esquema como parte de la prueba, así que dejalo correr sin interrumpir)
 
@@ -209,7 +259,7 @@ Tiene que terminar en verde (ahora mismo: 202 pruebas).
 .\.venv\Scripts\python.exe -m pytest -m oracle -v
 ```
 
-Al terminar, el esquema queda **desinstalado** (el fixture lo borra al final). Repetí el paso 6 (`cloudcr repo instalar`) para dejar el repositorio listo de nuevo.
+Al terminar, el esquema queda **desinstalado** (el fixture de `tests/integration/test_repositorio_oracle.py` lo borra al final, **con todos sus datos**). Repetí el paso 6 (`cloudcr repo instalar`) para dejar el repositorio listo de nuevo. Si solo querés las pruebas del agente sin tocar tus datos, corré `pytest -m oracle tests/integration/test_agente_oracle.py`: crean una base de prueba con nombre único y borran solo lo que crearon.
 
 ---
 
@@ -224,6 +274,11 @@ Al terminar, el esquema queda **desinstalado** (el fixture lo borra al final). R
 - [ ] `cloudcr estrategia validar EST001` dispara observaciones reales (no una lista vacía) si la base está en NOARCHIVELOG.
 - [ ] `cloudcr estrategia aplicar-recomendacion EST001 ARCH_002` sube la versión a 2.
 - [ ] `pytest -q` (sin Oracle) y `pytest -m oracle` (con Oracle) terminan ambas en verde.
+- [ ] `cloudcr tarea proximas EST001 T1 -n 10` devuelve solo 13, 15, 18 y 21 h.
+- [ ] `cloudcr agente ejecutar --una-vez` sin `--simulado` se niega a correr; con `--simulado` deja una ejecución SIMULACION en `cloudcr historial`.
+- [ ] Detener y reiniciar el agente durante una ocurrencia produce `NO_EJECUTADA` y la alerta `RESPALDO_NO_EJECUTADO`.
+- [ ] `cloudcr estado` muestra el semáforo y las alertas vigentes; `/estado` muestra lo mismo.
+- [ ] `cloudcr reporte historial --formato html` genera un HTML que se abre sin conexión a internet.
 
 Si todo esto se cumple, el sistema está en el mismo estado verificado que se documentó en `docs/estado_josue.md`.
 

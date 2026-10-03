@@ -15,7 +15,15 @@ Implementado: **descubrimiento y explorador de la instancia**, en la terminal y 
 - Exporta a JSON, Markdown o HTML.
 - Interfaz web (FastAPI + HTMX) con árbol plegable, resumen, filtros, búsqueda, panel de observaciones con "Ir al nodo" y exportaciones. Por defecto solo es accesible desde el mismo equipo.
 
-Pendiente: repositorio, estrategias, validación, constructor RMAN, ejecución, agente, verificación, alertas y recuperación.
+También implementado:
+
+- **Repositorio** (`BKPCAT`), **estrategias** QUÉ-CÓMO-CUÁNDO y su **validación** (31 reglas), con CLI y asistente web.
+- **Programación**: recurrencias (diaria, semanal, mensual, una vez, intervalo) con zona horaria y horario de verano, ventanas de respaldo y próximas ejecuciones (`cloudcr tarea proximas`).
+- **Agente** (`cloudcr agente ejecutar`): reclama las ejecuciones vencidas sin duplicarlas, registra las no ejecutadas, se recupera de caídas y se instala como tarea programada de Windows.
+- **Alertas** (11 reglas) con deduplicación, resolución automática y notificación por consola y correo.
+- **Historial, estado y reportes**: semáforo por estrategia, historial con columna Pruebas, exportación a CSV, Markdown y HTML; en la terminal y en la web (`/estado`, `/estrategias`, `/historial`, `/alertas`) con API JSON.
+
+Pendiente (carril de Juan): constructor de scripts RMAN, pipeline de ejecución, verificación y recuperación. Mientras no exista, el agente solo corre con `--simulado` y lo rotula. Ver `docs/manual_usuario.md`.
 
 ## Requisitos
 
@@ -86,17 +94,20 @@ src/cloudcr_backup/
 ├── presentacion/  capa compartida por terminal y web (árbol neutral, formato, resumen, dibujo con Rich)
 ├── cli/           comandos de terminal
 ├── web/           interfaz web: FastAPI, rutas, plantillas Jinja2, CSS/JS y htmx incluidos
-├── repository/    (pendiente) repositorio de estrategias y ejecuciones
-├── strategy/      (pendiente) estrategias QUÉ-CÓMO-CUÁNDO
-├── validation/    (pendiente) reglas de validación
+├── repository/    repositorio de estrategias, scripts, ejecuciones y alertas (Oracle BKPCAT)
+├── strategy/      estrategias QUÉ-CÓMO-CUÁNDO, prioridades, esquemas y vocabulario
+├── validation/    reglas de validación
+├── services/      casos de uso que llaman la CLI y la web (agente, alertas, historial, estado)
+├── scheduling/    reloj, recurrencias, ventanas y planificador
+├── agent/         bucle del agente, latido y puerto del ejecutor
+├── alerts/        reglas de alerta, motor y notificadores (consola, correo)
 ├── rman/          (pendiente) constructor de scripts RMAN
-├── scheduling/    (pendiente) recurrencias y planificador
 ├── execution/     (pendiente) ejecución de RMAN y evidencia
 ├── verification/  (pendiente) verificación de respaldos
-├── alerts/        (pendiente) motor de alertas
 ├── recovery/      (pendiente) puntos y procedimientos de recuperación
-├── agent/         (pendiente) agente automático
-└── reports/       exportación de la instancia (JSON, Markdown, HTML); pendiente: historial y reportes
+└── reports/       exportación de la instancia y del historial (JSON, CSV, Markdown, HTML)
+deploy/windows/    registro del agente como tarea programada
+docs/              manual de usuario, afinamiento, diagramas, guías y evidencias
 tests/
 ├── unit/          pruebas sin Oracle
 ├── web/           pruebas de la interfaz web con un servicio falso (sin Oracle)
