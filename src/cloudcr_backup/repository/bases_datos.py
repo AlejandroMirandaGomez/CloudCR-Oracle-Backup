@@ -3,6 +3,7 @@ from enum import StrEnum
 
 import oracledb
 
+from cloudcr_backup.domain.enums import LogMode
 from cloudcr_backup.domain.perfil_bd import PerfilBD
 
 
@@ -103,5 +104,40 @@ def guardar_perfil(conexion: oracledb.Connection, bd_id: int, perfil: PerfilBD) 
             contenido_json=perfil.model_dump_json(),
         )
         conexion.commit()
+    finally:
+        cursor.close()
+
+
+def ultimo_perfil(conexion: oracledb.Connection, bd_id: int) -> PerfilBD | None:
+    cursor = conexion.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT contenido_json FROM perfil_bd WHERE bd_id = :bd_id
+            ORDER BY capturado_en DESC, id DESC FETCH FIRST 1 ROWS ONLY
+            """,
+            bd_id=bd_id,
+        )
+        fila = cursor.fetchone()
+        return PerfilBD.model_validate_json(str(fila[0])) if fila is not None else None
+    finally:
+        cursor.close()
+
+
+def log_mode_al_crear_script(conexion: oracledb.Connection, bd_id: int, script_id: int) -> LogMode | None:
+    cursor = conexion.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT p.log_mode FROM perfil_bd p
+            WHERE p.bd_id = :bd_id
+              AND p.capturado_en <= (SELECT s.creado_en FROM script_rman s WHERE s.id = :script_id)
+            ORDER BY p.capturado_en DESC, p.id DESC FETCH FIRST 1 ROWS ONLY
+            """,
+            bd_id=bd_id,
+            script_id=script_id,
+        )
+        fila = cursor.fetchone()
+        return LogMode(str(fila[0])) if fila is not None else None
     finally:
         cursor.close()

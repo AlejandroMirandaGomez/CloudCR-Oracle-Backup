@@ -44,6 +44,18 @@ class RutasTrabajo:
     def logs(self) -> Path:
         return self.base / "logs"
 
+    @property
+    def agente(self) -> Path:
+        return self.base / "agente"
+
     def asegurar(self) -> None:
-        for ruta in (self.scripts, self.estrategias, self.ejecuciones, self.recuperacion, self.buzon, self.logs):
+        for ruta in (
+            self.scripts,
+            self.estrategias,
+            self.ejecuciones,
+            self.recuperacion,
+            self.buzon,
+            self.logs,
+            self.agente,
+        ):
             ruta.mkdir(parents=True, exist_ok=True)

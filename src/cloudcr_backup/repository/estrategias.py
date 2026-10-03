@@ -327,3 +327,12 @@ def obtener_tarea_id(
         return int(fila[0]) if fila is not None else None
     finally:
         cursor.close()
+
+
+def ids_de_tareas(conexion: oracledb.Connection, estrategia_id: int) -> dict[str, int]:
+    cursor = conexion.cursor()
+    try:
+        cursor.execute("SELECT codigo, id FROM tarea WHERE estrategia_id = :id", id=estrategia_id)
+        return {str(codigo): int(id_) for codigo, id_ in cursor.fetchall()}
+    finally:
+        cursor.close()

@@ -1,5 +1,6 @@
 import hashlib
 from dataclasses import dataclass
+from datetime import datetime
 
 import oracledb
 
@@ -14,6 +15,9 @@ class ScriptRman:
     contenido: str
     hash_sha256: str
     estado: EstadoScript
+    aprobado_por: str | None = None
+    aprobado_en: datetime | None = None
+    creado_en: datetime | None = None
 
 
 def _desde_fila(tarea_id: int, fila: tuple[object, ...]) -> ScriptRman:
@@ -103,7 +107,8 @@ def aprobar(conexion: oracledb.Connection, script_id: int, aprobado_por: str) ->
         tarea_id, _ = _obtener_por_id(cursor, script_id)
         cursor.execute(
             """
-            UPDATE script_rman SET estado = 'APROBADO', aprobado_por = :aprobado_por, aprobado_en = SYSTIMESTAMP
+            UPDATE script_rman SET estado = 'APROBADO', aprobado_por = :aprobado_por,
+                   aprobado_en = SYS_EXTRACT_UTC(SYSTIMESTAMP)
             WHERE id = :id
             """,
             aprobado_por=aprobado_por,
@@ -137,5 +142,32 @@ def marcar_obsoleto(conexion: oracledb.Connection, script_id: int) -> None:
     try:
         cursor.execute("UPDATE script_rman SET estado = 'OBSOLETO' WHERE id = :id", id=script_id)
         conexion.commit()
+    finally:
+        cursor.close()
+
+
+def vigentes_por_tarea(conexion: oracledb.Connection) -> dict[int, ScriptRman]:
+    cursor = conexion.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT tarea_id, id, version, hash_sha256, estado, aprobado_por, aprobado_en, creado_en
+            FROM script_rman WHERE estado = 'APROBADO'
+            """
+        )
+        return {
+            int(tarea_id): ScriptRman(
+                id=int(id_),
+                tarea_id=int(tarea_id),
+                version=int(version),
+                contenido="",
+                hash_sha256=str(hash_sha256),
+                estado=EstadoScript(str(estado)),
+                aprobado_por=None if aprobado_por is None else str(aprobado_por),
+                aprobado_en=aprobado_en if isinstance(aprobado_en, datetime) else None,
+                creado_en=creado_en if isinstance(creado_en, datetime) else None,
+            )
+            for tarea_id, id_, version, hash_sha256, estado, aprobado_por, aprobado_en, creado_en in cursor.fetchall()
+        }
     finally:
         cursor.close()
