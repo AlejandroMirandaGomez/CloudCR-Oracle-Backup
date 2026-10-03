@@ -1,9 +1,13 @@
 from cloudcr_backup.domain.enums import EstadoEstrategia, Severidad, TipoFrecuencia
 from cloudcr_backup.domain.estrategia import Programacion
 from cloudcr_backup.domain.hallazgos import Hallazgo
+from cloudcr_backup.scheduling.recurrencia import ProgramacionInvalida, proximas
 from cloudcr_backup.strategy.prioridad import criterio_de
 from cloudcr_backup.validation.contexto import ContextoValidacion
 from cloudcr_backup.validation.motor import regla
+
+CANTIDAD_VISTA_PREVIA = 5
+DIAS_CORTOS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
 
 _HORAS_POR_FRECUENCIA = {
     TipoFrecuencia.DIARIA: 24.0,
@@ -129,6 +133,30 @@ def prg_005_frecuencia_insuficiente_para_la_prioridad(contexto: ContextoValidaci
                 ),
                 sujeto=tarea.codigo,
                 accion_sugerida="Aumente la frecuencia de la tarea o reduzca la prioridad de la estrategia.",
+            )
+        )
+    return hallazgos
+
+
+@regla("PRG_007")
+def prg_007_vista_previa_de_proximas_ejecuciones(contexto: ContextoValidacion) -> list[Hallazgo]:
+    hallazgos = []
+    for tarea in contexto.estrategia.tareas:
+        try:
+            ocurrencias = proximas(tarea.programacion, contexto.ahora, CANTIDAD_VISTA_PREVIA)
+        except ProgramacionInvalida:
+            continue
+        if not ocurrencias:
+            continue
+        listado = ", ".join(f"{DIAS_CORTOS[o.weekday()]} {o:%d/%m %H:%M}" for o in ocurrencias)
+        hallazgos.append(
+            Hallazgo(
+                codigo="PRG_007",
+                severidad=Severidad.INFORMATIVA,
+                mensaje=(
+                    f"Próximas ejecuciones de {tarea.codigo} ({tarea.programacion.zona_horaria}): {listado}."
+                ),
+                sujeto=tarea.codigo,
             )
         )
     return hallazgos
