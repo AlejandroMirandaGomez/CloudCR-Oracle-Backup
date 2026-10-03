@@ -3,8 +3,10 @@ from pathlib import Path
 from typing import Annotated, TypeVar
 
 import typer
+from rich.table import Table
 
 from cloudcr_backup.cli.comun import terminar_con_error
+from cloudcr_backup.cli.comun_monitoreo import ajustes, llamar
 from cloudcr_backup.domain.enums import (
     Compresion,
     DiaSemana,
@@ -14,7 +16,9 @@ from cloudcr_backup.domain.enums import (
     TipoRespaldo,
 )
 from cloudcr_backup.domain.estrategia import Como, Destino, Estrategia, OpcionesRespaldo, Programacion, Tarea, Ventana
+from cloudcr_backup.presentacion.estrategias import describir_programacion
 from cloudcr_backup.presentacion.terminal import consola
+from cloudcr_backup.services import consulta_estrategias
 from cloudcr_backup.strategy.yaml_io import EstrategiaYamlInvalida, cargar_estrategia_yaml, guardar_estrategia_yaml
 
 app = typer.Typer(add_completion=False, help="Agrega, edita o elimina tareas dentro de una estrategia.")
@@ -184,3 +188,53 @@ def eliminar(
     restantes = [t for t in estrategia.tareas if t.codigo != codigo]
     guardar_estrategia_yaml(estrategia.model_copy(update={"tareas": restantes}), archivo)
     consola().print(f"Tarea [bold]{codigo}[/] eliminada de {estrategia.codigo}.", markup=True)
+
+
+DIAS_SEMANA = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+
+
+@app.command(
+    help=(
+        "Muestra las próximas ejecuciones de una tarea: 'proximas ESTRATEGIA TAREA [--bd XE]' desde el "
+        "repositorio, o 'proximas TAREA --archivo ruta.yaml' desde un archivo."
+    )
+)
+def proximas(
+    primero: Annotated[str, typer.Argument(help="Código de la estrategia (o de la tarea si usa --archivo).")],
+    segundo: Annotated[str | None, typer.Argument(help="Código de la tarea.")] = None,
+    archivo: Annotated[Path | None, typer.Option("--archivo", help="Estrategia en YAML.")] = None,
+    bd: Annotated[str | None, typer.Option("--bd", help="Base de datos registrada (si hay ambigüedad).")] = None,
+    cantidad: Annotated[int, typer.Option("-n", "--cantidad", min=1, max=100, help="Cuántas mostrar.")] = 5,
+) -> None:
+    if archivo is not None:
+        if segundo is not None:
+            terminar_con_error("Con --archivo indique solo el código de la tarea.")
+        estrategia = _cargar(archivo)
+        tarea = estrategia.tarea(primero.upper())
+        if tarea is None:
+            terminar_con_error(f"No existe la tarea {primero.upper()} en {estrategia.codigo}.")
+        programacion = tarea.programacion
+        momentos = llamar(lambda: consulta_estrategias.proximas_de(programacion, cantidad))
+        titulo = f"{estrategia.codigo}/{tarea.codigo}"
+    else:
+        if segundo is None:
+            terminar_con_error("Indique ESTRATEGIA y TAREA, o use --archivo.")
+        configuracion = ajustes()
+        momentos = llamar(
+            lambda: consulta_estrategias.proximas_de_tarea(configuracion, bd, primero, segundo, cantidad)
+        )
+        programacion = None
+        titulo = f"{primero.upper()}/{segundo.upper()}"
+    tabla = Table(title=f"Próximas ejecuciones de {titulo}")
+    tabla.add_column("#", justify="right")
+    tabla.add_column("Fecha")
+    tabla.add_column("Día")
+    tabla.add_column("Hora")
+    for indice, momento in enumerate(momentos, start=1):
+        tabla.add_row(
+            str(indice), f"{momento:%Y-%m-%d}", DIAS_SEMANA[momento.weekday()], f"{momento:%H:%M} {momento:%Z}"
+        )
+    salida = consola()
+    salida.print(tabla)
+    if programacion is not None:
+        salida.print(describir_programacion(programacion), style="dim")
