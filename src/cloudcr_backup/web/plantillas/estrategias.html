@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block titulo %}Estrategias · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Estrategias de respaldo</h1>
+      <p class="subtitulo">Registradas en el repositorio. Las nuevas se crean desde la instancia.</p>
+    </div>
+    <div class="acciones">
+      {% for bd in bases %}<a class="boton primario" href="/instancias/{{ bd | urlencode }}/estrategias/nueva">Crear estrategia en {{ bd }}</a>{% endfor %}
+      <a class="boton" href="/instancias">Elegir instancia</a>
+    </div>
+  </section>
+  <section class="panel">
+    {% if filas %}
+    <div class="tabla-desplazable">
+      <table class="tabla compacta">
+        <thead>
+          <tr><th scope="col">Estado</th><th scope="col">BD</th><th scope="col">Código</th><th scope="col">Nombre</th><th scope="col">Prioridad</th><th scope="col">Activa</th><th scope="col">Versión</th><th scope="col">Tareas con script</th><th scope="col">Próxima ejecución</th></tr>
+        </thead>
+        <tbody>
+          {% for fila in filas %}
+          <tr>
+            <td><span class="semaforo tono-{{ fila.tono }}">{{ fila.simbolo }} {{ fila.etiqueta }}</span></td>
+            <td>{{ fila.resumen.bd }}</td>
+            <td><a href="{{ fila.ruta }}">{{ fila.resumen.codigo }}</a></td>
+            <td>{{ fila.resumen.nombre }}</td>
+            <td>{{ fila.resumen.prioridad.value }}</td>
+            <td>{{ 'Sí' if fila.resumen.estado.value == 'ACTIVA' else 'No' }}</td>
+            <td>{{ fila.resumen.version }}</td>
+            <td>{{ fila.resumen.tareas_con_script }} de {{ fila.resumen.tareas }}</td>
+            <td>{{ fila.resumen.proxima_ejecucion | local(zona) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="vacio">
+      <p><strong>No hay estrategias registradas en el repositorio.</strong></p>
+      <p>Cree una desde <a href="/instancias">Instancias</a> → «Crear estrategia de respaldo», o importe un YAML con <code>cloudcr estrategia importar</code>.</p>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+<section class="tarjetas" aria-label="Resumen del semáforo">
+  <div class="tarjeta"><span class="numero tono-exito">{{ resumen['VERDE'] }}</span><span class="rotulo">● Verde</span></div>
+  <div class="tarjeta"><span class="numero tono-advertencia">{{ resumen['AMARILLO'] }}</span><span class="rotulo">▲ Amarillo</span></div>
+  <div class="tarjeta"><span class="numero tono-peligro">{{ resumen['ROJO'] }}</span><span class="rotulo">✕ Rojo</span></div>
+  <div class="tarjeta"><span class="numero tono-atenuado">{{ resumen['SIN_DATOS'] }}</span><span class="rotulo">○ Sin datos</span></div>
+  <div class="tarjeta"><span class="numero">{{ alertas | length }}</span><span class="rotulo">Alertas vigentes</span></div>
+  <div class="tarjeta">
+    {% set vivo = agentes | selectattr('vivo') | list %}
+    <span class="numero {{ 'tono-exito' if vivo else 'tono-peligro' }}">{{ 'Activo' if vivo else 'Detenido' }}</span>
+    <span class="rotulo">Agente</span>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Estrategias</h2>
+  {% if semaforos %}
+  <div class="tabla-desplazable">
+    <table class="tabla compacta">
+      <thead>
+        <tr><th scope="col">Estado</th><th scope="col">BD</th><th scope="col">Estrategia</th><th scope="col">Prioridad</th><th scope="col">Última ejecución</th><th scope="col">Próxima</th><th scope="col">Alertas</th><th scope="col">Motivos</th></tr>
+      </thead>
+      <tbody>
+        {% for fila in semaforos %}
+        <tr>
+          <td><span class="semaforo tono-{{ fila.tono.value }}">{{ fila.simbolo }} {{ fila.etiqueta }}</span></td>
+          <td>{{ fila.bd }}</td>
+          <td><a href="/estrategias/{{ fila.bd | urlencode }}/{{ fila.estrategia | urlencode }}">{{ fila.estrategia }}</a> — {{ fila.nombre }}</td>
+          <td>{{ fila.prioridad }}</td>
+          <td>{{ fila.ultima }}</td>
+          <td>{{ fila.proxima }}</td>
+          <td>{{ fila.alertas }}</td>
+          <td class="envolver">{% if fila.motivos %}<ul class="lista-motivos">{% for motivo in fila.motivos %}<li>{{ motivo }}</li>{% endfor %}</ul>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="leyenda">{{ regla }}</p>
+  {% else %}
+  <div class="vacio">No hay estrategias registradas{% if bd %} para {{ bd }}{% endif %}. <a href="/instancias">Crear una desde una instancia</a>.</div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Ejecuciones en curso o por iniciar</h2>
+  {% if en_curso.filas %}
+  {% set tabla = en_curso %}
+  {% include "parciales/_tabla_historial.html" %}
+  {% else %}
+  <p class="nota">No hay ejecuciones en curso.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="encabezado-seccion">
+    <h2>Alertas vigentes</h2>
+    <a class="boton" href="/alertas">Ver y gestionar alertas</a>
+  </div>
+  {% if alertas %}
+  <div class="tabla-desplazable">
+    <table class="tabla compacta">
+      <thead><tr><th scope="col">Severidad</th><th scope="col">Código</th><th scope="col">Dónde</th><th scope="col">Mensaje</th><th scope="col">Abierta</th></tr></thead>
+      <tbody>
+        {% for alerta in alertas %}
+        <tr>
+          <td><span class="severidad-alerta tono-{{ 'peligro' if alerta.severidad == 'ALERTA' else ('advertencia' if alerta.severidad == 'ADVERTENCIA' else 'dato') }}">{{ alerta.severidad }}</span></td>
+          <td>{{ alerta.codigo }}</td>
+          <td>{{ alerta.donde }}</td>
+          <td class="envolver">{{ alerta.mensaje }}</td>
+          <td>{{ alerta.abierta }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="nota tono-exito">Sin alertas vigentes.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Agente</h2>
+  {% if agentes %}
+  <div class="tabla-desplazable">
+    <table class="tabla compacta">
+      <thead><tr><th scope="col">Equipo</th><th scope="col">PID</th><th scope="col">Estado</th><th scope="col">Último tick</th><th scope="col">Hace</th><th scope="col">Modo</th></tr></thead>
+      <tbody>
+        {% for agente in agentes %}
+        <tr>
+          <td>{{ agente.hostname }}</td>
+          <td>{{ agente.pid }}</td>
+          <td class="{{ 'tono-exito' if agente.vivo else 'tono-peligro' }}">{{ agente.estado }}</td>
+          <td>{{ agente.ultimo_tick }}</td>
+          <td>{{ agente.segundos_desde_tick }} s</td>
+          <td>{{ 'SIMULACIÓN' if agente.simulado else 'real' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="aviso">El agente nunca corrió con esta carpeta de trabajo. Inícielo con <code>cloudcr agente ejecutar</code>.</p>
+  {% endif %}
+  <p class="captura">Generado el {{ general.generado_en | local(zona, '%Y-%m-%d %H:%M:%S') }} ({{ zona }}).</p>
+</section>

@@ -1,0 +1,60 @@
+{% set estrategia = detalle.estrategia %}
+{% if aviso %}<p class="mensaje-estado" role="status">{{ aviso }}</p>{% endif %}
+<section class="encabezado-seccion">
+  <div>
+    <h1>{{ resumen.codigo }} — {{ resumen.nombre }}</h1>
+    <p class="subtitulo">{{ resumen.bd }} · prioridad {{ resumen.prioridad.value }} · versión {{ resumen.version }}</p>
+  </div>
+  <div class="acciones">
+    <span class="semaforo tono-{{ color.tono }}">{{ color.simbolo }} {{ color.etiqueta }}</span>
+    {% if resumen.estado.value == 'ACTIVA' %}
+    <form method="post" action="{{ ruta }}/desactivar" hx-post="{{ ruta }}/desactivar" hx-target="#detalle-estrategia"
+          hx-confirm="¿Desactivar {{ resumen.codigo }}? El agente dejará de ejecutar sus tareas.">
+      <button class="boton peligro" type="submit">Desactivar</button>
+    </form>
+    {% else %}
+    <form method="post" action="{{ ruta }}/activar" hx-post="{{ ruta }}/activar" hx-target="#detalle-estrategia"
+          hx-confirm="¿Activar {{ resumen.codigo }}? El agente empezará a ejecutar las tareas que tengan script aprobado.">
+      <button class="boton primario" type="submit">Activar</button>
+    </form>
+    {% endif %}
+    <a class="boton" href="/historial?bd={{ resumen.bd | urlencode }}&amp;estrategia={{ resumen.codigo | urlencode }}">Ver historial</a>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Resumen</h2>
+  <dl class="ficha">
+    <dt>Estado</dt><dd>{{ 'Activa' if resumen.estado.value == 'ACTIVA' else 'Inactiva' }}</dd>
+    {% if estrategia.descripcion %}<dt>Descripción</dt><dd>{{ estrategia.descripcion }}</dd>{% endif %}
+    <dt>Objetivos de la prioridad</dt><dd>RPO ≤ {{ '%.0f' | format(detalle.rpo_horas) }} h · RTO ≤ {{ '%.0f' | format(detalle.rto_horas) }} h · respaldar al menos cada {{ '%.0f' | format(detalle.recencia_maxima_horas) }} h</dd>
+    <dt>Qué se respalda</dt><dd>{{ detalle.alcance | join(', ') or '—' }}</dd>
+    <dt>Retención</dt><dd>{{ detalle.retencion }}</dd>
+    <dt>Próxima ejecución</dt><dd>{{ resumen.proxima_ejecucion | local(zona) }}{% if resumen.estado.value != 'ACTIVA' %} (la estrategia está inactiva){% endif %}</dd>
+    <dt>Creada por</dt><dd>{{ estrategia.creada_por }}</dd>
+  </dl>
+</section>
+
+<section class="tareas" aria-label="Tareas">
+  {% for tarea in detalle.tareas %}
+  <article class="panel tarea-detalle">
+    <h3>{{ tarea.codigo }} · {{ tarea.etiqueta_tipo }}</h3>
+    <dl class="ficha">
+      <dt>Tipo (sistema / clase)</dt><dd>{{ tarea.etiqueta_tipo }} · término de clase: «{{ tarea.termino_clase }}»</dd>
+      <dt>Modo</dt><dd>{{ tarea.modo_respaldo.value }}</dd>
+      <dt>Cuándo</dt><dd>{{ tarea.descripcion_programacion }}</dd>
+      <dt>Destino</dt><dd><code>{{ tarea.destino }}</code></dd>
+      <dt>Script RMAN</dt>
+      <dd>{% if tarea.script %}Aprobado · versión {{ tarea.script.version }}{% if tarea.script.aprobado_por %} · por {{ tarea.script.aprobado_por }}{% endif %}{% if tarea.script.aprobado_en %} · el {{ tarea.script.aprobado_en | local(tarea.programacion.zona_horaria) }}{% endif %}{% else %}<span class="tono-advertencia">Sin script aprobado: el agente no ejecutará esta tarea hasta que se genere y apruebe.</span>{% endif %}</dd>
+      <dt>Próximas ejecuciones</dt>
+      <dd>
+        {% if tarea.error_programacion %}<span class="tono-peligro">{{ tarea.error_programacion }}</span>
+        {% elif tarea.proximas %}<ol class="proximas">{% for momento in tarea.proximas %}<li>{{ momento | dia_semana(tarea.programacion.zona_horaria) }} {{ momento | local(tarea.programacion.zona_horaria) }}</li>{% endfor %}</ol>
+        {% else %}—{% endif %}
+      </dd>
+    </dl>
+  </article>
+  {% else %}
+  <div class="vacio">Esta estrategia no tiene tareas.</div>
+  {% endfor %}
+</section>

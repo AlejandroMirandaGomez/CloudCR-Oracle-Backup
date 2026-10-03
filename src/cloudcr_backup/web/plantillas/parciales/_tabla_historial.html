@@ -1,0 +1,27 @@
+<div class="tabla-desplazable">
+  <table class="tabla compacta">
+    <thead>
+      <tr><th scope="col">Id</th>{% for columna in tabla.columnas %}<th scope="col">{{ columna }}</th>{% endfor %}</tr>
+    </thead>
+    <tbody>
+      {% for fila in tabla.filas %}
+      <tr{% if fila.mensaje %} title="{{ fila.mensaje }}"{% endif %}>
+        <td><a href="/historial/{{ fila.ejecucion_id }}">{{ fila.ejecucion_id }}</a></td>
+        <td>{{ fila.fecha }}</td>
+        <td>{{ fila.bd }}</td>
+        <td>{{ fila.estrategia }}</td>
+        <td>{{ fila.tarea }}</td>
+        <td>{{ fila.hora }}</td>
+        <td class="simbolo tono-{{ fila.tono_resultado.value }}" aria-hidden="true">{{ fila.simbolo }}</td>
+        <td>{{ fila.tipo }}</td>
+        <td{% if fila.tardia %} class="tardia" title="Inició {{ fila.retraso_minutos }} min después de la hora programada"{% endif %}>{{ fila.inicio }}{% if fila.tardia %} (+{{ fila.retraso_minutos }} min){% endif %}</td>
+        <td>{{ fila.fin }}</td>
+        <td>{{ fila.duracion }}</td>
+        <td class="tono-{{ fila.tono_resultado.value }}">{{ fila.resultado }}</td>
+        <td class="tono-{{ fila.tono_pruebas.value }}">{{ fila.pruebas }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if tabla.notas %}<ul class="notas">{% for nota in tabla.notas %}<li>{{ nota }}</li>{% endfor %}</ul>{% endif %}

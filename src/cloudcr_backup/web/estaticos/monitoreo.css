@@ -1,0 +1,325 @@
+.navegacion {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.navegacion a[aria-current="page"] {
+  color: var(--acento);
+  text-decoration: underline;
+  text-underline-offset: 0.35rem;
+}
+
+.contenido > *,
+.panel {
+  min-width: 0;
+}
+
+.tabla-desplazable {
+  position: relative;
+  overflow-x: auto;
+  max-width: 100%;
+  border-radius: var(--radio);
+}
+
+.tabla-desplazable .tabla {
+  min-width: 100%;
+}
+
+.tabla.compacta th,
+.tabla.compacta td {
+  padding: 0.45rem 0.65rem;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.tabla td.envolver,
+.tabla.compacta td.envolver {
+  white-space: normal;
+  min-width: 16rem;
+}
+
+.tabla td.simbolo {
+  text-align: center;
+  font-size: 1rem;
+}
+
+.tabla tbody tr:hover {
+  background: var(--superficie-2);
+}
+
+.tabla caption {
+  text-align: left;
+  font-weight: 600;
+  padding: 0.6rem 0.85rem;
+  color: var(--texto-suave);
+}
+
+.semaforo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.semaforo.tono-exito {
+  background: color-mix(in srgb, var(--exito) 12%, transparent);
+}
+
+.semaforo.tono-advertencia {
+  background: var(--advertencia-fondo);
+}
+
+.semaforo.tono-peligro {
+  background: var(--peligro-fondo);
+}
+
+.semaforo.tono-atenuado {
+  background: var(--superficie-2);
+}
+
+.tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 0.75rem 1rem;
+}
+
+.tarjeta .numero {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tarjeta .rotulo {
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.lista-motivos {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+}
+
+.severidad-alerta {
+  display: inline-block;
+  padding: 0.05rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.severidad-alerta.tono-peligro {
+  background: var(--peligro-fondo);
+  color: var(--peligro);
+}
+
+.severidad-alerta.tono-advertencia {
+  background: var(--advertencia-fondo);
+  color: var(--advertencia);
+}
+
+.severidad-alerta.tono-dato {
+  background: var(--recomendacion-fondo);
+  color: var(--recomendacion);
+}
+
+.ficha {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+
+.ficha dt {
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.ficha dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.leyenda {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+  margin: 0.5rem 0 0;
+}
+
+.notas {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--advertencia);
+  font-size: 0.85rem;
+}
+
+.registro {
+  margin: 0;
+  padding: 0.75rem;
+  max-height: 24rem;
+  overflow: auto;
+  background: var(--superficie-2);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.boton.peligro {
+  border-color: var(--peligro);
+  color: var(--peligro);
+}
+
+.boton.peligro:hover {
+  background: var(--peligro-fondo);
+}
+
+.boton.chico {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.acciones-fila {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.acciones-fila form {
+  margin: 0;
+}
+
+.mensaje-estado {
+  background: var(--acento-suave);
+  color: var(--acento);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radio);
+  margin: 0;
+}
+
+.tardia {
+  color: var(--advertencia);
+  font-style: italic;
+}
+
+.tareas {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.tarea-detalle h3 {
+  text-transform: none;
+  font-size: 1rem;
+  color: var(--texto);
+  letter-spacing: 0;
+}
+
+.proximas {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="date"],
+input[type="number"],
+input[type="text"] {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  background: var(--superficie);
+  color: var(--texto);
+}
+
+input[type="date"]:focus-visible,
+input[type="number"]:focus-visible,
+input[type="text"]:focus-visible,
+.navegacion a:focus-visible,
+.tabla a:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+.subtitulo {
+  color: var(--texto-suave);
+  margin: 0.2rem 0 0;
+}
+
+@media (max-width: 600px) {
+  .navegacion {
+    gap: 0.6rem;
+    font-size: 0.9rem;
+  }
+
+  .cabecera {
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+
+  .ficha {
+    grid-template-columns: 1fr;
+  }
+
+  .ficha dt {
+    margin-top: 0.4rem;
+  }
+
+  .formulario-filtros label,
+  .formulario-filtros select,
+  .formulario-filtros input,
+  .filtros form,
+  .filtros select {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .formulario-filtros label {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media print {
+  .cabecera,
+  .pie,
+  .filtros,
+  .acciones,
+  .acciones-fila,
+  .paginacion a {
+    display: none;
+  }
+
+  .tabla-desplazable {
+    overflow: visible;
+  }
+}

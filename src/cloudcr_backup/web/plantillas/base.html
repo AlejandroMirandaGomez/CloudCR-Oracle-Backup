@@ -4,8 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowEval": false, "historyCacheSize": 0, "refreshOnHistoryMiss": true}'>
+  <link rel="icon" href="data:,">
   <title>{% block titulo %}CloudCR Oracle Backup{% endblock %}</title>
   <link rel="stylesheet" href="/estaticos/app.css">
+  <link rel="stylesheet" href="/estaticos/monitoreo.css">
   <script src="/estaticos/htmx.min.js" defer></script>
   <script src="/estaticos/app.js" defer></script>
   {% block cabecera %}{% endblock %}
@@ -14,7 +16,11 @@
   <header class="cabecera">
     <a class="marca" href="/"><span class="marca-nombre">CloudCR</span> <span class="marca-producto">Oracle Backup</span></a>
     <nav class="navegacion" aria-label="Secciones">
-      <a href="/instancias">Instancias</a>
+      <a href="/estado"{% if seccion == 'estado' %} aria-current="page"{% endif %}>Estado</a>
+      <a href="/estrategias"{% if seccion == 'estrategias' %} aria-current="page"{% endif %}>Estrategias</a>
+      <a href="/historial"{% if seccion == 'historial' %} aria-current="page"{% endif %}>Historial</a>
+      <a href="/alertas"{% if seccion == 'alertas' %} aria-current="page"{% endif %}>Alertas</a>
+      <a href="/instancias"{% if seccion == 'instancias' %} aria-current="page"{% endif %}>Instancias</a>
     </nav>
   </header>
   <main id="principal">{% block contenido %}{% endblock %}</main>

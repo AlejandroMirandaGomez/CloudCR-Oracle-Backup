@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titulo %}Ejecución {{ fila.ejecucion_id }} · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Ejecución {{ fila.ejecucion_id }}</h1>
+      <p class="subtitulo">{{ fila.bd }} · {{ fila.estrategia }}/{{ fila.tarea }} · {{ fila.fecha }} {{ fila.hora }}</p>
+    </div>
+    <div class="acciones">
+      <span class="semaforo tono-{{ fila.tono_resultado.value }}">{{ fila.simbolo }} {{ fila.resultado }}</span>
+      <span class="semaforo tono-{{ fila.tono_pruebas.value }}">Pruebas: {{ fila.pruebas }}</span>
+      <a class="boton" href="/historial">Volver al historial</a>
+    </div>
+  </section>
+  {% for aviso in detalle.avisos %}<p class="aviso">{{ aviso }}</p>{% endfor %}
+  {% for titulo, lineas in secciones %}
+  <section class="panel">
+    <h2>{{ titulo }}</h2>
+    {% if titulo.startswith('Log') or titulo.startswith('Evidencia') %}
+    <pre class="registro">{{ lineas | join('\n') }}</pre>
+    {% else %}
+    <ul>{% for linea in lineas %}<li>{{ linea }}</li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titulo %}Historial · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Historial de ejecuciones</h1>
+      <p class="subtitulo">Las horas se muestran en la zona horaria de cada tarea.</p>
+    </div>
+  </section>
+  <section class="filtros" aria-label="Filtros del historial">
+    <form id="formulario-historial" class="formulario-filtros" action="/historial" method="get"
+          hx-get="/historial" hx-target="#zona-historial" hx-trigger="change, submit" hx-push-url="true" hx-indicator="#cargando-historial">
+      <label>Base de datos <input type="text" name="bd" value="{{ consulta.bd or '' }}" maxlength="30" autocomplete="off" spellcheck="false" placeholder="Todas"></label>
+      <label>Estrategia <input type="text" name="estrategia" value="{{ consulta.estrategia or '' }}" maxlength="20" autocomplete="off" spellcheck="false" placeholder="Todas"></label>
+      <label>Resultado
+        <select name="estado">
+          <option value="">Todos</option>
+          {% for valor, texto in estados %}<option value="{{ valor }}"{% if consulta.estado and consulta.estado.value == valor %} selected{% endif %}>{{ texto }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Desde <input type="date" name="desde" value="{{ consulta.desde.isoformat() if consulta.desde else '' }}"></label>
+      <label>Hasta <input type="date" name="hasta" value="{{ consulta.hasta.isoformat() if consulta.hasta else '' }}"></label>
+      <label>Filas
+        <select name="limite">
+          {% for cantidad in (25, 50, 100, 200) %}<option value="{{ cantidad }}"{% if consulta.limite == cantidad %} selected{% endif %}>{{ cantidad }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="boton primario" type="submit">Filtrar</button>
+      <span id="cargando-historial" class="htmx-indicator">Cargando…</span>
+    </form>
+  </section>
+  <div id="zona-historial">{% include "parciales/_historial.html" %}</div>
+</div>
+{% endblock %}

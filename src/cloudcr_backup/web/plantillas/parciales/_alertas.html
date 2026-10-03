@@ -1,0 +1,45 @@
+{% if aviso %}<p class="mensaje-estado" role="status">{{ aviso }}</p>{% endif %}
+<section class="panel">
+  {% if alertas %}
+  <div class="tabla-desplazable">
+    <table class="tabla compacta">
+      <thead>
+        <tr><th scope="col">Id</th><th scope="col">Severidad</th><th scope="col">Código</th><th scope="col">Estado</th><th scope="col">Dónde</th><th scope="col">Mensaje y acción sugerida</th><th scope="col">Abierta</th><th scope="col"><span class="oculto">Acciones</span></th></tr>
+      </thead>
+      <tbody>
+        {% for alerta, fila in alertas %}
+        <tr>
+          <td>{{ fila.id }}</td>
+          <td><span class="severidad-alerta tono-{{ 'peligro' if alerta.severidad.value == 'ALERTA' else ('advertencia' if alerta.severidad.value == 'ADVERTENCIA' else 'dato') }}">{{ fila.severidad }}</span></td>
+          <td>{{ fila.codigo }}</td>
+          <td>{{ fila.estado }}</td>
+          <td>{{ fila.donde }}{% if alerta.ejecucion_id %}<br><a href="/historial/{{ alerta.ejecucion_id }}">Ejecución {{ alerta.ejecucion_id }}</a>{% endif %}</td>
+          <td class="envolver">{{ fila.mensaje }}{% if alerta.accion_sugerida %}<br><span class="nota">{{ alerta.accion_sugerida }}</span>{% endif %}</td>
+          <td>{{ fila.abierta }}</td>
+          <td>
+            <div class="acciones-fila">
+              {% if alerta.estado.value == 'ABIERTA' %}
+              <form method="post" action="/alertas/{{ alerta.id }}/reconocer?estado={{ estado | urlencode }}&amp;severidad={{ severidad | urlencode }}"
+                    hx-post="/alertas/{{ alerta.id }}/reconocer?estado={{ estado | urlencode }}&amp;severidad={{ severidad | urlencode }}" hx-target="#zona-alertas"
+                    hx-confirm="¿Reconocer la alerta {{ alerta.id }} ({{ alerta.codigo }})?">
+                <button class="boton chico" type="submit">Reconocer</button>
+              </form>
+              {% endif %}
+              {% if alerta.vigente %}
+              <form method="post" action="/alertas/{{ alerta.id }}/resolver?estado={{ estado | urlencode }}&amp;severidad={{ severidad | urlencode }}"
+                    hx-post="/alertas/{{ alerta.id }}/resolver?estado={{ estado | urlencode }}&amp;severidad={{ severidad | urlencode }}" hx-target="#zona-alertas"
+                    hx-confirm="¿Resolver la alerta {{ alerta.id }}? Si la condición sigue, se volverá a abrir en la próxima evaluación.">
+                <button class="boton chico peligro" type="submit">Resolver</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="vacio">No hay alertas para este filtro.</div>
+  {% endif %}
+</section>

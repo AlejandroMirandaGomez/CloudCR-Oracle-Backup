@@ -1,0 +1,9 @@
+<section class="error" role="alert">
+  <h2>{{ titulo }}</h2>
+  <p>{{ mensaje }}</p>
+  {% if sugerencia %}<p class="sugerencia"><strong>Sugerencia:</strong> {{ sugerencia }}</p>{% endif %}
+  <p class="grupo-botones">
+    <a class="boton" href="/estado">Ir al estado</a>
+    <a class="boton" href="/instancias">Ver instancias</a>
+  </p>
+</section>

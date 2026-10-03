@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titulo %}Alertas · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Alertas</h1>
+      <p class="subtitulo">Una alerta reconocida sigue vigente hasta que su condición desaparece o alguien la resuelve.</p>
+    </div>
+  </section>
+  <section class="filtros" aria-label="Filtros de alertas">
+    <form class="formulario-filtros" action="/alertas" method="get" hx-get="/alertas" hx-target="#zona-alertas" hx-trigger="change, submit" hx-push-url="true">
+      <label>Estado
+        <select name="estado">
+          {% for valor, texto in estados %}<option value="{{ valor }}"{% if estado == valor %} selected{% endif %}>{{ texto }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Severidad
+        <select name="severidad">
+          <option value="">Todas</option>
+          {% for valor, texto in severidades %}<option value="{{ valor }}"{% if severidad == valor %} selected{% endif %}>{{ texto }}</option>{% endfor %}
+        </select>
+      </label>
+      <noscript><button class="boton" type="submit">Filtrar</button></noscript>
+    </form>
+    <form method="post" action="/alertas/evaluar?estado={{ estado | urlencode }}&amp;severidad={{ severidad | urlencode }}"
+          hx-post="/alertas/evaluar?estado={{ estado | urlencode }}&amp;severidad={{ severidad | urlencode }}" hx-target="#zona-alertas"
+          hx-confirm="¿Evaluar ahora todas las reglas de alerta? Se pueden abrir y notificar alertas nuevas.">
+      <button class="boton primario" type="submit">Evaluar ahora</button>
+    </form>
+  </section>
+  <div id="zona-alertas">{% include "parciales/_alertas.html" %}</div>
+</div>
+{% endblock %}

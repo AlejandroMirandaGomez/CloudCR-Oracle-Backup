@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titulo %}Estado · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Estado de los respaldos</h1>
+      <p class="subtitulo">Se actualiza solo cada 30 segundos.</p>
+    </div>
+    <form class="formulario" action="/estado" method="get" hx-get="/estado" hx-target="#zona-estado" hx-trigger="change" hx-push-url="true">
+      <label>Base de datos
+        <input type="text" name="bd" value="{{ bd }}" placeholder="Todas" maxlength="30" autocomplete="off" spellcheck="false">
+      </label>
+      <noscript><button class="boton" type="submit">Filtrar</button></noscript>
+    </form>
+  </section>
+  <div id="zona-estado" hx-get="/estado{% if bd %}?bd={{ bd | urlencode }}{% endif %}" hx-trigger="every 30s" hx-swap="innerHTML">
+    {% include "parciales/_estado.html" %}
+  </div>
+</div>
+{% endblock %}

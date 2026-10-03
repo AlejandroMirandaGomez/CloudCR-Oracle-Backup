@@ -1,0 +1,22 @@
+<section class="panel">
+  <div class="encabezado-seccion">
+    <h2>{{ resultado.total }} ejecuciones</h2>
+    <div class="acciones">
+      <span class="etiqueta">Exportar:</span>
+      {% for formato in formatos %}<a class="boton chico" href="/historial/exportar/{{ formato }}{% if filtros %}?{{ filtros }}{% endif %}" download>{{ formato | upper }}</a>{% endfor %}
+    </div>
+  </div>
+  {% if tabla.filas %}
+  {% include "parciales/_tabla_historial.html" %}
+  <p class="leyenda">Símbolos: {% for simbolo, texto in leyenda %}{{ simbolo }} {{ texto }}{% if not loop.last %} · {% endif %}{% endfor %}.</p>
+  <nav class="paginacion" aria-label="Páginas del historial">
+    <span>Página {{ resultado.pagina }} de {{ resultado.paginas }}</span>
+    <span class="acciones">
+      {% if anterior %}<a class="boton chico" href="/historial?{{ anterior }}" hx-get="/historial?{{ anterior }}" hx-target="#zona-historial" hx-push-url="true">← Anterior</a>{% endif %}
+      {% if siguiente %}<a class="boton chico" href="/historial?{{ siguiente }}" hx-get="/historial?{{ siguiente }}" hx-target="#zona-historial" hx-push-url="true">Siguiente →</a>{% endif %}
+    </span>
+  </nav>
+  {% else %}
+  <div class="vacio">No hay ejecuciones para estos filtros.</div>
+  {% endif %}
+</section>
