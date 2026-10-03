@@ -7,6 +7,7 @@ from collections.abc import Callable
 
 import uvicorn
 
+from cloudcr_backup.services.cliente_oracle import preparar_cliente_oracle
 from cloudcr_backup.web.app import crear_app
 from cloudcr_backup.web.config import ConfigWeb
 
@@ -62,6 +63,9 @@ def iniciar_servidor(config: ConfigWeb, abrir_navegador: bool, avisar: Callable[
         clientes_sin_token=config.clientes_sin_token,
         hosts_permitidos=config.hosts_permitidos,
     )
+    home = preparar_cliente_oracle()
+    if home is not None:
+        avisar(f"Cliente Oracle iniciado desde {home} (antes de abrir el repositorio).")
     avisar(url_acceso(config_final))
     if abrir_navegador:
         threading.Thread(target=_abrir_cuando_responda, args=(config_final,), daemon=True).start()
