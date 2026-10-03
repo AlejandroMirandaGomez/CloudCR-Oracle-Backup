@@ -129,6 +129,17 @@ class AreaRecuperacion(BaseModel):
     usados_bytes: int
 
 
+class RitmoCambioLog(BaseModel):
+    cambios: int
+    horas_observadas: float
+
+    @property
+    def minutos_promedio(self) -> float | None:
+        if self.cambios < 2 or self.horas_observadas <= 0:
+            return None
+        return self.horas_observadas * 60 / (self.cambios - 1)
+
+
 class PerfilBD(BaseModel):
     nombre: str
     nombre_instancia: str
@@ -154,6 +165,7 @@ class PerfilBD(BaseModel):
     destino_archivado_configurado: bool
     area_recuperacion: AreaRecuperacion | None
     archivelogs_sin_respaldo: int
+    ritmo_cambio_log: RitmoCambioLog | None = None
 
     def contenedor(self, con_id: int) -> ContenedorInfo | None:
         return next((c for c in self.contenedores if c.con_id == con_id), None)

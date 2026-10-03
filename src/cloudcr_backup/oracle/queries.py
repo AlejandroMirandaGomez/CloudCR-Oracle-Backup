@@ -74,6 +74,12 @@ FROM v$recovery_file_dest
 WHERE name IS NOT NULL
 """
 
+CAMBIOS_LOG_ULTIMO_DIA = """
+SELECT COUNT(*), (MAX(first_time) - MIN(first_time)) * 24
+FROM v$log_history
+WHERE first_time >= SYSDATE - 1
+"""
+
 ARCHIVELOGS_SIN_RESPALDO = """
 SELECT COUNT(*)
 FROM v$archived_log

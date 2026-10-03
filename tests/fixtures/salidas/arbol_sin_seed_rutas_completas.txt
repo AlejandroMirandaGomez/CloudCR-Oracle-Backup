@@ -9,6 +9,7 @@ Modo de archivado: NOARCHIVELOG
 │   │   └── C:\ORACLE\ORADATA\XE\CONTROL02.CTL  ·  17.8 MB
 │   ├── Redo logs  (3 grupos · 200 MB c/u · 1 miembro por grupo)
 │   │   ├── RECOMENDACIÓN: Los grupos de redo 1, 2, 3 tienen un solo miembro (no están multiplexados).
+│   │   ├── INFORMATIVA: No hay datos suficientes de las últimas 24 horas para medir el ritmo de log switch (se recomienda entre 15 y 30 minutos).
 │   │   ├── Grupo 1  ·  CURRENT  ·  hilo 1 · secuencia 28 · 200 MB · archivado: no
 │   │   │   └── C:\ORACLE\ORADATA\XE\REDO01.LOG
 │   │   ├── Grupo 2  ·  INACTIVE  ·  hilo 1 · secuencia 26 · 200 MB · archivado: no

@@ -16,6 +16,7 @@ from cloudcr_backup.domain.perfil_bd import (
     PerfilBD,
     RedoGrupo,
     RedoMiembro,
+    RitmoCambioLog,
     TablespaceInfo,
     TempfileInfo,
     ruta_pura,
@@ -122,6 +123,17 @@ def _redo(cursor: oracledb.Cursor) -> list[RedoGrupo]:
     ]
 
 
+def ritmo_cambio_log(cursor: oracledb.Cursor) -> RitmoCambioLog | None:
+    try:
+        filas = _filas(cursor, queries.CAMBIOS_LOG_ULTIMO_DIA)
+    except oracledb.Error:
+        return None
+    if not filas:
+        return None
+    cambios, horas = filas[0]
+    return RitmoCambioLog(cambios=int(cambios or 0), horas_observadas=float(horas or 0))
+
+
 def inspeccionar(
     conexion: oracledb.Connection,
     oracle_home: str | None,
@@ -218,4 +230,5 @@ def inspeccionar(
             else None
         ),
         archivelogs_sin_respaldo=int(archivelogs_sin_respaldo[0][0]) if archivelogs_sin_respaldo else 0,
+        ritmo_cambio_log=ritmo_cambio_log(cursor),
     )

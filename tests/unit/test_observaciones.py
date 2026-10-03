@@ -9,7 +9,7 @@ def _codigos(perfil: PerfilBD) -> set[str]:
 
 def test_instancia_de_pruebas_real(perfil_xe: PerfilBD) -> None:
     hallazgos = observar(perfil_xe)
-    assert {h.codigo for h in hallazgos} == {"ARCH_001", "ARCH_010", "RED_001", "CTL_002", "DIS_001"}
+    assert {h.codigo for h in hallazgos} == {"ARCH_001", "ARCH_010", "RED_001", "RED_003", "CTL_002", "DIS_001"}
     assert hallazgos[0].severidad is Severidad.ADVERTENCIA
     assert hallazgos[0].mensaje == MENSAJE_NOARCHIVELOG
 

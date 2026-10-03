@@ -7,6 +7,10 @@ from cloudcr_backup.domain.perfil_bd import PerfilBD, ruta_pura
 UMBRAL_USO_PCT = 85.0
 ESTADOS_DATAFILE_NORMALES = {"ONLINE", "SYSTEM"}
 ESTADOS_REDO_PROBLEMATICOS = {"INVALID", "STALE", "DELETED"}
+MINIMO_GRUPOS_REDO = 2
+MINIMO_CAMBIOS_LOG_PARA_MEDIR = 4
+RITMO_LOG_MINIMO_MIN = 15
+RITMO_LOG_MAXIMO_MIN = 30
 
 SUJETO_INSTANCIA = "instancia"
 SUJETO_ARCHIVADO = "archivado"
@@ -110,6 +114,63 @@ def redo_logs(perfil: PerfilBD) -> Iterator[Hallazgo]:
                 )
 
 
+def afinamiento_redo(perfil: PerfilBD) -> Iterator[Hallazgo]:
+    grupos = perfil.redo_grupos
+    if len(grupos) < MINIMO_GRUPOS_REDO:
+        yield Hallazgo(
+            codigo="RED_003",
+            severidad=Severidad.ADVERTENCIA,
+            mensaje=(
+                f"La instancia tiene {len(grupos)} grupo(s) de redo; Oracle exige al menos {MINIMO_GRUPOS_REDO}."
+            ),
+            sujeto=SUJETO_REDO,
+            accion_sugerida="Agregar grupos de redo (ALTER DATABASE ADD LOGFILE GROUP).",
+        )
+    tamanos = {g.bytes for g in grupos}
+    if len(tamanos) > 1:
+        detalle = ", ".join(f"grupo {g.grupo}: {formato_megas(g.bytes)}" for g in grupos)
+        yield Hallazgo(
+            codigo="RED_003",
+            severidad=Severidad.RECOMENDACION,
+            mensaje=f"Los grupos de redo no tienen el mismo tamaño ({detalle}).",
+            sujeto=SUJETO_REDO,
+            accion_sugerida="Igualar el tamaño de todos los grupos de redo para que el ritmo de log switch sea parejo.",
+        )
+    ritmo = perfil.ritmo_cambio_log
+    minutos = ritmo.minutos_promedio if ritmo is not None else None
+    if ritmo is None or minutos is None or ritmo.cambios < MINIMO_CAMBIOS_LOG_PARA_MEDIR:
+        yield Hallazgo(
+            codigo="RED_003",
+            severidad=Severidad.INFORMATIVA,
+            mensaje=(
+                "No hay datos suficientes de las últimas 24 horas para medir el ritmo de log switch "
+                f"(se recomienda entre {RITMO_LOG_MINIMO_MIN} y {RITMO_LOG_MAXIMO_MIN} minutos)."
+            ),
+            sujeto=SUJETO_REDO,
+        )
+    elif not RITMO_LOG_MINIMO_MIN <= minutos <= RITMO_LOG_MAXIMO_MIN:
+        accion = (
+            "Aumentar el tamaño de los redo logs para espaciar los log switch."
+            if minutos < RITMO_LOG_MINIMO_MIN
+            else "Reducir el tamaño de los redo logs o fijar ARCHIVE_LAG_TARGET para no perder tanta actividad."
+        )
+        yield Hallazgo(
+            codigo="RED_003",
+            severidad=Severidad.RECOMENDACION,
+            mensaje=(
+                f"El log switch ocurre en promedio cada {minutos:.0f} minutos ({ritmo.cambios} cambios en "
+                f"{ritmo.horas_observadas:.1f} h); lo recomendado es entre {RITMO_LOG_MINIMO_MIN} y "
+                f"{RITMO_LOG_MAXIMO_MIN} minutos."
+            ),
+            sujeto=SUJETO_REDO,
+            accion_sugerida=accion,
+        )
+
+
+def formato_megas(cantidad: int) -> str:
+    return f"{cantidad / 1024 / 1024:.0f} MB"
+
+
 def control_files(perfil: PerfilBD) -> Iterator[Hallazgo]:
     if len(perfil.controlfiles) == 1:
         yield Hallazgo(
@@ -209,6 +270,7 @@ REGLAS: tuple[Regla, ...] = (
     destino_archivado,
     area_recuperacion,
     redo_logs,
+    afinamiento_redo,
     control_files,
     archivo_parametros,
     mismo_disco,
