@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 import oracledb
 
 from cloudcr_backup.config.ajustes import Ajustes
-from cloudcr_backup.domain.errores import OperacionNoPermitida, RecursoNoEncontrado
+from cloudcr_backup.domain.errores import FiltroInvalido, OperacionNoPermitida, RecursoNoEncontrado
 from cloudcr_backup.domain.historial import (
     ArchivoExportado,
     ConsultaHistorial,
@@ -38,7 +38,7 @@ def formato_de(texto: str) -> FormatoHistorial:
     try:
         return FormatoHistorial(texto.strip().lower())
     except ValueError as error:
-        raise OperacionNoPermitida(f"El formato {texto!r} no existe.", "Use csv, md o html.") from error
+        raise FiltroInvalido(f"El formato {texto!r} no existe.", "Use csv, md o html.") from error
 
 
 def _filtros(conexion: oracledb.Connection, ajustes: Ajustes, consulta: ConsultaHistorial) -> FiltrosHistorial:
@@ -55,7 +55,7 @@ def _filtros(conexion: oracledb.Connection, ajustes: Ajustes, consulta: Consulta
     desde = utc_ingenuo(datetime.combine(consulta.desde, time.min, zona)) if consulta.desde else None
     hasta = utc_ingenuo(datetime.combine(consulta.hasta, time.max, zona)) if consulta.hasta else None
     if desde is not None and hasta is not None and desde > hasta:
-        raise OperacionNoPermitida("La fecha 'desde' es posterior a 'hasta'.")
+        raise FiltroInvalido("La fecha 'desde' es posterior a 'hasta'.")
     return FiltrosHistorial(
         bd_id=bd_id,
         estrategia_codigo=consulta.estrategia.strip().upper() if consulta.estrategia else None,

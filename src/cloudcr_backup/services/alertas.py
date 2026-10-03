@@ -5,7 +5,7 @@ from cloudcr_backup.alerts.notificadores.seleccion import construir_notificadore
 from cloudcr_backup.config.ajustes import Ajustes, cargar_ajustes
 from cloudcr_backup.domain.alertas import Condicion, ResumenEvaluacion, SeveridadAlerta, VistaAlerta
 from cloudcr_backup.domain.enums import EstadoAlerta
-from cloudcr_backup.domain.errores import OperacionNoPermitida, RecursoNoEncontrado
+from cloudcr_backup.domain.errores import FiltroInvalido, OperacionNoPermitida, RecursoNoEncontrado
 from cloudcr_backup.repository import alertas as repositorio_alertas
 from cloudcr_backup.scheduling.reloj import RelojSistema
 from cloudcr_backup.services.agente import sesion_agente
@@ -53,7 +53,7 @@ def estados_de_filtro(estado: str | None) -> list[EstadoAlerta] | None:
     try:
         return [EstadoAlerta(texto)]
     except ValueError as error:
-        raise OperacionNoPermitida(
+        raise FiltroInvalido(
             f"El estado {estado!r} no es válido.", "Use vigentes, todas, ABIERTA, RECONOCIDA o RESUELTA."
         ) from error
 
@@ -64,7 +64,7 @@ def severidad_de_filtro(severidad: str | None) -> SeveridadAlerta | None:
     try:
         return SeveridadAlerta(severidad.strip().upper())
     except ValueError as error:
-        raise OperacionNoPermitida(
+        raise FiltroInvalido(
             f"La severidad {severidad!r} no es válida.", "Use ALERTA, ADVERTENCIA o RECOMENDACION."
         ) from error
 

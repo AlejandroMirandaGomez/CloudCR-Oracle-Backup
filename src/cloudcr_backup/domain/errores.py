@@ -19,3 +19,7 @@ class OperacionNoPermitida(ErrorServicio):
 
 class PipelineNoDisponible(ErrorServicio):
     pass
+
+
+class FiltroInvalido(OperacionNoPermitida):
+    pass

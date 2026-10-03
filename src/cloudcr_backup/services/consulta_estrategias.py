@@ -3,7 +3,7 @@ from datetime import datetime
 from cloudcr_backup.agent.bucle import ParametrosAgente
 from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.enums import EstadoEstrategia
-from cloudcr_backup.domain.errores import OperacionNoPermitida, RecursoNoEncontrado
+from cloudcr_backup.domain.errores import FiltroInvalido, OperacionNoPermitida, RecursoNoEncontrado
 from cloudcr_backup.domain.estrategia import Programacion
 from cloudcr_backup.domain.monitoreo import (
     ColorSemaforo,
@@ -29,7 +29,7 @@ PROXIMAS_MAXIMO = 100
 
 def proximas_de(programacion: Programacion, cantidad: int, despues_de: datetime | None = None) -> list[datetime]:
     if not 1 <= cantidad <= PROXIMAS_MAXIMO:
-        raise OperacionNoPermitida(f"La cantidad debe estar entre 1 y {PROXIMAS_MAXIMO}.")
+        raise FiltroInvalido(f"La cantidad debe estar entre 1 y {PROXIMAS_MAXIMO}.")
     try:
         regla = construir_regla(programacion)
     except ProgramacionInvalida as error:
