@@ -40,6 +40,14 @@ class EjecucionPendiente:
 
 
 @dataclass(frozen=True)
+class EjecucionEnCurso:
+    ejecucion_id: int
+    tarea_id: int
+    programada_para: datetime
+    modo_respaldo: ModoRespaldo
+
+
+@dataclass(frozen=True)
 class OcurrenciaPerdida:
     tarea_id: int
     programada_para: datetime
