@@ -107,7 +107,7 @@ Sin ciclos. `scheduling` → `domain`; `alerts` → `domain`, `scheduling`, `str
 
 ## 8. Commits
 
-33 commits en la rama, con el formato `tipo(ámbito): descripción`, solo título y sin trailers. Lista completa con `git log --oneline 8704c94..HEAD`.
+Todos los commits de la rama siguen el formato `tipo(ámbito): descripción`, solo título y sin trailers. Lista completa con `git log --oneline 8704c94..HEAD`.
 
 ## 9. Riesgos para el sábado y decisiones humanas
 
