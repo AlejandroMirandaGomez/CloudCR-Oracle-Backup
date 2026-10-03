@@ -15,3 +15,7 @@ class RecursoNoEncontrado(ErrorServicio):
 
 class OperacionNoPermitida(ErrorServicio):
     pass
+
+
+class PipelineNoDisponible(ErrorServicio):
+    pass
