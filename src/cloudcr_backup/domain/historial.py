@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -88,3 +88,34 @@ class DetalleEjecucion(BaseModel):
     ruta_evidencia: str | None = None
     log_rman: LogRman | None = None
     avisos: list[str] = []
+
+
+class ConsultaHistorial(BaseModel):
+    bd: str | None = None
+    estrategia: str | None = None
+    estado: EstadoEjecucion | None = None
+    desde: date | None = None
+    hasta: date | None = None
+    limite: int = 50
+    pagina: int = 1
+
+    @property
+    def desplazamiento(self) -> int:
+        return max(self.pagina - 1, 0) * self.limite
+
+
+class PaginaHistorial(BaseModel):
+    filas: list[FilaHistorial]
+    total: int
+    pagina: int
+    limite: int
+
+    @property
+    def paginas(self) -> int:
+        return max(1, -(-self.total // self.limite)) if self.limite else 1
+
+
+class ArchivoExportado(BaseModel):
+    nombre: str
+    tipo_contenido: str
+    contenido: bytes
