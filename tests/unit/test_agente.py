@@ -250,9 +250,20 @@ def test_los_avisos_rotulan_la_simulacion(tmp_path: Path) -> None:
     assert latido.leer_todos(tmp_path)[0].simulado
 
 
-def test_sin_pipeline_real_el_agente_se_niega_a_correr(tmp_path: Path) -> None:
+def test_con_el_pipeline_real_el_agente_lo_usa(tmp_path: Path) -> None:
     ajustes = Ajustes(work_dir=tmp_path)
-    assert servicio_agente.pipeline_disponible() is None
+    modulo = servicio_agente.pipeline_disponible()
+    assert modulo is not None
+    assert callable(modulo.ejecutar)
+    assert callable(modulo.asegurar_apertura)
+    ejecutor = servicio_agente.crear_ejecutor(ajustes, "SERVIDOR", simulado=False)
+    assert isinstance(ejecutor, servicio_agente.EjecutorPipeline)
+    assert servicio_agente.sincronizador_buzon(ajustes) is not None
+
+
+def test_sin_pipeline_real_el_agente_se_niega_a_correr(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ajustes = Ajustes(work_dir=tmp_path)
+    monkeypatch.setattr(servicio_agente, "pipeline_disponible", lambda: None)
     with pytest.raises(PipelineNoDisponible) as error:
         servicio_agente.crear_ejecutor(ajustes, "SERVIDOR", simulado=False)
     assert "--simulado" in (error.value.sugerencia or "")

@@ -11,6 +11,7 @@ from typer.testing import CliRunner
 from cloudcr_backup.cli.app import app
 from cloudcr_backup.domain.errores import OperacionNoPermitida
 from cloudcr_backup.repository import alertas as repositorio_alertas
+from cloudcr_backup.services import agente as servicio_agente
 from cloudcr_backup.services import alertas as servicio_alertas
 from cloudcr_backup.services import cliente_oracle
 
@@ -183,7 +184,8 @@ def test_agente_estado_sin_latidos(entorno: Path) -> None:
     assert "nunca corrió" in resultado.output
 
 
-def test_agente_se_niega_a_correr_sin_pipeline(entorno: Path) -> None:
+def test_agente_se_niega_a_correr_sin_pipeline(entorno: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(servicio_agente, "pipeline_disponible", lambda: None)
     resultado = corredor.invoke(app, ["agente", "ejecutar", "--una-vez"])
     assert resultado.exit_code == 2
     assert "pipeline" in resultado.output
