@@ -212,7 +212,7 @@ def bloqueo_bd(carpeta: Path, bd: str, vencimiento_segundos: int) -> Iterator[No
         try:
             descriptor = os.open(archivo, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except FileExistsError:
-            edad = time.time() - archivo.stat().st_mtime
+            edad = max(time.time() - archivo.stat().st_mtime, 0.0)
             if edad < vencimiento_segundos:
                 raise EjecucionEnCurso(
                     f"Ya hay un RMAN en curso sobre la base {bd} (bloqueo {archivo}).",
