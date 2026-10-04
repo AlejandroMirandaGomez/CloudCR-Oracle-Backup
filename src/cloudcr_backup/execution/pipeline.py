@@ -566,6 +566,37 @@ class Pipeline:
             update={"estado_prueba": resultado.estado, "pruebas": resultado.pruebas, "log_verificacion": resultado.log}
         )
 
+    def verificar(self, ejecucion_id: int) -> ResultadoEjecucion:
+        contexto = self._d.repositorio.cargar(ejecucion_id)
+        if contexto.estado not in (EstadoEjecucion.EXITOSA, EstadoEjecucion.CON_ADVERTENCIAS):
+            raise OperacionNoPermitida(
+                f"La ejecución {ejecucion_id} está {contexto.estado.value}; solo se verifica un respaldo correcto."
+            )
+        carpeta = evidencia.carpeta_ejecucion(self._d.carpeta_ejecuciones, ejecucion_id)
+        ruta = carpeta / evidencia.ARCHIVO_EVIDENCIA
+        if not ruta.is_file():
+            raise OperacionNoPermitida(
+                f"No existe la evidencia {ruta}: no se conoce el tag del respaldo que hay que verificar."
+            )
+        registro = evidencia.leer(ruta)
+        if not registro.tag:
+            raise OperacionNoPermitida(f"La evidencia de la ejecución {ejecucion_id} no tiene tag de RMAN.")
+        nls = contexto.parametros.get(PARAMETRO_NLS) or "AMERICAN_AMERICA.AL32UTF8"
+        verificado = self._con_verificacion(contexto, registro, registro.tag, carpeta, nls)
+        verificado = verificado.model_copy(update={"generado_en": self._d.ahora()})
+        guardada, en_buzon = self._registrar(carpeta, verificado)
+        self._evaluar(ejecucion_id)
+        return ResultadoEjecucion(
+            ejecucion_id=ejecucion_id,
+            estado=verificado.estado,
+            estado_prueba=verificado.estado_prueba,
+            motivos=[f"{p.tipo}: {p.detalle}" for p in verificado.pruebas],
+            carpeta=str(carpeta),
+            evidencia=str(guardada),
+            en_buzon=en_buzon,
+            piezas=verificado.piezas,
+        )
+
     def asegurar_apertura(self, ejecucion_id: int) -> ResultadoApertura:
         contexto = self._d.repositorio.cargar(ejecucion_id)
         carpeta = evidencia.carpeta_ejecucion(self._d.carpeta_ejecuciones, ejecucion_id)
@@ -697,3 +728,8 @@ def ejecutar(ejecucion_id: int, ajustes: Ajustes | None = None) -> ResultadoEjec
 def asegurar_apertura(ejecucion_id: int, ajustes: Ajustes | None = None) -> ResultadoApertura:
     configuracion = _preparar(ajustes)
     return Pipeline(dependencias_reales(configuracion)).asegurar_apertura(ejecucion_id)
+
+
+def verificar_ejecucion(ejecucion_id: int, ajustes: Ajustes | None = None) -> ResultadoEjecucion:
+    configuracion = _preparar(ajustes)
+    return Pipeline(dependencias_reales(configuracion)).verificar(ejecucion_id)

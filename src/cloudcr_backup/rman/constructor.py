@@ -66,9 +66,7 @@ def _sentencia_archivelog(compresion: Compresion) -> str:
     return f"BACKUP{_prefijo_compresion(compresion)} ARCHIVELOG ALL NOT BACKED UP 1 TIMES{_etiqueta()};"
 
 
-def _sentencias_datos(
-    especificacion: EspecificacionAlcance, tarea: Tarea, modo: ModoRespaldo
-) -> list[str]:
+def _sentencias_datos(especificacion: EspecificacionAlcance, tarea: Tarea, modo: ModoRespaldo) -> list[str]:
     opciones = tarea.como.opciones
     prefijo = f"BACKUP{_prefijo_compresion(opciones.compresion)}{NIVEL_POR_TIPO[tarea.como.tipo_respaldo]}"
     omitir = " SKIP READONLY" if opciones.omitir_solo_lectura else ""
@@ -158,3 +156,29 @@ def construir(solicitud: SolicitudScript) -> ScriptGenerado:
         previas=previas,
         posteriores=posteriores,
     )
+
+
+def explicar(solicitud: SolicitudScript, generado: ScriptGenerado) -> list[tuple[str, str]]:
+    tarea = solicitud.tarea
+    opciones = tarea.como.opciones
+    tipo = tarea.como.tipo_respaldo
+    nivel = NIVEL_POR_TIPO.get(tipo, " ARCHIVELOG ALL NOT BACKED UP 1 TIMES")
+    compresion = _prefijo_compresion(opciones.compresion).strip() or "sin compresión"
+    formato = nombres.formato_pieza(
+        tarea.destino.ruta, solicitud.estrategia.codigo, tarea.codigo, solicitud.formato_pieza
+    )
+    modo = f"{tarea.como.modo_respaldo.value} (efectivo {generado.modo.value}, base en {solicitud.log_mode.value})"
+    filas = [("Tipo de respaldo", f"{tipo.value} -> BACKUP{nivel}"), ("Modo", modo)]
+    if generado.requiere_caida:
+        filas.append(("Respaldo consistente", "SHUTDOWN IMMEDIATE; STARTUP MOUNT; ... ALTER DATABASE OPEN"))
+    filas.append(("Compresión", f"{opciones.compresion.value} -> {compresion}"))
+    if opciones.omitir_solo_lectura:
+        filas.append(("Omitir solo lectura", "SKIP READONLY"))
+    filas += [
+        ("Canales", f"{opciones.canales} -> ALLOCATE CHANNEL c1..c{opciones.canales} DEVICE TYPE DISK"),
+        ("Destino", f"FORMAT '{formato}'"),
+        ("Qué (alcance)", " | ".join(generado.sentencias)),
+        ("Etiqueta", f"TAG '{VARIABLE_TAG}' (se pasa al ejecutar; el hash del script no cambia)"),
+        ("Identificador", f"SET COMMAND ID TO '{VARIABLE_COMMAND_ID}' (CLOUDCR_<id de ejecución>)"),
+    ]
+    return filas
