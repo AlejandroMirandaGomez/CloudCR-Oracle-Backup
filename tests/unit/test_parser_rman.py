@@ -54,8 +54,17 @@ def test_extrae_piezas_sin_repetir_y_separa_advertencias() -> None:
 
 
 def test_codigos_de_advertencia_configurables() -> None:
+    texto = "RMAN-06059: expected archived log not found\n"
+    assert [e.codigo for e in analizar(texto).errores] == ["RMAN-06059"]
+    configurado = analizar(texto, codigos_advertencia=["RMAN-06059"])
+    assert configurado.errores == []
+    assert [a.codigo for a in configurado.advertencias] == ["RMAN-06059"]
+
+
+def test_mensajes_que_empiezan_con_warning_son_advertencias() -> None:
     log = analizar(EXITO_CON_ADVERTENCIA, codigos_advertencia=[])
-    assert [e.codigo for e in log.errores] == ["RMAN-08137"]
+    assert log.errores == []
+    assert [a.codigo for a in log.advertencias] == ["RMAN-08137"]
 
 
 def test_tolera_fin_de_linea_windows() -> None:

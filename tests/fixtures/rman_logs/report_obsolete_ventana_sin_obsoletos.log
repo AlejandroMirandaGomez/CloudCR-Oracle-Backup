@@ -1,0 +1,33 @@
+
+Recovery Manager: Release 21.0.0.0.0 - Production on Sun Oct 4 10:11:25 2026
+Version 21.3.0.0.0
+
+Copyright (c) 1982, 2021, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: XE (DBID=3114375768)
+
+RMAN> CROSSCHECK BACKUP;
+2> REPORT OBSOLETE RECOVERY WINDOW OF 30 DAYS;
+3> 
+using target database control file instead of recovery catalog
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=367 device type=DISK
+crosschecked backup piece: found to be 'AVAILABLE'
+backup piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_01541ADT_1_1_1.BKP RECID=1 STAMP=1245751741
+crosschecked backup piece: found to be 'AVAILABLE'
+backup piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_02541AE0_2_1_1.BKP RECID=2 STAMP=1245751744
+crosschecked backup piece: found to be 'AVAILABLE'
+backup piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_03541AE3_3_1_1.BKP RECID=3 STAMP=1245751748
+crosschecked backup piece: found to be 'AVAILABLE'
+backup piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_04541AE5_4_1_1.BKP RECID=4 STAMP=1245751750
+crosschecked backup piece: found to be 'AVAILABLE'
+backup piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_05541AE7_5_1_1.BKP RECID=5 STAMP=1245751751
+crosschecked backup piece: found to be 'AVAILABLE'
+backup piece handle=C:\BACKUPS\XE\C-3114375768-20261004-00 RECID=6 STAMP=1245751752
+Crosschecked 6 objects
+
+
+RMAN-07553: warning: RECOVERY WINDOW is more than CONTROL_FILE_RECORD_KEEP_TIME
+no obsolete backups found
+
+Recovery Manager complete.

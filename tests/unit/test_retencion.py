@@ -87,3 +87,21 @@ def test_vencidas_segun_rman() -> None:
     piezas = [pieza(1, 1, AHORA, None, ruta.lower())]
     resultado = politica.vencidas(piezas, Retencion(), AHORA, politica.obsoletas_de_reporte(REPORTE))
     assert resultado[0].obsoleta_rman
+
+
+LOGS = Path(__file__).resolve().parents[1] / "fixtures" / "rman_logs"
+
+
+def test_report_obsolete_real_de_la_xe() -> None:
+    from cloudcr_backup.execution.parser import analizar
+
+    texto = (LOGS / "report_obsolete_redundancia.log").read_text(encoding="utf-8")
+    assert politica.obsoletas_de_reporte(texto) == [
+        r"C:\BACKUPS\XE\XE_EST002_T1_20261004_04541AE5_4_1_1.BKP",
+        r"C:\BACKUPS\XE\XE_EST002_T1_20261004_05541AE7_5_1_1.BKP",
+    ]
+    ventana = (LOGS / "report_obsolete_ventana_sin_obsoletos.log").read_text(encoding="utf-8")
+    assert politica.obsoletas_de_reporte(ventana) == []
+    analizado = analizar(ventana)
+    assert analizado.errores == []
+    assert [a.codigo for a in analizado.advertencias] == ["RMAN-07553"]

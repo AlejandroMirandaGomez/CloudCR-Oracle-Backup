@@ -90,7 +90,8 @@ def analizar(texto: str, codigos_advertencia: Iterable[str] = CODIGOS_ADVERTENCI
             codigo, cuerpo = mensaje.group(1), mensaje.group(2).strip()
             if codigo in CODIGOS_SEPARADOR:
                 continue
-            destino = advertencias if codigo in advertir else errores
+            es_advertencia = codigo in advertir or cuerpo.lower().startswith("warning")
+            destino = advertencias if es_advertencia else errores
             destino.append(MensajeRman(codigo=codigo, texto=cuerpo, linea=numero))
             continue
         pieza = _pieza(linea)
