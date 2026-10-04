@@ -25,6 +25,7 @@ from cloudcr_backup.web.rutas import (
     inicio,
     instancias,
     monitoreo,
+    operaciones,
 )
 from cloudcr_backup.web.seguridad import MiddlewareAcceso
 
@@ -86,4 +87,5 @@ def crear_app(
     app.include_router(historial.router)
     app.include_router(alertas.router)
     app.include_router(estrategias_registradas.router)
+    app.include_router(operaciones.router)
     return app
