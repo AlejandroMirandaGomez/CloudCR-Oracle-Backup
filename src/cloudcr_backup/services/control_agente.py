@@ -12,6 +12,7 @@ from cloudcr_backup.domain.errores import OperacionNoPermitida
 from cloudcr_backup.domain.monitoreo import EstadoAgente
 from cloudcr_backup.scheduling.reloj import Reloj, RelojSistema
 from cloudcr_backup.services import agente as servicio_agente
+from cloudcr_backup.services.administracion import autoinicio_agente
 
 REGISTRO = logging.getLogger("cloudcr.web.agente")
 MAXIMO_MENSAJES = 60
@@ -19,6 +20,7 @@ NOMBRE_HILO = "cloudcr-agente-web"
 
 ConstruirAgente = Callable[[Ajustes, bool, Callable[[str], None]], Agente]
 LeerAgentes = Callable[[Ajustes], list[EstadoAgente]]
+LeerAutoinicio = Callable[[Ajustes], bool]
 
 
 class ControlAgente:
@@ -28,8 +30,10 @@ class ControlAgente:
         construir: ConstruirAgente = servicio_agente.construir_agente,
         leer_agentes: LeerAgentes = servicio_agente.estado_agentes,
         reloj: Reloj | None = None,
+        leer_autoinicio: LeerAutoinicio = autoinicio_agente,
     ) -> None:
         self._ajustes = ajustes
+        self._leer_autoinicio = leer_autoinicio
         self._construir = construir
         self._leer_agentes = leer_agentes
         self._reloj = reloj or RelojSistema()
@@ -89,6 +93,16 @@ class ControlAgente:
         etiqueta = " en modo SIMULACIÓN (no ejecuta RMAN)" if simulado else " con el pipeline real de RMAN"
         self.avisar(f"Agente iniciado desde la web{etiqueta}.")
         return self.estado()
+
+    def iniciar_si_corresponde(self) -> None:
+        try:
+            if not self._leer_autoinicio(self._ajustes()):
+                self.avisar("El inicio automático del agente está desactivado: inícielo desde Sistema → Agente.")
+                return
+            self.iniciar(simulado=False)
+        except Exception as error:
+            REGISTRO.exception("No se pudo iniciar el agente junto con la web")
+            self.avisar(f"No se inició el agente automáticamente: {error}")
 
     def _correr(self, agente: Agente) -> None:
         try:
