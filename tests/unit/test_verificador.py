@@ -55,6 +55,19 @@ def test_pieza_borrada_a_mano_queda_expired_y_falla(tmp_path: Path) -> None:
     assert detalle["CROSSCHECK"].resultado is EstadoPrueba.FALLIDA
 
 
+def test_pieza_que_desaparece_del_catalogo_tras_el_crosscheck_falla(tmp_path: Path) -> None:
+    llamadas: list[int] = []
+
+    def consultar(tag: str) -> list[PiezaCatalogo]:
+        llamadas.append(1)
+        return [pieza("a"), pieza("b", conjunto=5)] if len(llamadas) == 1 else [pieza("a")]
+
+    resultado = verificar(BASE, "T", tmp_path, consultar, lanzador(OK), "X", medir=lambda ruta: 1)
+    crosscheck = next(p for p in resultado.pruebas if p.tipo == "CROSSCHECK")
+    assert crosscheck.resultado is EstadoPrueba.FALLIDA
+    assert "b" in (crosscheck.detalle or "")
+
+
 def test_validate_con_errores_falla(tmp_path: Path) -> None:
     log = "connected to target database: XE\nORA-19505: failed to identify file\nRecovery Manager complete.\n"
     resultado = verificar(BASE, "T", tmp_path, lambda tag: [pieza("a")], lanzador(log), "X", medir=lambda r: 1)

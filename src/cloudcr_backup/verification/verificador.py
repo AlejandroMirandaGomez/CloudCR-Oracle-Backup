@@ -53,8 +53,9 @@ def _existencia(piezas: list[PiezaCatalogo], medir: MedirArchivo, momento: datet
     return _prueba(PRUEBA_EXISTENCIA, True, f"Las {len(piezas)} pieza(s) existen en disco.", momento)
 
 
-def _crosscheck(piezas: list[PiezaCatalogo], momento: datetime) -> PruebaEvidencia:
-    expiradas = [p.handle for p in piezas if not p.disponible]
+def _crosscheck(antes: list[PiezaCatalogo], despues: list[PiezaCatalogo], momento: datetime) -> PruebaEvidencia:
+    disponibles = {p.handle.upper() for p in despues if p.disponible}
+    expiradas = [p.handle for p in antes if p.handle.upper() not in disponibles]
     if expiradas:
         return _prueba(
             PRUEBA_CROSSCHECK, False, "CROSSCHECK las marcó EXPIRED o no disponibles: " + ", ".join(expiradas), momento
@@ -95,7 +96,7 @@ def verificar(
     )
     analizado = analizar(leer_log(log))
     despues = consultar_piezas(tag)
-    crosscheck = _crosscheck(despues or piezas, momento)
+    crosscheck = _crosscheck(piezas, despues, momento)
     validate_ok = resultado.error_lanzamiento is None and not analizado.errores and analizado.completo
     detalle_validate = (
         "VALIDATE BACKUPSET leyó todas las piezas sin errores."
