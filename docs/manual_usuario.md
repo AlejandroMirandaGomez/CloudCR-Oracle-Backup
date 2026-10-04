@@ -340,7 +340,7 @@ Semántica de la programación:
 | **Sin fecha de activación de la estrategia** | Al reactivar una estrategia después de mucho tiempo, el planificador mira hacia atrás como máximo `agente.horizonte_perdidas_horas` (24 h por defecto) para no generar miles de NO_EJECUTADA. |
 | **`ARCHIVELOG_ACUMULADO` cuenta, no mide antigüedad** | El perfil solo trae la cantidad de archived logs sin respaldo, tomada en la última inspección. |
 | **Ritmo de log switch (`RED_003`)** | Se mide con `V$LOG_HISTORY` de las últimas 24 h; con menos de 4 cambios se informa que no hay datos suficientes. Los perfiles guardados antes de esta versión no traen el dato. |
-| **Pruebas «Pendiente»** | La verificación de respaldos (`RESTORE VALIDATE`) es del pipeline de ejecución; mientras no la llene, el semáforo queda en amarillo. |
+| **Pruebas «Pendiente»** | Solo queda así si `verificacion.automatica` está en `false`; en ese caso use `cloudcr verificar <id>` (CROSSCHECK + existencia + `VALIDATE BACKUPSET`). |
 | **Horas en UTC** | El repositorio guarda horas en UTC (`SYS_EXTRACT_UTC(SYSTIMESTAMP)`); la web y la CLI las muestran en la zona de cada tarea. `perfil_bd.capturado_en` y `script_rman.creado_en` siguen usando el valor por defecto del DDL (hora del servidor); solo se comparan entre sí. |
 
 ---
@@ -351,9 +351,76 @@ Semántica de la programación:
 |---|---|---|
 | `Error: No hay un DSN configurado…` / web: «El repositorio no está disponible» (503) | Falta `.env` o está incompleto | §3.1 y `cloudcr doctor` |
 | `ORA-12541` / `ORA-12514` | Listener detenido o PDB no registrada | `lsnrctl status`; `ALTER SYSTEM REGISTER;` |
-| `El agente no puede ejecutar respaldos reales: todavía no existe el pipeline…` | El módulo de ejecución RMAN no está instalado | Use `--simulado` para probar el agente (queda rotulado) |
+| La ejecución queda BLOQUEADA | El preflight encontró un problema (script alterado, modo de archivado distinto, destino, validación) | `cloudcr historial mostrar <id>` muestra el motivo; `cloudcr ejecutar EST T1 --simular` lo revisa sin ejecutar |
 | `cloudcr agente estado` dice que nunca corrió | La carpeta de trabajo del agente y la de la consulta son distintas | Use el mismo `CLOUDCR_WORK_DIR` (o el mismo `cloudcr.yaml`) en ambos |
-| El semáforo queda amarillo con todo exitoso | Pruebas «Pendiente» | Esperado hasta que exista la verificación |
+| El semáforo queda amarillo con todo exitoso | Pruebas «Pendiente» | La verificación automática está desactivada: `cloudcr verificar <id>` |
 | `DPY-2019` (thin/thick) | Se abrió el repositorio antes que una conexión SYSDBA local | El agente y `cloudcr web` ya inician el cliente thick primero; reporte el comando exacto si reaparece |
 | Acentos o símbolos raros en la terminal | Consola sin UTF-8 | `$env:PYTHONUTF8 = "1"`; el texto del resultado siempre acompaña al símbolo |
 | El correo no llega | Clave o parámetros SMTP | Revise `logs\cloudcr.log`; `cloudcr alertas evaluar` muestra los avisos de configuración |
+
+---
+
+## 13. Scripts RMAN, ejecución, retención y recuperación
+
+Detalle técnico completo en `docs/transformacion_estrategia_rman.md`.
+
+### 13.1 Del script aprobado a la ejecución
+
+```powershell
+cloudcr script generar EST001 --bd XE          # borrador con su SHA-256, a partir de la estrategia
+cloudcr script ver EST001 T1                   # script + cuadro campo -> cláusula RMAN + validación
+cloudcr script aprobar EST001 T1               # un respaldo CONSISTENTE exige --acepto-caida
+cloudcr script rechazar EST001 T1 --motivo "falta el SPFILE"
+cloudcr script listar EST001                   # versiones: BORRADOR, APROBADO, RECHAZADO, OBSOLETO
+cloudcr ejecutar EST001 T1 --simular           # preflight y comando, sin ejecutar RMAN
+cloudcr ejecutar EST001 T1 --ahora             # ejecuta ya; el agente hace lo mismo a la hora programada
+cloudcr verificar 41                           # repite CROSSCHECK + existencia + VALIDATE
+cloudcr historial mostrar 41                   # evidencia, log de RMAN, piezas y Pruebas
+```
+
+- La ejecución queda **BLOQUEADA**, sin tocar RMAN, si pasa cualquiera de estas cosas: el script en disco no
+  coincide con el hash aprobado (alerta `SCRIPT_ALTERADO`), cambió el modo de archivado, el destino no es
+  escribible o la validación tiene errores para la tarea.
+- Cada ejecución deja `<carpeta de trabajo>\ejecuciones\<id>\` con `EST001.XE.RMAN`, `EST001.XE.LOG`,
+  `verificacion.log` y `evidencia.json`.
+- Resultado: **EXITOSA**, **CON_ADVERTENCIAS** o **FALLIDA**, cada uno con sus motivos.
+  `Recovery Manager complete.` no basta para declarar éxito.
+- **Pruebas** queda en OK solo si las piezas existen, `CROSSCHECK` las encuentra `AVAILABLE` y
+  `VALIDATE BACKUPSET` las lee sin errores.
+- Si el repositorio no responde al terminar (por ejemplo, `BKPCAT` apagada por un respaldo consistente), la
+  evidencia queda en `buzon\` y el agente la sincroniza en el siguiente tick.
+
+### 13.2 Retención
+
+```powershell
+cloudcr retencion informe XE           # obsoletos según la ventana o redundancia de cada estrategia; no borra
+cloudcr retencion informe XE --rman    # además CROSSCHECK + REPORT OBSOLETE en RMAN
+cloudcr retencion purgar XE EST004 --purgar   # solo si la estrategia tiene purga_automatica: true
+```
+
+### 13.3 Recuperación (se genera, nunca se ejecuta)
+
+```powershell
+cloudcr recuperacion puntos XE         # respaldos correctos desde los que se puede recuperar
+cloudcr recuperacion diagnostico XE    # V$RECOVER_FILE / V$DATAFILE: qué archivo falta o está dañado
+cloudcr recuperacion plan XE datafile  # toma el archivo del diagnóstico sin que haya que escribirlo
+cloudcr recuperacion plan XE punto-en-tiempo --hasta "2026-10-04 13:00"
+```
+
+Escenarios: `pdb`, `tablespace`, `datafile`, `controlfile`, `total-noarchivelog` y `punto-en-tiempo`. Si el
+modo de archivado no permite un escenario, el comando lo explica en lugar de generar un script inválido. Los
+scripts quedan en `recuperacion\<BD>\`.
+
+### 13.4 API JSON
+
+| Método y ruta | Qué hace |
+|---|---|
+| `GET /api/scripts/{bd}/{estrategia}` y `/{tarea}` | Versiones y detalle de los scripts |
+| `POST /api/scripts/{bd}/{estrategia}/generar?tarea=T1` | Genera borradores |
+| `POST /api/scripts/{bd}/{estrategia}/{tarea}/aprobar` | `{"acepto_caida": true, "aprobado_por": "juan"}` |
+| `POST /api/scripts/{bd}/{estrategia}/{tarea}/rechazar` | `{"motivo": "…"}` |
+| `GET /api/ejecuciones/simular/{bd}/{estrategia}/{tarea}` | Preflight sin ejecutar |
+| `POST /api/ejecuciones` | `{"bd": "XE", "estrategia": "EST001", "tarea": "T1"}` → 202 y corre en segundo plano |
+| `POST /api/ejecuciones/{id}/verificar` | Repite la verificación (202) |
+| `GET /api/retencion/{bd}?rman=false` / `POST /api/retencion/{bd}/{estrategia}/purgar` | Informe y purga (`{"confirmar": true}`) |
+| `GET /api/recuperacion/{bd}/puntos`, `/diagnostico`, `/plan/{escenario}?objetivo=&hasta=` | Recuperación |
