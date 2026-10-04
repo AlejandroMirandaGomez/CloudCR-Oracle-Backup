@@ -1,0 +1,71 @@
+{% set otros_vivos = agentes | selectattr('vivo') | list %}
+{% if control.corriendo or control.ciclo_en_curso %}<div hidden hx-get="/sistema/agente" hx-trigger="every 5s" hx-target="#zona-agente"></div>{% endif %}
+<div class="tarjetas">
+  <div class="tarjeta">
+    <span class="numero {{ 'tono-exito' if control.corriendo else 'tono-atenuado' }}">{{ 'Corriendo' if control.corriendo else 'Detenido' }}</span>
+    <span class="rotulo">Agente de esta web{% if control.corriendo and control.simulado %} · SIMULACIÓN{% endif %}</span>
+  </div>
+  <div class="tarjeta">
+    <span class="numero">{{ otros_vivos | length }}</span>
+    <span class="rotulo">Agentes vivos (por latido)</span>
+  </div>
+  <div class="tarjeta">
+    <span class="numero">{{ 'Sí' if control.ciclo_en_curso else 'No' }}</span>
+    <span class="rotulo">Ciclo manual en curso</span>
+  </div>
+</div>
+{% if control.corriendo %}
+<p class="nota">Iniciado el {{ control.iniciado_en | local(zona, '%Y-%m-%d %H:%M:%S') }}. Cada ciclo reclama las ejecuciones vencidas, las despacha y evalúa las alertas.</p>
+<form class="formulario-accion" method="post" action="/sistema/agente/detener" hx-post="/sistema/agente/detener" hx-target="#zona-agente" hx-disabled-elt="find button"
+      hx-confirm="¿Detener el agente? Espera a que terminen las ejecuciones en curso.">
+  <button class="boton peligro" type="submit">Detener el agente</button>
+</form>
+{% else %}
+{% if otros_vivos %}
+<p class="aviso">Ya hay un agente vivo ({% for agente in otros_vivos %}{{ agente.latido.hostname }}, PID {{ agente.latido.pid }}{% if not loop.last %}; {% endif %}{% endfor %}), probablemente iniciado con <code>cloudcr agente ejecutar</code>. No hace falta iniciar otro.</p>
+{% endif %}
+<div class="bloque-acciones">
+  <div class="tarjeta-accion">
+    <h3>Iniciar el agente</h3>
+    <p>Corre dentro de este servidor web hasta que lo detenga o cierre la web. Ejecuta las tareas activas con script aprobado cuando les toca.</p>
+    <form class="formulario-columna" method="post" action="/sistema/agente/iniciar" hx-post="/sistema/agente/iniciar" hx-target="#zona-agente" hx-disabled-elt="find button">
+      <label class="casilla"><input type="checkbox" name="simulado" value="on"> Modo SIMULACIÓN (no ejecuta RMAN; queda rotulado en el historial)</label>
+      <button class="boton primario" type="submit">Iniciar</button>
+    </form>
+  </div>
+  <div class="tarjeta-accion">
+    <h3>Ejecutar un solo ciclo</h3>
+    <p>Equivale a <code>cloudcr agente ejecutar --una-vez</code>: reclama lo vencido, lo despacha, evalúa alertas y termina.</p>
+    <form class="formulario-columna" method="post" action="/sistema/agente/ciclo" hx-post="/sistema/agente/ciclo" hx-target="#zona-agente" hx-disabled-elt="find button">
+      <label class="casilla"><input type="checkbox" name="simulado" value="on"> Modo SIMULACIÓN</label>
+      <button class="boton" type="submit">Ejecutar un ciclo</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% if agentes %}
+<div class="tabla-desplazable">
+  <table class="tabla compacta">
+    <caption>Latidos registrados en la carpeta de trabajo</caption>
+    <thead><tr><th scope="col">Equipo</th><th scope="col">PID</th><th scope="col">Estado</th><th scope="col">Último ciclo</th><th scope="col">Hace</th><th scope="col">Modo</th></tr></thead>
+    <tbody>
+      {% for agente in agentes %}
+      <tr>
+        <td>{{ agente.latido.hostname }}</td>
+        <td>{{ agente.latido.pid }}</td>
+        <td class="{{ 'tono-exito' if agente.vivo else 'tono-atenuado' }}">{% if agente.vivo or agente.latido.estado.value == 'detenido' %}{{ agente.latido.estado.value }}{% else %}sin latido (se cerró sin avisar){% endif %}</td>
+        <td>{{ agente.latido.ultimo_tick | local(zona, '%Y-%m-%d %H:%M:%S') }}</td>
+        <td>{{ agente.segundos_desde_tick }} s</td>
+        <td>{{ 'SIMULACIÓN' if agente.latido.simulado else 'real' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% if control.mensajes %}
+<h3>Mensajes recientes</h3>
+<ul class="mensajes-agente">
+  {% for mensaje in control.mensajes %}<li><time>{{ mensaje.momento | local(zona, '%H:%M:%S') }}</time>{{ mensaje.texto }}</li>{% endfor %}
+</ul>
+{% endif %}

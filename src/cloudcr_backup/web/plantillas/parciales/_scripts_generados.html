@@ -1,0 +1,22 @@
+<section class="panel">
+  <h3>Scripts generados</h3>
+  <div class="tabla-desplazable">
+    <table class="tabla compacta">
+      <thead><tr><th scope="col">Tarea</th><th scope="col">Versión</th><th scope="col">Estado</th><th scope="col">Modo</th><th scope="col">Resultado</th><th scope="col"><span class="oculto">Abrir</span></th></tr></thead>
+      <tbody>
+        {% for vista, ruta in filas %}
+        <tr>
+          <td>{{ vista.tarea }}</td>
+          <td>{{ vista.version }}</td>
+          <td><span class="semaforo tono-{{ vista.estado | tono_script }}">{{ vista.estado | etiqueta_script }}</span></td>
+          <td>{{ vista.modo.value }}</td>
+          <td>{{ 'Versión nueva' if vista.nueva else 'Sin cambios' }}</td>
+          <td><a class="boton chico" href="{{ ruta }}">Revisar y aprobar</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% set primera = filas[0][0] if filas else none %}
+  {% if primera %}{% for nota in primera.avisos %}<p class="aviso">{{ nota }}</p>{% endfor %}{% endif %}
+</section>

@@ -1,0 +1,9 @@
+<ul class="comprobaciones">
+  {% for comprobacion in comprobaciones %}
+  <li>
+    <span class="{{ 'marca-ok' if comprobacion.ok else 'marca-fallo' }}" aria-hidden="true">{{ '✓' if comprobacion.ok else '✕' }}</span>
+    <span><strong>{{ comprobacion.nombre }}</strong> <span class="oculto">{{ 'correcto' if comprobacion.ok else 'con problemas' }}</span>: {{ comprobacion.detalle }}</span>
+    {% if comprobacion.sugerencia %}<p class="sugerencia">Sugerencia: {{ comprobacion.sugerencia }}</p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>

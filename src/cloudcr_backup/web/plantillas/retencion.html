@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titulo %}Retención · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Retención de respaldos</h1>
+      <p class="subtitulo">Por cuánto tiempo se conserva cada respaldo según su estrategia. El sistema informa; borrar lo decide el administrador.</p>
+    </div>
+  </section>
+  <section class="filtros" aria-label="Base de datos">
+    <form class="formulario-filtros" action="/retencion" method="get" hx-get="/retencion" hx-target="#zona-retencion" hx-push-url="true" hx-indicator="#consultando-retencion">
+      <label>Base de datos
+        <select name="bd">
+          {% if not bd %}<option value="">Elija una base</option>{% endif %}
+          {% for nombre in bases %}<option value="{{ nombre }}"{% if nombre | upper == bd %} selected{% endif %}>{{ nombre }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="casilla"><input type="checkbox" name="rman" value="true"{% if rman %} checked{% endif %}> Consultar a RMAN (CROSSCHECK + REPORT OBSOLETE)</label>
+      <button class="boton primario" type="submit">Generar informe</button>
+      <span id="consultando-retencion" class="htmx-indicator">Consultando…</span>
+    </form>
+  </section>
+  <div id="zona-retencion" class="contenido">{% include "parciales/_retencion.html" %}</div>
+</div>
+{% endblock %}

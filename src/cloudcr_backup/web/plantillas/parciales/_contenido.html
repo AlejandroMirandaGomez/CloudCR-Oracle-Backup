@@ -13,6 +13,7 @@
     <div class="acciones">
       <span id="cargando" class="htmx-indicator">Inspeccionando la instancia…</span>
       <a class="boton primario" href="/instancias/{{ sid | urlencode }}/estrategias/nueva{% if oracle_home %}?oracle_home={{ oracle_home | urlencode }}{% endif %}">Crear estrategia de respaldo</a>
+      <a class="boton" href="/sistema#bases">Registro y perfil en el repositorio</a>
       <button type="button" class="boton"
               hx-get="/instancias/{{ sid | urlencode }}?{% if consulta %}{{ consulta }}&amp;{% endif %}refrescar=true"
               hx-target="#principal"

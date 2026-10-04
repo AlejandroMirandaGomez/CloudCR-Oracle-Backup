@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titulo %}Recuperación · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Recuperación</h1>
+      <p class="subtitulo">Desde qué respaldos se puede recuperar y cómo hacerlo en cada escenario. Los procedimientos se generan y se muestran: <strong>nunca se ejecutan solos</strong>.</p>
+    </div>
+  </section>
+  <section class="filtros" aria-label="Base de datos">
+    <form class="formulario-filtros" action="/recuperacion" method="get" hx-get="/recuperacion" hx-target="#zona-recuperacion" hx-trigger="change, submit" hx-push-url="true">
+      <label>Base de datos
+        <select name="bd">
+          {% if not bd %}<option value="">Elija una base</option>{% endif %}
+          {% for nombre in bases %}<option value="{{ nombre }}"{% if nombre | upper == bd %} selected{% endif %}>{{ nombre }}</option>{% endfor %}
+        </select>
+      </label>
+      <noscript><button class="boton" type="submit">Ver</button></noscript>
+    </form>
+  </section>
+  <div id="zona-recuperacion" class="contenido">{% include "parciales/_recuperacion.html" %}</div>
+</div>
+{% endblock %}

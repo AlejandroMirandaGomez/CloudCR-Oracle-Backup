@@ -1,0 +1,73 @@
+{% if not bases %}
+<div class="vacio">No hay bases de datos registradas. Regístrela en <a href="/sistema#bases">Sistema → Bases de datos</a>.</div>
+{% elif informe is none %}
+<div class="vacio">Elija una base de datos para ver su informe de retención.</div>
+{% else %}
+<section class="tarjetas" aria-label="Resumen de retención">
+  <div class="tarjeta"><span class="numero">{{ informe.estrategias | length }}</span><span class="rotulo">Estrategias</span></div>
+  <div class="tarjeta"><span class="numero {{ 'tono-advertencia' if informe.total_vencidas else 'tono-exito' }}">{{ informe.total_vencidas }}</span><span class="rotulo">Piezas vencidas</span></div>
+  <div class="tarjeta"><span class="numero">{{ informe.archivelogs_sin_respaldo if informe.archivelogs_sin_respaldo is not none else '—' }}</span><span class="rotulo">Archived logs sin respaldar</span></div>
+  <div class="tarjeta"><span class="numero">{{ 'Sí' if informe.consulto_rman else 'No' }}</span><span class="rotulo">Consultó a RMAN</span></div>
+</section>
+{% for nota in informe.avisos %}<p class="aviso">{{ nota }}</p>{% endfor %}
+{% if informe.consulto_rman %}
+<section class="panel">
+  <h2>Lo que RMAN informa como obsoleto</h2>
+  {% if informe.obsoletas_rman %}
+  <ul>{% for ruta in informe.obsoletas_rman %}<li><code>{{ ruta }}</code></li>{% endfor %}</ul>
+  {% else %}
+  <p class="nota tono-exito">RMAN no informa respaldos obsoletos con las políticas de estas estrategias.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% for estrategia in informe.estrategias %}
+<section class="panel">
+  <div class="encabezado-seccion">
+    <h2>{{ estrategia.estrategia }} — {{ estrategia.nombre }}</h2>
+    <span class="semaforo tono-{{ 'advertencia' if estrategia.vencidas else 'exito' }}">{{ estrategia.vencidas | length }} vencidas de {{ estrategia.piezas_total }}</span>
+  </div>
+  <dl class="ficha">
+    <dt>Política</dt><dd>{{ estrategia.descripcion }}{% if estrategia.politica %} · <code>{{ estrategia.politica }}</code>{% endif %}</dd>
+    <dt>Archived logs</dt><dd>{% if estrategia.archived_logs_dias is not none %}se conservan {{ estrategia.archived_logs_dias }} días después de respaldados{% else %}sin límite definido{% endif %}</dd>
+    <dt>Purga automática</dt><dd>{% if estrategia.purga_automatica %}<span class="tono-advertencia">Activa: el administrador permitió borrar los obsoletos</span>{% else %}Inactiva: el sistema solo informa, nunca borra{% endif %}</dd>
+  </dl>
+  {% for nota in estrategia.avisos %}<p class="aviso">{{ nota }}</p>{% endfor %}
+  {% if estrategia.vencidas %}
+  <div class="tabla-desplazable">
+    <table class="tabla compacta">
+      <thead><tr><th scope="col">Pieza</th><th scope="col">Tarea</th><th scope="col">Ejecución</th><th scope="col">Terminó</th><th scope="col">Vence</th><th scope="col">Tamaño</th><th scope="col">Según RMAN</th></tr></thead>
+      <tbody>
+        {% for pieza in estrategia.vencidas %}
+        <tr>
+          <td class="envolver"><code>{{ pieza.ruta }}</code></td>
+          <td>{{ pieza.tarea }}</td>
+          <td><a href="/historial/{{ pieza.ejecucion_id }}">{{ pieza.ejecucion_id }}</a></td>
+          <td>{{ pieza.fin | local(zona) }}</td>
+          <td>{{ pieza.vence_en | local(zona) }}</td>
+          <td class="cifra">{{ pieza.tamano_bytes | bytes }}</td>
+          <td>{{ 'obsoleta' if pieza.obsoleta_rman else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% if estrategia.script %}
+  <details>
+    <summary>Script de retención que se usaría</summary>
+    <pre class="registro">{{ estrategia.script }}</pre>
+  </details>
+  {% endif %}
+  {% if estrategia.purga_automatica %}
+  <form class="formulario-accion" method="post" action="/retencion/{{ informe.bd | urlencode }}/{{ estrategia.estrategia | urlencode }}/purgar"
+        hx-post="/retencion/{{ informe.bd | urlencode }}/{{ estrategia.estrategia | urlencode }}/purgar" hx-target="#purga-{{ estrategia.estrategia }}" hx-disabled-elt="find button"
+        hx-confirm="Se borrarán con RMAN las piezas de {{ estrategia.estrategia }} que RMAN informe obsoletas. No se puede deshacer. ¿Continuar?">
+    <input type="hidden" name="confirmar" value="on">
+    <button class="boton peligro" type="submit">Purgar los obsoletos de {{ estrategia.estrategia }}</button>
+  </form>
+  {% endif %}
+  <div id="purga-{{ estrategia.estrategia }}" aria-live="polite"></div>
+</section>
+{% endfor %}
+<p class="captura">Generado el {{ informe.generado_en | local(zona, '%Y-%m-%d %H:%M:%S') }} ({{ zona }}).</p>
+{% endif %}

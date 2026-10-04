@@ -1,0 +1,284 @@
+.panel h2 {
+  margin-top: 0;
+}
+
+.panel > .encabezado-seccion {
+  margin-bottom: 0.75rem;
+}
+
+.panel > .encabezado-seccion h2 {
+  margin: 0;
+}
+
+.mensaje-error {
+  background: var(--peligro-fondo);
+  color: var(--peligro);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radio);
+  margin: 0;
+}
+
+.mensaje-error .sugerencia {
+  display: block;
+  color: var(--texto-suave);
+  margin-top: 0.25rem;
+}
+
+.mensaje-exito {
+  background: color-mix(in srgb, var(--exito) 12%, transparent);
+  color: var(--exito);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radio);
+  margin: 0;
+}
+
+.formulario-accion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.formulario-accion label {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.formulario-accion label.casilla {
+  flex-direction: row;
+  align-items: center;
+  color: var(--texto);
+}
+
+.formulario-columna {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.formulario-columna label {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.3rem;
+}
+
+.formulario-columna label.casilla {
+  flex-direction: row;
+  align-items: center;
+}
+
+.formulario-columna > .boton,
+.formulario-columna > .grupo-botones {
+  align-self: flex-start;
+}
+
+textarea {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  background: var(--superficie);
+  color: var(--texto);
+  width: 100%;
+  min-height: 6rem;
+  resize: vertical;
+}
+
+textarea.alto {
+  min-height: 22rem;
+}
+
+textarea:focus-visible,
+input[type="datetime-local"]:focus-visible,
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+input[type="datetime-local"] {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  background: var(--superficie);
+  color: var(--texto);
+}
+
+.ancho-completo {
+  width: 100%;
+}
+
+.campo-ancho {
+  min-width: 18rem;
+}
+
+.codigo-script {
+  max-height: 32rem;
+}
+
+.huella {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.bloque-acciones {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  align-items: start;
+}
+
+.bloque-acciones > .tarjeta-accion {
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 0.75rem 0.9rem;
+  background: var(--superficie-2);
+}
+
+.tarjeta-accion h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--texto);
+}
+
+.tarjeta-accion p {
+  margin: 0 0 0.5rem;
+  font-size: 0.86rem;
+  color: var(--texto-suave);
+}
+
+.lista-hallazgos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lista-hallazgos li {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  background: var(--superficie);
+}
+
+.lista-hallazgos p {
+  margin: 0.3rem 0 0;
+  font-size: 0.88rem;
+}
+
+.lista-hallazgos .accion {
+  color: var(--texto-suave);
+}
+
+.comprobaciones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comprobaciones li {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr);
+  gap: 0.25rem 0.5rem;
+}
+
+.comprobaciones li > span,
+.mensajes-agente li,
+.lista-hallazgos li,
+.mensaje-estado,
+.mensaje-error,
+.mensaje-exito,
+.aviso {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.comprobaciones .marca-ok {
+  color: var(--exito);
+  font-weight: 700;
+}
+
+.comprobaciones .marca-fallo {
+  color: var(--peligro);
+  font-weight: 700;
+}
+
+.comprobaciones .sugerencia {
+  grid-column: 2;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.mensajes-agente {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 16rem;
+  overflow-y: auto;
+  font-size: 0.85rem;
+}
+
+.mensajes-agente li {
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--borde);
+}
+
+.mensajes-agente time {
+  color: var(--texto-suave);
+  font-variant-numeric: tabular-nums;
+  margin-right: 0.5rem;
+}
+
+.cargando-zona {
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.pasos {
+  margin: 0;
+  padding-left: 1.3rem;
+}
+
+.pasos li + li {
+  margin-top: 0.3rem;
+}
+
+.cifra {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.etiqueta-modificado {
+  font-size: 0.75rem;
+  color: var(--advertencia);
+  margin-left: 0.35rem;
+}
+
+@media (max-width: 600px) {
+  .campo-ancho {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .formulario-accion,
+  .formulario-accion label,
+  .formulario-accion select,
+  .formulario-accion input {
+    width: 100%;
+  }
+}
