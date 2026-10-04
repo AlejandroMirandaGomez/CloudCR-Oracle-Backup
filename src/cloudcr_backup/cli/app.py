@@ -8,13 +8,17 @@ from cloudcr_backup.cli import (
     cmd_alertas,
     cmd_db,
     cmd_doctor,
+    cmd_ejecutar,
     cmd_estado,
     cmd_estrategia,
     cmd_explorar,
     cmd_historial,
     cmd_param,
+    cmd_recuperacion,
     cmd_repo,
     cmd_reporte,
+    cmd_retencion,
+    cmd_script,
     cmd_tarea,
 )
 from cloudcr_backup.presentacion.terminal import consola
@@ -38,6 +42,10 @@ app.add_typer(cmd_agente.app, name="agente", help="Ejecuta y consulta el agente 
 app.add_typer(cmd_historial.app, name="historial", help="Historial de ejecuciones de respaldo y su detalle.")
 app.add_typer(cmd_alertas.app, name="alertas", help="Consulta, reconoce, resuelve y evalúa alertas.")
 app.add_typer(cmd_reporte.app, name="reporte", help="Exporta el historial y la evidencia de ejecuciones.")
+app.add_typer(cmd_script.app, name="script", help="Genera, muestra, aprueba y rechaza los scripts RMAN.")
+app.registered_commands.extend(cmd_ejecutar.app.registered_commands)
+app.add_typer(cmd_retencion.app, name="retencion", help="Informe de respaldos obsoletos y purga controlada.")
+app.add_typer(cmd_recuperacion.app, name="recuperacion", help="Puntos de recuperación, diagnóstico y procedimientos.")
 
 
 @app.callback(invoke_without_command=True)
