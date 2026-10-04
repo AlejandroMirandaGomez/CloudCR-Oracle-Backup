@@ -6,6 +6,7 @@ from pathlib import Path
 from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.enums import LogMode
 from cloudcr_backup.domain.errores import FiltroInvalido
+from cloudcr_backup.domain.perfil_bd import PerfilBD
 from cloudcr_backup.domain.recuperacion import Diagnostico, Escenario, Procedimiento, PuntosRecuperacion
 from cloudcr_backup.execution.correlator import Consulta
 from cloudcr_backup.execution.destino import BaseDestino, consulta_destino
@@ -93,6 +94,13 @@ def puntos(ajustes: Ajustes, bd: str) -> PuntosRecuperacion:
     )
 
 
+def _contenedores(perfil: PerfilBD | None) -> dict[int, str]:
+    if perfil is None:
+        return {}
+    nombres_contenedor = {c.con_id: c.nombre for c in perfil.contenedores}
+    return {d.file_id: nombres_contenedor.get(d.con_id, "") for d in perfil.datafiles}
+
+
 def _destino_autobackup(ajustes: Ajustes, estrategias_destinos: list[str]) -> str | None:
     if estrategias_destinos:
         return estrategias_destinos[0]
@@ -128,6 +136,7 @@ def plan(
             hasta=hasta,
             pieza_controlfile=next((p.controlfile for p in resumen.puntos if p.controlfile), None),
             danados=diagnosticado.archivos,
+            contenedor_de_datafile=_contenedores(perfil),
             hay_respaldo=bool(resumen.puntos),
         )
     )

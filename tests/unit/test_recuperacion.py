@@ -211,3 +211,12 @@ def test_sin_puntos_lo_avisa() -> None:
     resultado = puntos.construir("XE", LogMode.ARCHIVELOG, [], [], {})
     assert resultado.puntos == []
     assert "ningún punto" in resultado.avisos[0]
+
+
+def test_datafile_indicado_a_mano_de_una_pdb_cierra_la_pdb() -> None:
+    procedimiento = generar(
+        solicitud(Escenario.DATAFILE, objetivo="12", contenedor_de_datafile={12: "XEPDB1", 7: "CDB$ROOT"})
+    )
+    assert (procedimiento.script or "").startswith("ALTER PLUGGABLE DATABASE XEPDB1 CLOSE IMMEDIATE;")
+    raiz = generar(solicitud(Escenario.DATAFILE, objetivo="7", contenedor_de_datafile={7: "CDB$ROOT"}))
+    assert (raiz.script or "").startswith("ALTER DATABASE DATAFILE 7 OFFLINE;")

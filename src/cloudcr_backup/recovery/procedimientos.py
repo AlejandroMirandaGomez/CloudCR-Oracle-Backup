@@ -7,11 +7,10 @@ from cloudcr_backup.domain.recuperacion import ArchivoDanado, Escenario, Procedi
 from cloudcr_backup.rman import nombres
 from cloudcr_backup.rman.render import ScriptNoAscii, renderizar
 
+RAIZ = "CDB$ROOT"
 PATRON_NOMBRE = re.compile(r"^[A-Za-z][A-Za-z0-9_$#]{0,127}$")
 FORMATO_HASTA = "%Y-%m-%d %H:%M:%S"
-REQUIEREN_ARCHIVELOG = frozenset(
-    {Escenario.PDB, Escenario.TABLESPACE, Escenario.DATAFILE, Escenario.PUNTO_EN_TIEMPO}
-)
+REQUIEREN_ARCHIVELOG = frozenset({Escenario.PDB, Escenario.TABLESPACE, Escenario.DATAFILE, Escenario.PUNTO_EN_TIEMPO})
 PLANTILLAS = {
     Escenario.PDB: "recuperacion/pdb.rman.j2",
     Escenario.TABLESPACE: "recuperacion/tablespace.rman.j2",
@@ -86,6 +85,7 @@ class SolicitudProcedimiento:
     hasta: datetime | None = None
     pieza_controlfile: str | None = None
     danados: list[ArchivoDanado] = field(default_factory=list)
+    contenedor_de_datafile: dict[int, str] = field(default_factory=dict)
     hay_respaldo: bool = True
 
 
@@ -106,7 +106,9 @@ def _objetivo_datafile(solicitud: SolicitudProcedimiento) -> tuple[dict[str, obj
         except ValueError:
             return f"El datafile debe indicarse por su número (file#), no {solicitud.objetivo!r}."
         archivo = next((a for a in solicitud.danados if a.file_id == numero), None)
-        return {"datafile": numero, "pdb": archivo.pdb if archivo else None}, str(numero)
+        contenedor = solicitud.contenedor_de_datafile.get(numero)
+        pdb = archivo.pdb if archivo else (contenedor if contenedor not in (None, RAIZ) else None)
+        return {"datafile": numero, "pdb": pdb}, str(numero)
     if not solicitud.danados:
         return "El diagnóstico no encontró archivos dañados en V$RECOVER_FILE; indique el datafile con --objetivo."
     archivo = solicitud.danados[0]
