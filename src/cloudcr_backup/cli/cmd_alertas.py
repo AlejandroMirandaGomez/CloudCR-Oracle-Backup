@@ -79,3 +79,25 @@ def probar_correo() -> None:
     consola().print(
         f"Correo de prueba enviado por {resultado.servidor} a {', '.join(resultado.destinatarios)}.", style="green"
     )
+
+
+@app.command(
+    "configurar-correo",
+    help="Carga la configuración de correo del equipo (config/notificaciones.yaml) en el repositorio.",
+)
+def configurar_correo(
+    sobrescribir: Annotated[
+        bool, typer.Option("--sobrescribir", help="Reemplaza también los valores que ya fueron cambiados a mano.")
+    ] = False,
+) -> None:
+    configuracion = ajustes()
+    resultado = llamar(lambda: servicio_alertas.cargar_configuracion_del_equipo(configuracion, sobrescribir))
+    salida = consola()
+    salida.print(f"Configuración de correo cargada desde {resultado.archivo}.", style="green")
+    salida.print(f"Aplicados: {', '.join(resultado.aplicados) or 'ninguno'}.")
+    if resultado.conservados:
+        salida.print(
+            f"Conservados (ya tenían otro valor; use --sobrescribir para reemplazarlos): "
+            f"{', '.join(resultado.conservados)}.",
+            style="yellow",
+        )

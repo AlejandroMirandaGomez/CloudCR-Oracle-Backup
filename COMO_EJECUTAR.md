@@ -415,7 +415,44 @@ sqlplus / as sysdba @sql\setup\05_usuario_monitor.sql
 
 Copiar `.env.example` a `.env` (o exportar las variables en la sesión de PowerShell) y completar al menos `CLOUDCR_REPO_CLAVE` con la clave del usuario del repositorio. Esta clave **nunca** va en `cloudcr.yaml` ni en el código.
 
-> **Atención:** en este repositorio el archivo `.env` está versionado en git (se compartió como configuración de desarrollo del equipo), así que `.gitignore` no lo protege. **No escribas en él contraseñas personales**, como la de la cuenta de correo (`CLOUDCR_SMTP_CLAVE`), sin antes dejar de rastrearlo (`git rm --cached .env`) o sin exportarlas solo en la sesión de PowerShell.
+> **Atención:** en este repositorio el archivo `.env` está versionado en git (se compartió como configuración de desarrollo del equipo), así que `.gitignore` no lo protege. **No escribas en él contraseñas.** La contraseña del correo de alertas va en `.env.local`, que no se versiona (ver la sección «Correo de alertas»).
+
+## Correo de alertas (para que cualquiera pueda presentar)
+
+Cuando una ejecución falla o no se ejecuta, el agente envía un correo al DBA. La configuración se reparte en dos partes:
+
+| Parte | Dónde está | ¿Va en git? |
+|---|---|---|
+| Servidor, puerto, remitente, destinatarios y canal | `config/notificaciones.yaml` | Sí (no hay secretos) |
+| Contraseña de la cuenta que envía | `.env.local`, variable `CLOUDCR_SMTP_CLAVE` | **No** |
+
+**Cómo dejarlo listo en cualquier equipo**
+
+1. Ejecutar `.\iniciar.cmd`. Al arrancar, carga solo `config
+otificaciones.yaml` en el repositorio de ese equipo (no pisa lo que alguien haya cambiado a mano).
+2. Crear el archivo `.env.local` en la carpeta del proyecto, con una sola línea (la contraseña se la pasa el grupo por un medio privado, nunca por git):
+
+```
+CLOUDCR_SMTP_CLAVE=<contraseña de aplicación>
+```
+
+3. Reiniciar `.\iniciar.cmd` (la web y el agente leen los archivos `.env` solo al arrancar).
+4. Comprobar: en la web, **Sistema → Notificaciones por correo → Enviar correo de prueba**, o en la terminal `cloudcr alertas probar-correo`. Deben llegar a todos los destinatarios.
+
+Si `iniciar.cmd` muestra «AVISO: falta la contraseña del correo de alertas», falta el paso 2.
+
+**Comandos y pantallas**
+
+| Qué | Terminal | Web |
+|---|---|---|
+| Cargar `config
+otificaciones.yaml` en el repositorio | `cloudcr alertas configurar-correo` (`--sobrescribir` reemplaza también lo cambiado a mano) | Sistema → Notificaciones por correo → «Cargar la configuración del equipo» |
+| Correo de prueba | `cloudcr alertas probar-correo` | Sistema → Notificaciones por correo → «Enviar correo de prueba» |
+| Cambiar destinatarios | Editar `config
+otificaciones.yaml` y volver a cargar, o `cloudcr param set notificacion.email.destinatarios '["a@x.com","b@y.com"]'` | Sistema → Parámetros globales |
+
+Para agregar un destinatario para todo el grupo, edite `config
+otificaciones.yaml`, haga commit y cada quien ejecuta «Cargar la configuración del equipo» con `--sobrescribir`.
 
 ## Pruebas
 

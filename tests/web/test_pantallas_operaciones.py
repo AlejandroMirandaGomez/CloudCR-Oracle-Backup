@@ -899,3 +899,24 @@ def test_sistema_correo_incompleto_no_ofrece_enviar(web: TestClient, monkeypatch
     html = web.get("/sistema/correo", headers=HTMX).text
     assert "Falta configurar el servidor." in html
     assert "disabled" in html
+
+
+def test_sistema_correo_carga_la_configuracion_del_equipo(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from cloudcr_backup.domain.alertas import EstadoCorreo, ResultadoConfiguracionCorreo
+    from cloudcr_backup.services import alertas as servicio_alertas
+
+    estado = EstadoCorreo(canal_activo=True, configurado=True, servidor="s", puerto=587, remitente="a@x.com")
+    monkeypatch.setattr(servicio_alertas, "estado_correo", lambda a: estado)
+    pedidos: list[bool] = []
+
+    def cargar(a: Any, sobrescribir: bool = False) -> ResultadoConfiguracionCorreo:
+        pedidos.append(sobrescribir)
+        return ResultadoConfiguracionCorreo(archivo="n.yaml", aplicados=["a", "b"], conservados=["c"])
+
+    monkeypatch.setattr(servicio_alertas, "cargar_configuracion_del_equipo", cargar)
+    assert "/sistema/correo/configurar" in web.get("/sistema/correo", headers=HTMX).text
+    respuesta = web.post("/sistema/correo/configurar", headers=HTMX_FORMULARIO, content="sobrescribir=on")
+    assert respuesta.status_code == 200
+    assert pedidos == [True]
+    assert "2 valores aplicados" in respuesta.text
+    assert "Se conservaron 1" in respuesta.text

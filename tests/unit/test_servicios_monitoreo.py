@@ -207,3 +207,77 @@ def test_probar_correo_sin_clave_explica_que_falta_la_contrasena(
     with pytest.raises(OperacionNoPermitida, match="no está definida") as error:
         alertas.probar_correo(ajustes)
     assert ".env" in (error.value.sugerencia or "")
+
+
+def _configuracion_equipo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    archivo = tmp_path / "notificaciones.yaml"
+    archivo.write_text(
+        "servidor: smtp.ejemplo.com\npuerto: 587\ntls: true\nremitente: a@ejemplo.com\n"
+        "destinatarios:\n  - b@ejemplo.com\n  - c@ejemplo.com\ncanales:\n  - consola\n  - email\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CLOUDCR_NOTIFICACIONES", str(archivo))
+
+
+def test_cargar_configuracion_del_equipo_aplica_lo_que_falta(
+    ajustes: Ajustes, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cloudcr_backup.services import administracion, alertas
+
+    _configuracion_equipo(tmp_path, monkeypatch)
+    guardados: dict[str, str] = {"notificacion.canales": '["consola"]'}
+    monkeypatch.setattr(alertas, "_parametros", lambda a: dict(guardados))
+    monkeypatch.setattr(administracion, "asignar_parametro", lambda a, k, v: guardados.__setitem__(k, v))
+    resultado = alertas.cargar_configuracion_del_equipo(ajustes)
+    assert guardados["notificacion.email.servidor"] == "smtp.ejemplo.com"
+    assert guardados["notificacion.email.tls"] == "true"
+    assert guardados["notificacion.email.destinatarios"] == '["b@ejemplo.com", "c@ejemplo.com"]'
+    assert guardados["notificacion.canales"] == '["consola", "email"]'
+    assert resultado.conservados == []
+    assert "notificacion.email.remitente" in resultado.aplicados
+
+
+def test_cargar_configuracion_del_equipo_respeta_lo_cambiado_a_mano_salvo_sobrescribir(
+    ajustes: Ajustes, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cloudcr_backup.services import administracion, alertas
+
+    _configuracion_equipo(tmp_path, monkeypatch)
+    guardados: dict[str, str] = {"notificacion.email.remitente": "otro@ejemplo.com", "notificacion.email.puerto": "587"}
+    monkeypatch.setattr(alertas, "_parametros", lambda a: dict(guardados))
+    monkeypatch.setattr(administracion, "asignar_parametro", lambda a, k, v: guardados.__setitem__(k, v))
+    resultado = alertas.cargar_configuracion_del_equipo(ajustes)
+    assert resultado.conservados == ["notificacion.email.remitente"]
+    assert guardados["notificacion.email.remitente"] == "otro@ejemplo.com"
+    forzado = alertas.cargar_configuracion_del_equipo(ajustes, sobrescribir=True)
+    assert forzado.conservados == []
+    assert guardados["notificacion.email.remitente"] == "a@ejemplo.com"
+
+
+def test_configuracion_del_equipo_rechaza_claves_desconocidas_y_archivo_ausente(
+    ajustes: Ajustes, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cloudcr_backup.services import alertas
+
+    archivo = tmp_path / "mala.yaml"
+    archivo.write_text("clave_secreta: x\n", encoding="utf-8")
+    monkeypatch.setenv("CLOUDCR_NOTIFICACIONES", str(archivo))
+    monkeypatch.setattr(alertas, "_parametros", lambda a: {})
+    with pytest.raises(OperacionNoPermitida, match="desconocidas"):
+        alertas.cargar_configuracion_del_equipo(ajustes)
+    monkeypatch.setenv("CLOUDCR_NOTIFICACIONES", str(tmp_path / "no_existe.yaml"))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(alertas, "archivo_configuracion_equipo", lambda: None)
+    with pytest.raises(RecursoNoEncontrado):
+        alertas.cargar_configuracion_del_equipo(ajustes)
+
+
+def test_el_yaml_del_equipo_del_proyecto_es_valido_y_no_trae_secretos() -> None:
+    from cloudcr_backup.services import alertas
+
+    raiz = Path(__file__).resolve().parents[2]
+    valores = alertas._valores_de_configuracion(raiz / "config" / "notificaciones.yaml")
+    assert valores["notificacion.email.servidor"] == "smtp.gmail.com"
+    assert "email" in valores["notificacion.canales"]
+    assert not any("clave" in k.lower() or "password" in k.lower() for k in valores)
+    assert ".env.local" in (raiz / ".gitignore").read_text(encoding="utf-8")

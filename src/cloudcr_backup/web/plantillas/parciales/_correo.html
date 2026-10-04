@@ -27,6 +27,11 @@
 {% if not estado.canal_activo %}
 <p class="nota">Para que las alertas se envíen por correo, agregue <code>"email"</code> a <code>notificacion.canales</code>, por ejemplo <code>["consola","email"]</code>.</p>
 {% endif %}
+<form class="formulario-accion" method="post" action="/sistema/correo/configurar" hx-post="/sistema/correo/configurar" hx-target="#zona-correo" hx-disabled-elt="find button">
+  <label class="casilla"><input type="checkbox" name="sobrescribir" value="on"> Reemplazar también los valores cambiados a mano</label>
+  <button class="boton" type="submit">Cargar la configuración del equipo</button>
+</form>
+<p class="nota">Lee <code>config/notificaciones.yaml</code> (servidor, remitente, destinatarios y canal). La contraseña no va ahí: cada persona la pone en el archivo <code>.env.local</code> como <code>CLOUDCR_SMTP_CLAVE</code>.</p>
 <form class="formulario-accion" method="post" action="/sistema/correo/probar" hx-post="/sistema/correo/probar" hx-target="#zona-correo" hx-disabled-elt="find button"
       hx-confirm="¿Enviar un correo de prueba a los destinatarios configurados?">
   <button class="boton primario" type="submit"{% if not estado.configurado %} disabled{% endif %}>Enviar correo de prueba</button>

@@ -104,3 +104,9 @@ class ResultadoPruebaCorreo(BaseModel):
     enviado_en: datetime
     servidor: str
     destinatarios: list[str]
+
+
+class ResultadoConfiguracionCorreo(BaseModel):
+    archivo: str
+    aplicados: list[str] = []
+    conservados: list[str] = []

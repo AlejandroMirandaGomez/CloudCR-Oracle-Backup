@@ -290,29 +290,26 @@ El símbolo siempre va acompañado de texto: la información no depende solo del
 
 ## 8. Correo de alertas
 
-1. Cree una **contraseña de aplicación** en su cuenta (Gmail la exige con verificación en dos pasos).
-2. Póngala en `.env`: `CLOUDCR_SMTP_CLAVE=<contraseña>` (nunca en el repositorio ni en el chat).
-3. Configure los parámetros:
+La configuración está repartida para que **cualquier integrante pueda presentar desde su equipo**:
 
-```powershell
-cloudcr param set notificacion.email.servidor smtp.gmail.com
-cloudcr param set notificacion.email.puerto 587
-cloudcr param set notificacion.email.tls true
-cloudcr param set notificacion.email.remitente su.cuenta@gmail.com
-cloudcr param set notificacion.email.destinatarios '["dba@ejemplo.com"]'
-cloudcr param set notificacion.email.severidad_minima ALERTA
-cloudcr param set notificacion.canales '["consola","email"]'
-```
+- `config/notificaciones.yaml` (versionado, sin secretos): servidor, puerto, TLS, remitente, destinatarios, severidad mínima y canales.
+- `.env.local` (no versionado): la contraseña de aplicación de la cuenta remitente, como `CLOUDCR_SMTP_CLAVE=<contraseña>`. Con Gmail debe ser una **contraseña de aplicación** (exige verificación en dos pasos). Se comparte por un medio privado, nunca por git.
 
-4. Compruebe la configuración con un correo de prueba, desde la terminal o desde la web:
+Pasos en un equipo nuevo:
+
+1. `.\iniciar.cmd` carga `config/notificaciones.yaml` en el repositorio de ese equipo. También se puede hacer a mano: en la web, **Sistema → Notificaciones por correo → «Cargar la configuración del equipo»**; en la terminal, `cloudcr alertas configurar-correo`. No pisa los valores cambiados a mano, salvo con la opción «Reemplazar» (`--sobrescribir`).
+2. Crear `.env.local` con la contraseña y reiniciar (la web y el agente leen los archivos `.env` solo al arrancar).
+3. Comprobar con un correo de prueba:
 
 | Terminal | Web |
 |---|---|
 | `cloudcr alertas probar-correo` | **Sistema → Notificaciones por correo**: «Enviar correo de prueba» (muestra además si el canal está activo, si la configuración está completa y si la contraseña está definida) |
 
-Si falta algún parámetro o el servidor rechaza las credenciales, ambos explican qué revisar.
+Si falta algún parámetro o el servidor rechaza las credenciales, ambos explican qué revisar. Si falta la contraseña, el mensaje lo dice y sugiere reiniciar.
 
-El asunto incluye el alcance de la tarea, por ejemplo: `[CloudCR][ALERTA] EJECUCION_FALLIDA XE EST001/T1 · VENTAS, FINANZAS, CONTROLFILE`.
+Para cambiar los destinatarios de todo el grupo se edita `config/notificaciones.yaml`; para un solo equipo, **Sistema → Parámetros globales** (`notificacion.email.destinatarios`).
+
+El asunto incluye el alcance de la tarea, por ejemplo: `[CloudCR][ALERTA] EJECUCION_FALLIDA XE EST001/T1 · VENTAS, FINANZAS, CONTROLFILE`. Solo se envía correo cuando una alerta se **abre**; al resolverse sola no se envía nada.
 
 ---
 

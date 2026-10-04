@@ -1,0 +1,13 @@
+servidor: smtp.gmail.com
+puerto: 587
+tls: true
+remitente: cloudcrbackupeif40@gmail.com
+destinatarios:
+  - luis.hidalgo.calvo@est.una.ac.cr
+  - juan.sanchez.bermudez@est.una.ac.cr
+  - josue.sanchez.salazar@est.una.ac.cr
+  - alejandro.miranda.gomez@est.una.ac.cr
+severidad_minima: ALERTA
+canales:
+  - consola
+  - email

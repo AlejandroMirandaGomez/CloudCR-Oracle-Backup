@@ -1,6 +1,10 @@
+import json
 import os
 import smtplib
 from collections.abc import Callable, Sequence
+from pathlib import Path
+
+import yaml
 
 from cloudcr_backup.alerts.motor import MotorAlertas
 from cloudcr_backup.alerts.notificadores.email import (
@@ -14,6 +18,7 @@ from cloudcr_backup.config.ajustes import Ajustes, cargar_ajustes
 from cloudcr_backup.domain.alertas import (
     Condicion,
     EstadoCorreo,
+    ResultadoConfiguracionCorreo,
     ResultadoPruebaCorreo,
     ResumenEvaluacion,
     SeveridadAlerta,
@@ -23,6 +28,7 @@ from cloudcr_backup.domain.enums import EstadoAlerta
 from cloudcr_backup.domain.errores import FiltroInvalido, OperacionNoPermitida, RecursoNoEncontrado
 from cloudcr_backup.repository import alertas as repositorio_alertas
 from cloudcr_backup.scheduling.reloj import RelojSistema
+from cloudcr_backup.services import administracion
 from cloudcr_backup.services.agente import sesion_agente
 from cloudcr_backup.services.conversiones import vista_alerta
 from cloudcr_backup.services.sesion import conexion_repositorio
@@ -181,3 +187,83 @@ def probar_correo(ajustes: Ajustes) -> ResultadoPruebaCorreo:
     return ResultadoPruebaCorreo(
         enviado_en=RelojSistema().ahora(), servidor=configuracion.servidor, destinatarios=configuracion.destinatarios
     )
+
+
+VARIABLE_CONFIGURACION_EQUIPO = "CLOUDCR_NOTIFICACIONES"
+CLAVES_CONFIGURACION_EQUIPO = {
+    "servidor": "notificacion.email.servidor",
+    "puerto": "notificacion.email.puerto",
+    "tls": "notificacion.email.tls",
+    "remitente": "notificacion.email.remitente",
+    "destinatarios": "notificacion.email.destinatarios",
+    "severidad_minima": "notificacion.email.severidad_minima",
+    "canales": "notificacion.canales",
+}
+
+
+def archivo_configuracion_equipo() -> Path | None:
+    candidatos: list[Path] = []
+    configurado = os.environ.get(VARIABLE_CONFIGURACION_EQUIPO)
+    if configurado:
+        candidatos.append(Path(configurado))
+    candidatos.append(Path.cwd() / "config" / "notificaciones.yaml")
+    candidatos.append(Path(__file__).resolve().parents[3] / "config" / "notificaciones.yaml")
+    return next((c for c in candidatos if c.is_file()), None)
+
+
+def _texto_de_parametro(valor: object) -> str:
+    if isinstance(valor, bool):
+        return "true" if valor else "false"
+    if isinstance(valor, list):
+        return json.dumps([str(v) for v in valor])
+    return str(valor)
+
+
+def _equivalentes(actual: str, deseado: str) -> bool:
+    if actual == deseado:
+        return True
+    try:
+        return bool(json.loads(actual) == json.loads(deseado))
+    except json.JSONDecodeError:
+        return False
+
+
+def _valores_de_configuracion(archivo: Path) -> dict[str, str]:
+    try:
+        datos = yaml.safe_load(archivo.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError) as error:
+        raise OperacionNoPermitida(
+            f"No se pudo leer {archivo}: {error}", "Revise el formato del archivo YAML."
+        ) from error
+    if not isinstance(datos, dict):
+        raise OperacionNoPermitida(f"{archivo} no tiene el formato esperado.", "Debe ser un mapa clave: valor.")
+    desconocidas = sorted(set(datos) - set(CLAVES_CONFIGURACION_EQUIPO))
+    if desconocidas:
+        raise OperacionNoPermitida(
+            f"{archivo} tiene claves desconocidas: {', '.join(desconocidas)}.",
+            f"Use solo: {', '.join(CLAVES_CONFIGURACION_EQUIPO)}.",
+        )
+    return {CLAVES_CONFIGURACION_EQUIPO[k]: _texto_de_parametro(v) for k, v in datos.items()}
+
+
+def cargar_configuracion_del_equipo(ajustes: Ajustes, sobrescribir: bool = False) -> ResultadoConfiguracionCorreo:
+    archivo = archivo_configuracion_equipo()
+    if archivo is None:
+        raise RecursoNoEncontrado(
+            "No se encontró config/notificaciones.yaml.",
+            f"Cree el archivo o defina {VARIABLE_CONFIGURACION_EQUIPO} con su ruta.",
+        )
+    deseados = _valores_de_configuracion(archivo)
+    actuales = _parametros(ajustes)
+    resultado = ResultadoConfiguracionCorreo(archivo=str(archivo))
+    for clave, valor in deseados.items():
+        actual = actuales.get(clave, "").strip()
+        inicial = administracion.PARAMETROS_INICIALES.get(clave, "")
+        igual = _equivalentes(actual, valor)
+        if actual and actual != inicial and not igual and not sobrescribir:
+            resultado.conservados.append(clave)
+            continue
+        if not igual:
+            administracion.asignar_parametro(ajustes, clave, valor)
+        resultado.aplicados.append(clave)
+    return resultado

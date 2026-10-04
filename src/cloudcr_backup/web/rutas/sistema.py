@@ -173,6 +173,15 @@ def correo(request: Request) -> HTMLResponse:
     return _correo(request)
 
 
+@router.post("/sistema/correo/configurar", response_model=None, dependencies=OrigenConfiable)
+def configurar_correo(request: Request, campos: Formulario) -> Response:
+    resultado = servicio_alertas.cargar_configuracion_del_equipo(_ajustes(request), marcado(campos, "sobrescribir"))
+    aviso = f"Configuración de correo del equipo cargada ({len(resultado.aplicados)} valores aplicados)."
+    if resultado.conservados:
+        aviso += f" Se conservaron {len(resultado.conservados)} valores cambiados a mano."
+    return _volver(request, "correo") or _correo(request, aviso)
+
+
 @router.post("/sistema/correo/probar", response_model=None, dependencies=OrigenConfiable)
 def probar_correo(request: Request) -> Response:
     resultado = servicio_alertas.probar_correo(_ajustes(request))

@@ -210,6 +210,22 @@ if ((CodigoDeSalida $cloudcr @('repo', 'estado')) -ne 0) {
     Ejecutar $cloudcr @('repo', 'instalar')
 }
 
+Paso 'Cargando la configuración de correo del equipo'
+if ((CodigoDeSalida $cloudcr @('alertas', 'configurar-correo')) -ne 0) {
+    Write-Host 'AVISO: no se pudo cargar config\notificaciones.yaml; configure el correo en Sistema > Notificaciones por correo.' -ForegroundColor Yellow
+}
+$claveCorreo = $null
+foreach ($nombreArchivo in '.env', '.env.local') {
+    $rutaArchivo = Join-Path $raiz $nombreArchivo
+    if (Test-Path -LiteralPath $rutaArchivo) {
+        $valoresArchivo = LeerEnv $rutaArchivo
+        if ($valoresArchivo['CLOUDCR_SMTP_CLAVE']) { $claveCorreo = $valoresArchivo['CLOUDCR_SMTP_CLAVE'] }
+    }
+}
+if (-not $claveCorreo -and -not $env:CLOUDCR_SMTP_CLAVE) {
+    Write-Host 'AVISO: falta la contraseña del correo de alertas. Cree el archivo .env.local con la línea CLOUDCR_SMTP_CLAVE=<contraseña> (pídasela al grupo) y vuelva a iniciar. Sin ella, las alertas no se envían por correo.' -ForegroundColor Yellow
+}
+
 $argumentosWeb = @('web')
 if ($Puerto -gt 0) {
     $argumentosWeb += @('--puerto', "$Puerto")

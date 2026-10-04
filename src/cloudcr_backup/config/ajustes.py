@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from cloudcr_backup.config.rutas import RutasTrabajo, directorio_trabajo_predeterminado
 
 load_dotenv(find_dotenv(usecwd=True))
+load_dotenv(find_dotenv(".env.local", usecwd=True), override=True)
 
 VARIABLE_RUTA_CONFIG = "CLOUDCR_CONFIG"
 VARIABLE_CLAVE_REPOSITORIO = "CLOUDCR_REPO_CLAVE"
