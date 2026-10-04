@@ -72,3 +72,94 @@ def arch_005_en_linea_sin_archivelog(contexto: ContextoValidacion) -> list[Halla
         for tarea in contexto.estrategia.tareas
         if modo_efectivo(tarea.como, contexto.perfil) is ModoRespaldo.EN_LINEA
     ]
+
+
+def _tareas_consistentes(contexto: ContextoValidacion) -> list[str]:
+    return [
+        tarea.codigo
+        for tarea in contexto.estrategia.tareas
+        if modo_efectivo(tarea.como, contexto.perfil) is ModoRespaldo.CONSISTENTE
+    ]
+
+
+@regla("ARCH_004")
+def arch_004_archivelogs_sin_archivelog(contexto: ContextoValidacion) -> list[Hallazgo]:
+    if contexto.perfil.log_mode is LogMode.ARCHIVELOG:
+        return []
+    if not any(objeto.tipo is TipoObjeto.ARCHIVELOG for objeto in contexto.estrategia.alcance):
+        return []
+    return [
+        Hallazgo(
+            codigo="ARCH_004",
+            severidad=Severidad.ERROR,
+            mensaje=(
+                "La estrategia pide respaldar archived redo logs, pero la base de datos está en NOARCHIVELOG: "
+                "no se generan archived logs que respaldar."
+            ),
+            sujeto=contexto.estrategia.codigo,
+            accion_sugerida="Quite ARCHIVELOG del alcance o active el modo ARCHIVELOG antes de aprobar el script.",
+        )
+    ]
+
+
+@regla("ARCH_006")
+def arch_006_alcance_parcial_sin_archivelog(contexto: ContextoValidacion) -> list[Hallazgo]:
+    if contexto.perfil.log_mode is LogMode.ARCHIVELOG:
+        return []
+    parciales = {TipoObjeto.PDB, TipoObjeto.TABLESPACE, TipoObjeto.DATAFILE}
+    if not any(objeto.tipo in parciales for objeto in contexto.estrategia.alcance):
+        return []
+    return [
+        Hallazgo(
+            codigo="ARCH_006",
+            severidad=Severidad.ADVERTENCIA,
+            mensaje=(
+                "La estrategia respalda un alcance parcial (PDB, tablespace o datafile) con la base en NOARCHIVELOG: "
+                "las copias parciales no se pueden recuperar hasta un punto en el tiempo y pueden quedar "
+                "inconsistentes con el resto de la base."
+            ),
+            sujeto=contexto.estrategia.codigo,
+            accion_sugerida="Active ARCHIVELOG o respalde la base completa en modo CONSISTENTE.",
+        )
+    ]
+
+
+@regla("ARCH_007")
+def arch_007_respaldo_consistente_con_caida(contexto: ContextoValidacion) -> list[Hallazgo]:
+    return [
+        Hallazgo(
+            codigo="ARCH_007",
+            severidad=Severidad.ADVERTENCIA,
+            mensaje=(
+                f"La tarea {codigo} se ejecutará en modo CONSISTENTE: implica SHUTDOWN IMMEDIATE y la caída del "
+                "servicio durante el respaldo. El script no se puede aprobar sin aceptar esa caída."
+            ),
+            sujeto=codigo,
+            accion_sugerida="Programe la tarea sin usuarios conectados o active ARCHIVELOG para respaldar en línea.",
+        )
+        for codigo in _tareas_consistentes(contexto)
+    ]
+
+
+@regla("ARCH_009")
+def arch_009_repositorio_en_la_misma_cdb(contexto: ContextoValidacion) -> list[Hallazgo]:
+    servicio = contexto.repositorio_servicio
+    if servicio is None or not contexto.perfil.es_cdb:
+        return []
+    vive_en_la_cdb = servicio.upper() in {c.nombre.upper() for c in contexto.perfil.contenedores}
+    if not vive_en_la_cdb:
+        return []
+    return [
+        Hallazgo(
+            codigo="ARCH_009",
+            severidad=Severidad.ADVERTENCIA,
+            mensaje=(
+                f"El repositorio ({servicio}) vive en la misma CDB que se respaldará en modo CONSISTENTE en la tarea "
+                f"{codigo}: el SHUTDOWN IMMEDIATE lo apagará a mitad de la ejecución. La evidencia se escribe primero "
+                "a disco y queda en el buzón hasta que el repositorio vuelva."
+            ),
+            sujeto=codigo,
+            accion_sugerida="Respalde en línea (ARCHIVELOG) o ubique el repositorio en otra instancia.",
+        )
+        for codigo in _tareas_consistentes(contexto)
+    ]

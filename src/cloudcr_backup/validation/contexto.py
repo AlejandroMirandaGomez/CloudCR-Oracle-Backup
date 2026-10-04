@@ -17,3 +17,11 @@ class ContextoValidacion(BaseModel):
     destinos_escribibles: dict[str, bool] = Field(default_factory=dict)
     ultimas_ejecuciones_exitosas: dict[str, datetime] = Field(default_factory=dict)
     codigos_estrategia_existentes: list[str] = Field(default_factory=list)
+    repositorio_servicio: str | None = None
+
+
+def servicio_de_dsn(dsn: str | None) -> str | None:
+    if not dsn or "/" not in dsn:
+        return None
+    servicio = dsn.rsplit("/", 1)[1].strip()
+    return servicio or None

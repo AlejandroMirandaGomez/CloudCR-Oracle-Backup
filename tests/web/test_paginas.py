@@ -76,3 +76,14 @@ def test_texto_con_html_se_escapa(cliente: TestClient, servicio: ServicioFalso) 
     html = cliente.get("/instancias/XE").text
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;" in html
+
+
+def test_criterios_muestra_prioridades_esquemas_y_vocabulario(cliente: TestClient) -> None:
+    respuesta = cliente.get("/criterios")
+    assert respuesta.status_code == 200
+    assert "ALTA" in respuesta.text
+    assert "MEDIA" in respuesta.text
+    assert "BAJA" in respuesta.text
+    assert "total+" in respuesta.text
+    assert "BACKUP INCREMENTAL LEVEL 0 DATABASE" in respuesta.text
+    assert "Parcial" in respuesta.text

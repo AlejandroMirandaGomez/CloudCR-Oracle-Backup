@@ -38,7 +38,7 @@ from cloudcr_backup.services.sesion import conexion_repositorio
 from cloudcr_backup.strategy import servicio
 from cloudcr_backup.strategy.yaml_io import EstrategiaYamlInvalida, estrategia_a_yaml, estrategia_desde_yaml
 from cloudcr_backup.validation import motor, reglas  # noqa: F401
-from cloudcr_backup.validation.contexto import ContextoValidacion
+from cloudcr_backup.validation.contexto import ContextoValidacion, servicio_de_dsn
 
 LARGO_MAXIMO_YAML = 200_000
 EXTENSION_YAML = ".yaml"
@@ -151,7 +151,7 @@ def _perfil(base: BaseDatosRegistrada, guardado: PerfilBD | None, avisos: list[s
 
 
 def _contexto(
-    estrategia: Estrategia, perfil: PerfilBD, parametros: dict[str, str], otras: list[str]
+    estrategia: Estrategia, perfil: PerfilBD, parametros: dict[str, str], otras: list[str], ajustes: Ajustes
 ) -> ContextoValidacion:
     escribibles: dict[str, bool] = {}
     libres: dict[str, int] = {}
@@ -167,6 +167,7 @@ def _contexto(
         perfil=perfil,
         parametros=parametros,
         codigos_estrategia_existentes=otras,
+        repositorio_servicio=servicio_de_dsn(ajustes.repositorio_dsn),
         destinos_escribibles=escribibles,
         espacio_libre_destino_bytes=libres,
         espacio_total_destino_bytes=totales,
@@ -186,7 +187,7 @@ def _validar_estrategia(
     if en_vivo:
         with conexion_repositorio(ajustes) as conexion:
             repositorio_bases_datos.guardar_perfil(conexion, base.id, perfil)
-    hallazgos = motor.validar(_contexto(estrategia, perfil, parametros, otras))
+    hallazgos = motor.validar(_contexto(estrategia, perfil, parametros, otras, ajustes))
     return ResultadoValidacion(
         bd=base.nombre,
         estrategia=estrategia.codigo,

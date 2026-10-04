@@ -13,17 +13,17 @@ Checklist personal para verificar mi parte (estrategias y validación) antes de 
 | `src/cloudcr_backup/strategy/yaml_io.py` | Exportar/importar una `Estrategia` a/desde YAML, con errores legibles |
 | `src/cloudcr_backup/strategy/servicio.py` | `crear`, `editar` (incrementa versión), `activar`, `desactivar`, `eliminar`, `listar`, `obtener` — llama a `repository/estrategias.py` |
 
-### Validación (28 de 34 reglas del catálogo)
+### Validación (35 reglas del catálogo)
 
 | Archivo | Reglas |
 |---|---|
 | `src/cloudcr_backup/validation/contexto.py` | `ContextoValidacion` |
 | `src/cloudcr_backup/validation/motor.py` | Registro de reglas por decorador, ejecución, `hay_bloqueantes()` |
-| `src/cloudcr_backup/validation/reglas/archivado.py` | `ARCH_001`, `ARCH_002`, `ARCH_005` |
+| `src/cloudcr_backup/validation/reglas/archivado.py` | `ARCH_001`, `ARCH_002`, `ARCH_004`, `ARCH_005`, `ARCH_006`, `ARCH_007`, `ARCH_009` |
 | `src/cloudcr_backup/validation/reglas/general.py` | `GEN_001`, `GEN_002` |
 | `src/cloudcr_backup/validation/reglas/alcance.py` | `ALC_001`...`ALC_008` |
 | `src/cloudcr_backup/validation/reglas/retencion.py` | `RET_001`...`RET_004` |
-| `src/cloudcr_backup/validation/reglas/programacion.py` | `PRG_001`, `PRG_002`, `PRG_003`, `PRG_005` (`PRG_007` pendiente: depende de `scheduling/recurrencia.py` de Alejandro) |
+| `src/cloudcr_backup/validation/reglas/programacion.py` | `PRG_001`, `PRG_002`, `PRG_003`, `PRG_005`, `PRG_007` |
 | `src/cloudcr_backup/validation/reglas/destino.py` | `DST_001`, `DST_002`, `DST_003`, `DST_004`, `DST_006` |
 | `src/cloudcr_backup/validation/reglas/metodo.py` | `MET_001`...`MET_004` |
 | `src/cloudcr_backup/oracle/capacidades.py` | Matriz edición → compresiones/canales soportados (usada por `MET_003`/`MET_004`) |
@@ -43,30 +43,27 @@ Checklist personal para verificar mi parte (estrategias y validación) antes de 
 | Archivo | Comandos |
 |---|---|
 | `src/cloudcr_backup/cli/cmd_estrategia.py` | `cloudcr estrategia crear\|validar\|mostrar\|importar\|editar\|exportar\|listar\|activar\|desactivar\|eliminar\|aplicar-recomendacion` |
-| `src/cloudcr_backup/cli/cmd_tarea.py` | `cloudcr tarea agregar\|editar\|eliminar` (`proximas` pendiente: depende de Alejandro) |
+| `src/cloudcr_backup/cli/cmd_tarea.py` | `cloudcr tarea agregar\|editar\|eliminar\|proximas` |
 | `src/cloudcr_backup/cli/asistente_estrategia.py` | Asistente interactivo de 9 pasos, detrás de `cloudcr estrategia crear` |
 | `src/cloudcr_backup/cli/app.py` (modificado) | Registra los grupos `estrategia` y `tarea` |
 
+### Web y documentos
+
+| Archivo | Qué hace |
+|---|---|
+| `src/cloudcr_backup/web/rutas/criterios.py`, `web/plantillas/criterios.html` | Pantalla `/criterios`: prioridades (RPO, RTO, recencia, esquema), esquemas predefinidos y vocabulario del profesor frente a RMAN |
+| `src/cloudcr_backup/validation/contexto.py` | Campo `repositorio_servicio` (lo usa `ARCH_009`) y `servicio_de_dsn` |
+| `docs/analisis.md` | Documento de análisis completo |
+
 ### Pruebas
 
-12 archivos nuevos en `tests/unit/`, uno por módulo de arriba. **202 pruebas en total**, todas corren sin necesitar Oracle instalado.
+Archivos de `tests/unit/` por módulo, más `test_reglas_archivado.py` (`ARCH_004/006/007/009`) y una prueba de `/criterios` en `tests/web/test_paginas.py`. **986 pruebas en total** (66 de Oracle deseleccionadas), todas las demás corren sin necesitar Oracle instalado.
 
-## 2. Importante: qué funciona hoy y qué no (a propósito)
+## 2. Qué funciona hoy
 
-Varios comandos (`importar`, `listar`, `activar`, `desactivar`, `eliminar`, `exportar`, `editar`, y el paso final de `crear`) llaman a `repository/estrategias.py` y `repository/conexion.py`, que **todavía son solo firmas** (`raise NotImplementedError`) — es la parte de Josué, no terminada aún. Si los corrés vas a ver:
+`repository/` ya está implementado (Josué), así que los comandos `importar`, `listar`, `activar`, `desactivar`, `eliminar`, `exportar`, `editar` y el guardado final de `crear` funcionan contra el repositorio `BKPCAT`. Los comandos con `--archivo` siguen sin necesitar repositorio.
 
-```
-Error: La conexión al repositorio todavía no está implementada.
-Sugerencia: Este comando necesita 'repository/conexion.py' terminado.
-```
-
-**Esto es esperado, no es un bug.** El código ya está completo y probado (con `monkeypatch` simulando el repositorio) — el día que Josué termine su parte, estos comandos van a funcionar sin que yo tenga que tocar nada.
-
-Lo que **sí funciona de punta a punta hoy**, contra tu Oracle real:
-- `cloudcr estrategia validar --archivo <ruta>.yaml`
-- `cloudcr estrategia mostrar --archivo <ruta>.yaml`
-- `cloudcr tarea agregar/editar/eliminar <archivo>.yaml ...`
-- El asistente completo (`cloudcr estrategia crear`) hasta el momento de guardar en el repositorio (el archivo YAML sí se guarda siempre).
+Pendiente de mi carril: evidencia E5 (paso real de la XE a ARCHIVELOG) y la presentación.
 
 ## 3. Guía paso a paso desde cero
 
@@ -142,7 +139,7 @@ Dura solo mientras esta ventana de PowerShell esté abierta.
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 ```
-**Esperado:** `202 passed`.
+**Esperado:** `986 passed, 66 deselected`.
 
 ```powershell
 .\.venv\Scripts\python.exe -m ruff check src tests
@@ -152,7 +149,7 @@ Dura solo mientras esta ventana de PowerShell esté abierta.
 ```powershell
 .\.venv\Scripts\python.exe -m mypy src
 ```
-**Esperado:** `Success: no issues found in 76 source files`
+**Esperado:** `Success: no issues found in 191 source files`
 
 Si los tres salen bien, el código está sano. Seguimos a probarlo de verdad.
 
@@ -192,17 +189,12 @@ Si los tres salen bien, el código está sano. Seguimos a probarlo de verdad.
 ```
 **Esperado:** una tabla de hallazgos por cada una, y al final `Sin errores bloqueantes.` en las cuatro. Ver la sección 6 de este documento para saber qué advertencias son normales y cuáles no.
 
-### Paso 13 — Confirmar que lo que necesita el repositorio falla "bien" (no con traceback)
+### Paso 13 — Listar las estrategias del repositorio
 
 ```powershell
 .\.venv\Scripts\cloudcr.exe estrategia listar --bd XE
 ```
-**Esperado:**
-```
-Error: La conexión al repositorio todavía no está implementada.
-Sugerencia: Este comando necesita 'repository/conexion.py' terminado.
-```
-Correcto — esa parte es de Josué y todavía no está lista. El mensaje claro (en vez de un traceback de Python) confirma que mi código maneja bien ese caso.
+**Esperado:** la tabla de estrategias registradas (vacía si todavía no se importó ninguna). Necesita el repositorio instalado (`cloudcr repo instalar`).
 
 ### Paso 14 — Agregar, editar y eliminar una tarea
 
@@ -289,7 +281,7 @@ Si alguna vez ves un **ERROR** (no advertencia) que no esperabas, ahí sí revis
 | Tildes, flechas o líneas se ven mal (`Ã³`, cuadrados, etc.) | La consola no está en UTF-8 | `$env:PYTHONUTF8="1"` antes de correr `cloudcr` (Paso 7) |
 | `cloudcr` no se reconoce | No usaste la ruta completa ni activaste el entorno | Usar `.\.venv\Scripts\cloudcr.exe` siempre, o `.\.venv\Scripts\Activate.ps1` primero |
 | `ModuleNotFoundError: No module named 'cloudcr_backup'` | La instalación del Paso 5 no terminó bien | Repetir `.\.venv\Scripts\python.exe -m pip install -e ".[dev]"` |
-| `Error: La conexión al repositorio todavía no está implementada` | Esperado — `repository/` es de Josué | No es un bug, ver sección 2 |
+| `Error` al conectar con el repositorio | `BKPCAT` apagada o no instalado | `cloudcr doctor` y `cloudcr repo instalar` |
 | `ALC_002` al validar `est001-004.yaml` | No corriste `sql/demo/*.sql` todavía | Ver sección 5, o ignorarlo si solo estás probando el código |
 | `ORA-01034` / `ORA-12560` ("la instancia no está disponible") | Oracle XE está detenida | `Start-Service OracleServiceXE` (Paso 3, como administrador) |
 | Al correr un `.sql` por un pipe de PowerShell (`echo ... \| sqlplus`), sale `ORA-00911: carácter no válido` en la primera línea | PowerShell agrega un BOM invisible al principio del texto que manda por el pipe | No uses pipes para mandarle respuestas a `sqlplus`; corré los scripts `ACCEPT`-interactivos escribiendo las respuestas a mano, o usá `cmd /c "sqlplus ... < archivo.txt"` con un archivo de texto plano en ASCII |
@@ -297,10 +289,12 @@ Si alguna vez ves un **ERROR** (no advertencia) que no esperabas, ahí sí revis
 
 ## 8. Checklist final antes de hacer push
 
-- [ ] `pytest -q` → 202 passed
+- [ ] `pytest -q` → 986 passed
 - [ ] `ruff check src tests` → All checks passed
 - [ ] `mypy src` → Success, no issues
 - [ ] `cloudcr estrategia validar --archivo config\estrategias\est001.yaml` corre sin traceback
+- [ ] `cloudcr estrategia validar --archivo config\estrategias\est002.yaml` en NOARCHIVELOG muestra `ARCH_001` y `ARCH_007`
+- [ ] La web muestra la pantalla Criterios (`/criterios`)
 - [ ] `cloudcr estrategia mostrar --archivo config\estrategias\est00X.yaml` corre bien para las 4 estrategias
 - [ ] `cloudcr tarea agregar/editar/eliminar` funciona sobre una copia de prueba
 - [ ] `cloudcr estrategia crear` completa los 9 pasos sin crashear y deja el YAML guardado

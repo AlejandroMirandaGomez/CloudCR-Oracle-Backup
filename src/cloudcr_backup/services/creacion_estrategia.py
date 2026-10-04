@@ -12,7 +12,7 @@ from cloudcr_backup.services.almacen_estrategias import REPOSITORIO_OMITIDO, Res
 from cloudcr_backup.services.destinos import inspeccionar_destino
 from cloudcr_backup.services.solicitud_estrategia import SolicitudEstrategia, construir_estrategia
 from cloudcr_backup.validation import motor, reglas  # noqa: F401
-from cloudcr_backup.validation.contexto import ContextoValidacion
+from cloudcr_backup.validation.contexto import ContextoValidacion, servicio_de_dsn
 from cloudcr_backup.validation.reglas.archivado import modo_efectivo
 
 
@@ -42,7 +42,9 @@ class ResultadoGuardado:
     repositorio: ResultadoRepositorio
 
 
-def _contexto(estrategia: Estrategia, perfil: PerfilBD, codigos_existentes: list[str]) -> ContextoValidacion:
+def _contexto(
+    estrategia: Estrategia, perfil: PerfilBD, codigos_existentes: list[str], ajustes: Ajustes
+) -> ContextoValidacion:
     escribibles: dict[str, bool] = {}
     libres: dict[str, int] = {}
     totales: dict[str, int] = {}
@@ -56,6 +58,7 @@ def _contexto(estrategia: Estrategia, perfil: PerfilBD, codigos_existentes: list
         estrategia=estrategia,
         perfil=perfil,
         codigos_estrategia_existentes=codigos_existentes,
+        repositorio_servicio=servicio_de_dsn(ajustes.repositorio_dsn),
         destinos_escribibles=escribibles,
         espacio_libre_destino_bytes=libres,
         espacio_total_destino_bytes=totales,
@@ -65,7 +68,7 @@ def _contexto(estrategia: Estrategia, perfil: PerfilBD, codigos_existentes: list
 def validar(solicitud: SolicitudEstrategia, perfil: PerfilBD, ajustes: Ajustes, sid: str) -> ResultadoValidacion:
     estrategia = construir_estrategia(solicitud)
     existentes = almacen_estrategias.codigos_existentes(ajustes, sid, perfil.nombre)
-    hallazgos = motor.validar(_contexto(estrategia, perfil, existentes))
+    hallazgos = motor.validar(_contexto(estrategia, perfil, existentes, ajustes))
     requiere_caida = any(modo_efectivo(tarea.como, perfil) is ModoRespaldo.CONSISTENTE for tarea in estrategia.tareas)
     return ResultadoValidacion(estrategia=estrategia, hallazgos=hallazgos, requiere_aceptar_caida=requiere_caida)
 

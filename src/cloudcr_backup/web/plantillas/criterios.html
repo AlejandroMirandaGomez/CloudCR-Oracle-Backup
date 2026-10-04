@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block titulo %}Criterios · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Criterios de respaldo</h1>
+      <p class="subtitulo">Cómo decide el grupo la prioridad de lo que se respalda, los esquemas que se sugieren y el vocabulario del curso frente a RMAN.</p>
+    </div>
+  </section>
+
+  <section class="panel" id="prioridades">
+    <h2>Prioridad: alta, media y baja</h2>
+    <div class="tabla-desplazable">
+      <table class="tabla compacta">
+        <thead>
+          <tr><th scope="col">Prioridad</th><th scope="col">Qué significa</th><th scope="col">RPO</th><th scope="col">RTO</th><th scope="col">Recencia máxima</th><th scope="col">Esquema sugerido</th></tr>
+        </thead>
+        <tbody>
+          {% for p in prioridades %}
+          <tr>
+            <td><strong>{{ p.prioridad.value }}</strong></td>
+            <td>{{ p.descripcion }}</td>
+            <td>{{ p.rpo_horas | round(0) | int }} h</td>
+            <td>{{ p.rto_horas | round(0) | int }} h</td>
+            <td>{{ p.recencia_maxima_horas | round(0) | int }} h</td>
+            <td>{{ p.esquema_sugerido }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="nota">RPO es la pérdida de datos tolerable; RTO, el tiempo tolerable para recuperar. La recencia máxima es el valor con el que la alerta <code>SIN_RESPALDO_RECIENTE</code> decide si un respaldo está vencido.</p>
+  </section>
+
+  <section class="panel" id="esquemas">
+    <h2>Esquemas predefinidos</h2>
+    <div class="tabla-desplazable">
+      <table class="tabla compacta">
+        <thead><tr><th scope="col">Esquema</th><th scope="col">Descripción</th></tr></thead>
+        <tbody>
+          {% for e in esquemas %}
+          <tr><td>{{ e.nombre }}</td><td>{{ e.descripcion }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" id="vocabulario">
+    <h2>Vocabulario del curso frente a RMAN</h2>
+    <div class="tabla-desplazable">
+      <table class="tabla compacta">
+        <thead>
+          <tr><th scope="col">Término de la clase</th><th scope="col">Tipo en el sistema</th><th scope="col">Cláusula RMAN</th><th scope="col">Qué significa</th></tr>
+        </thead>
+        <tbody>
+          {% for q in equivalencias %}
+          <tr>
+            <td>{{ q.termino_clase }}</td>
+            <td>{{ q.nombre_sistema }}</td>
+            <td><code>{{ q.clausula_rman }}</code></td>
+            <td>{{ q.significado }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="nota">{{ nota_parcial }}</p>
+    <p class="nota">{{ nota_incompleto }}</p>
+  </section>
+</div>
+{% endblock %}
