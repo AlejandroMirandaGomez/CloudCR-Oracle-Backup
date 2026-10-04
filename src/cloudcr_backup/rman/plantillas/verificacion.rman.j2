@@ -1,0 +1,4 @@
+CROSSCHECK BACKUP TAG '{{ tag }}';
+{% if conjuntos %}
+VALIDATE BACKUPSET {{ conjuntos | join(', ') }};
+{% endif %}
