@@ -9,12 +9,14 @@ from cloudcr_backup.domain.enums import (
     EstadoPrueba,
     ModoRespaldo,
     Prioridad,
+    Severidad,
     TipoFrecuencia,
     TipoObjeto,
     TipoRespaldo,
 )
 from cloudcr_backup.domain.errores import ErrorServicio, OperacionNoPermitida, RecursoNoEncontrado
 from cloudcr_backup.domain.estrategia import Como, Destino, Estrategia, ObjetoAlcance, Programacion, Tarea
+from cloudcr_backup.domain.hallazgos import Hallazgo
 from cloudcr_backup.domain.historial import (
     ArchivoExportado,
     ConsultaHistorial,
@@ -29,6 +31,7 @@ from cloudcr_backup.domain.monitoreo import (
     EstadoGeneral,
     EstadoLatido,
     Latido,
+    ObservacionesBase,
     ResumenEstrategia,
     ScriptResumen,
     SemaforoEstrategia,
@@ -147,6 +150,21 @@ class MonitoreoFalso:
             en_curso=[fila_historial(42, EstadoEjecucion.EN_CURSO)],
             alertas=self.lista_alertas,
             agentes=self.agentes(),
+            observaciones_redo=[
+                ObservacionesBase(
+                    bd="XE",
+                    capturado_en=AHORA,
+                    hallazgos=[
+                        Hallazgo(
+                            codigo="RED_003",
+                            severidad=Severidad.RECOMENDACION,
+                            mensaje="El log switch ocurre en promedio cada 8 minutos.",
+                            sujeto="redo",
+                            accion_sugerida="Aumentar el tamaño de los redo logs.",
+                        )
+                    ],
+                )
+            ],
             tick_segundos=30,
         )
 

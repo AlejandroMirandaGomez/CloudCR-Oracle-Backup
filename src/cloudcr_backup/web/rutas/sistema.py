@@ -7,6 +7,7 @@ from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.errores import ErrorServicio, OperacionNoPermitida
 from cloudcr_backup.repository.bases_datos import Ambiente
 from cloudcr_backup.services import administracion as servicio_administracion
+from cloudcr_backup.services import alertas as servicio_alertas
 from cloudcr_backup.services import bases_datos as servicio_bases
 from cloudcr_backup.services.control_agente import ControlAgente
 from cloudcr_backup.web.formularios import Formulario, marcado, texto
@@ -160,6 +161,23 @@ def archivado(request: Request) -> HTMLResponse:
         "procedimiento": servicio_administracion.PROCEDIMIENTO_ARCHIVELOG,
     }
     return renderizar(request, "parciales/_archivado.html", contexto)
+
+
+def _correo(request: Request, aviso: str | None = None) -> HTMLResponse:
+    estado = servicio_alertas.estado_correo(_ajustes(request))
+    return renderizar(request, "parciales/_correo.html", {"estado": estado, "aviso": aviso})
+
+
+@router.get("/sistema/correo", response_class=HTMLResponse)
+def correo(request: Request) -> HTMLResponse:
+    return _correo(request)
+
+
+@router.post("/sistema/correo/probar", response_model=None, dependencies=OrigenConfiable)
+def probar_correo(request: Request) -> Response:
+    resultado = servicio_alertas.probar_correo(_ajustes(request))
+    aviso = f"Correo de prueba enviado por {resultado.servidor} a {', '.join(resultado.destinatarios)}."
+    return _volver(request, "correo") or _correo(request, aviso)
 
 
 def _autoinicio(ajustes: Ajustes) -> bool | None:

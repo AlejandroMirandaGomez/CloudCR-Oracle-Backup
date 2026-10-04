@@ -4,7 +4,7 @@ Tarea de la clase del 10/09 (§9), desarrollada en sus cuatro pasos: **1) situac
 
 Fuente de los datos: la evidencia **E1** (`docs/evidencias/E1_explorador_noarchivelog.html` y `.json`), capturada con `cloudcr explorar` sobre la XE 21c el 30/09/2026 a las 18:55, y las observaciones automáticas del explorador (`ARCH_001`, `ARCH_010`, `RED_001`, `RED_003`, `CTL_002`, `DIS_001`).
 
-> Los pasos 3 y 4 exigen cambiar el modo de archivado de la base. **Esa decisión y su ejecución son del DBA**: la herramienta solo inspecciona. Mientras no se ejecuten, quedan marcados `[PENDIENTE]`.
+> Los pasos 3 y 4 exigen cambiar el modo de archivado de la base. **Esa decisión y su ejecución son del DBA**: la herramienta solo inspecciona. El paso 4 se completó con la situación medida el 4/10/2026; el paso 3 documenta la secuencia recomendada y lo que no quedó registrado.
 
 ---
 
@@ -20,7 +20,7 @@ Fuente de los datos: la evidencia **E1** (`docs/evidencias/E1_explorador_noarchi
 | Miembros por grupo | **1** (`REDO01.LOG`, `REDO02.LOG`, `REDO03.LOG`) | `RED_001` RECOMENDACION: no están multiplexados |
 | Ubicación | Datafiles, control files y redo logs en la misma unidad `C:\` | `DIS_001` RECOMENDACION |
 | Control files | 2 copias, ambas en `C:\APP\…\ORADATA\XE\` | `CTL_002` RECOMENDACION: mismo directorio |
-| Ritmo de log switch | **No medido en E1** (la medición de `RED_003` se agregó después) | `[PENDIENTE: volver a correr cloudcr explorar o la consulta de V$LOG_HISTORY para tener el ritmo real]` |
+| Ritmo de log switch | **No medido en E1** (la medición de `RED_003` se agregó después) | Medido después, ver sección 4 |
 | Archived logs sin respaldo | 0 (no hay archivado) | — |
 
 Consulta para medir el ritmo real (solo lectura):
@@ -55,7 +55,7 @@ Minutos promedio entre cambios = `horas × 60 / (cambios − 1)`. Lo recomendado
 
 ## 3. Aplicación
 
-`[PENDIENTE: ejecutar en la XE (decisión y ejecución del DBA), con respaldo antes y después]`
+`[APLICADO FUERA DE LA HERRAMIENTA: ver la nota de la sección 4. La secuencia siguiente es la recomendada; no quedaron registrados los tags ANTES_ARCHIVELOG y DESPUES_ARCHIVELOG]`
 
 > El script `sql/archivelog/activar_archivelog.sql` (parte del Día 2) **todavía no existe en el repositorio**. Hasta que exista, la secuencia exacta a ejecutar a mano es la siguiente. Requiere detener la base unos minutos.
 
@@ -107,17 +107,33 @@ Al inspeccionar de nuevo, la alerta `BD_NOARCHIVELOG` se resuelve sola en la sig
 
 ## 4. Situación final
 
-`[PENDIENTE: completar con el explorador después del paso 3 (E10) y la salida de ARCHIVE LOG LIST]`
+Capturada el 4/10/2026 sobre la XE de esta máquina: `docs/evidencias/E10_explorador_archivelog.html` y `.json` (`cloudcr explorar XE`) y la salida real de `ARCHIVE LOG LIST` y de las vistas `V$LOG`, `V$LOGFILE` y `V$LOG_HISTORY`.
 
-| Aspecto | Antes (E1) | Después (E10) |
+| Aspecto | Antes (E1) | Después (E10, medido) |
 |---|---|---|
-| Modo de archivado | NOARCHIVELOG | `[PENDIENTE]` |
-| Destino de archivado | Por defecto en `ORACLE_HOME\RDBMS` | `[PENDIENTE]` |
-| Miembros por grupo de redo | 1 | `[PENDIENTE]` |
-| Tamaño de los grupos | 3 × 200 MB | `[PENDIENTE]` |
-| Ritmo de log switch | No medido | `[PENDIENTE]` |
-| Observaciones del explorador | ARCH_001, ARCH_010, RED_001, CTL_002, DIS_001 | `[PENDIENTE]` |
-| Respaldo antes / después | — | `[PENDIENTE: tags ANTES_ARCHIVELOG y DESPUES_ARCHIVELOG en cloudcr historial o LIST BACKUP SUMMARY]` |
+| Modo de archivado | NOARCHIVELOG | **ARCHIVELOG**, archivado automático activado |
+| Destino de archivado | Por defecto en `ORACLE_HOME\RDBMS` | `C:\app\calvo\product\21c\oradata\XE\archive` (fuera del `ORACLE_HOME`, pero en el mismo disco `C:\`; no se usó FRA) |
+| Miembros por grupo de redo | 1 | **2** (`REDO01B.LOG`, `REDO02B.LOG`, `REDO03B.LOG` junto a los originales) |
+| Tamaño de los grupos | 3 × 200 MB | 3 × 200 MB, todos iguales |
+| Ritmo de log switch | No medido | 4 cambios en 1,1 h: **≈ 22 min** entre cambios, dentro del rango de 15–30 min de la clase |
+| Archived logs sin respaldo | 0 | 0 tras los respaldos de la estrategia |
+| Observaciones del explorador | ARCH_001, ARCH_010, RED_001, CTL_002, DIS_001 | Quedan `DIS_001` (todo en `C:\`) y `CTL_002` (control files en el mismo directorio); ya no aparecen `ARCH_001` ni `RED_001` |
+| Respaldo antes / después | — | Ver la nota siguiente |
+
+**Nota sobre el paso 3 (aplicación).** Cuando se capturó E10, la base ya estaba en ARCHIVELOG y con los redo logs multiplexados: el cambio se aplicó antes de esta captura. **No quedó registrado en la herramienta** el respaldo con los tags `ANTES_ARCHIVELOG` y `DESPUES_ARCHIVELOG`, ni la salida de `ARCHIVE LOG LIST` previa al cambio. Lo que sí está respaldado por evidencia es el estado inicial (E1), el final medido (E10) y, ya en ARCHIVELOG, los respaldos en línea reales: `docs/evidencias/E3_ejecucion_en_linea_v1/` y `E5_aplicar_arch_002_v2/` (este último incluye los archived logs).
+
+Pendiente del grupo: mover una copia del control file y una del redo a otro disco (`DIS_001`, `CTL_002`), algo que esta máquina, con un solo disco, no permite demostrar.
+
+Salida real de `ARCHIVE LOG LIST` en esta máquina:
+
+```text
+Modo log de la base de datos       Modo de Archivado
+Archivado automático               Activado
+Destino del archivo                C:\app\calvo\product\21c\oradata\XE\archive
+Secuencia de log en línea más antigua  14
+Siguiente secuencia de log para archivar  16
+Secuencia de log actual            16
+```
 
 Salida esperada de `ARCHIVE LOG LIST` (para comparar con la real, no como evidencia):
 

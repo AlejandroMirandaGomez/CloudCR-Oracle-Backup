@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from cloudcr_backup.domain.enums import LogMode, ModoRespaldo, Severidad, TipoObjeto
 from cloudcr_backup.domain.perfil_bd import ContenedorInfo
 from cloudcr_backup.validation import motor, reglas  # noqa: F401
@@ -104,3 +106,19 @@ def test_servicio_de_dsn() -> None:
     assert servicio_de_dsn("localhost:1521/BKPCAT") == "BKPCAT"
     assert servicio_de_dsn("localhost:1521") is None
     assert servicio_de_dsn(None) is None
+
+
+def test_script_generar_tambien_evalua_arch_009(tmp_path: Path) -> None:
+    from cloudcr_backup.config.ajustes import Ajustes
+    from cloudcr_backup.services import scripts
+    from cloudcr_backup.services.resolucion import TareaResuelta
+
+    estrategia = _estrategia(ModoRespaldo.CONSISTENTE)
+    resuelta = TareaResuelta(base=None, estrategia=estrategia, tarea=estrategia.tareas[0], tarea_id=1)  # type: ignore[arg-type]
+    perfil = _perfil_con_bkpcat(LogMode.NOARCHIVELOG)
+    con_repositorio = Ajustes(work_dir=tmp_path, repositorio_dsn="localhost:1521/BKPCAT")
+    sin_repositorio = Ajustes(work_dir=tmp_path)
+    con = scripts._hallazgos_de_tarea(con_repositorio, resuelta, perfil, {})
+    sin = scripts._hallazgos_de_tarea(sin_repositorio, resuelta, perfil, {})
+    assert any(h.codigo == "ARCH_009" for h in con)
+    assert not any(h.codigo == "ARCH_009" for h in sin)

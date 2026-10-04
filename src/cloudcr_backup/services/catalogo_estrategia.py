@@ -26,7 +26,7 @@ from cloudcr_backup.strategy.plantillas_esquema import (
     todos_los_esquemas,
 )
 from cloudcr_backup.strategy.prioridad import todos_los_criterios
-from cloudcr_backup.strategy.vocabulario import equivalencia_de, etiqueta_doble
+from cloudcr_backup.strategy.vocabulario import NOTA_PARCIAL, equivalencia_de, etiqueta_doble
 
 ETIQUETA_DIA = {
     DiaSemana.LUNES: "Lunes",
@@ -142,6 +142,7 @@ def construir_catalogo(perfil: PerfilBD, codigos_existentes: list[str], ajustes:
             _descripcion_de_esquema(descripcion.esquema, descripcion.nombre, descripcion.descripcion)
             for descripcion in todos_los_esquemas()
         ],
+        "nota_parcial": NOTA_PARCIAL,
         "tipos_respaldo": [
             {
                 "valor": tipo.value,

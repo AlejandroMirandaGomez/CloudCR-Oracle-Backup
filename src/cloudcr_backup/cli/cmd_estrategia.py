@@ -27,7 +27,7 @@ from cloudcr_backup.strategy.yaml_io import (
     guardar_estrategia_yaml,
 )
 from cloudcr_backup.validation import motor, reglas  # noqa: F401
-from cloudcr_backup.validation.contexto import ContextoValidacion
+from cloudcr_backup.validation.contexto import ContextoValidacion, servicio_de_dsn
 
 app = typer.Typer(add_completion=False, help="Administra estrategias de respaldo: qué, cómo, cuándo y su validación.")
 
@@ -101,7 +101,11 @@ def validar(
         conexion = _conectar_repositorio()
         estrategia = _obtener_o_fallar(conexion, _bd_id_de(conexion, bd), bd, codigo)
 
-    contexto = ContextoValidacion(estrategia=estrategia, perfil=perfil)
+    contexto = ContextoValidacion(
+        estrategia=estrategia,
+        perfil=perfil,
+        repositorio_servicio=servicio_de_dsn(cargar_ajustes().repositorio_dsn),
+    )
     hallazgos = motor.validar(contexto)
     salida = consola()
     salida.print(f"\nValidación de [bold]{estrategia.codigo}[/] — {estrategia.nombre}", markup=True)

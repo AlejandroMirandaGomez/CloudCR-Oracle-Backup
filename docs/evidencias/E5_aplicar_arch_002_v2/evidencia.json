@@ -1,0 +1,108 @@
+{
+  "version_formato": 1,
+  "ejecucion_id": 21,
+  "bd": "XE",
+  "bd_id": 1,
+  "estrategia": "EST001",
+  "estrategia_nombre": "Producción diaria",
+  "tarea": "T1",
+  "tarea_id": 1,
+  "tipo_respaldo": "INCREMENTAL_N1_ACUMULATIVO",
+  "modo_respaldo": "EN_LINEA",
+  "programada_para": "2026-10-04T22:05:57",
+  "inicio": "2026-10-04T22:05:58.030759Z",
+  "fin": "2026-10-04T22:06:10.400247Z",
+  "duracion_segundos": 12,
+  "estado": "EXITOSA",
+  "estado_prueba": "OK",
+  "motivos": [
+    "RMAN terminó sin errores, el trabajo figura como COMPLETED y todas las piezas existen en disco."
+  ],
+  "mensaje_rman": "RMAN terminó sin errores, el trabajo figura como COMPLETED y todas las piezas existen en disco.",
+  "errores": [],
+  "advertencias": [],
+  "script_id": 21,
+  "script_version": 2,
+  "script_hash": "a54880efc9b924debf3b66a8e22d213dc0e358c11ad74e58369eabf4bf7b9627",
+  "script_ruta": "C:\\Users\\calvo\\AppData\\Local\\cloudcr\\ejecuciones\\21\\EST001.XE.RMAN",
+  "log_rman": "C:\\Users\\calvo\\AppData\\Local\\cloudcr\\ejecuciones\\21\\EST001.XE.LOG",
+  "log_verificacion": "C:\\Users\\calvo\\AppData\\Local\\cloudcr\\ejecuciones\\21\\verificacion.log",
+  "tag": "EST001_T1_261004160557",
+  "command_id": "CLOUDCR_21",
+  "codigo_salida": 0,
+  "agente": "DESKTOP-E064O9O",
+  "ubicacion": "C:\\backups\\XE",
+  "piezas": [
+    {
+      "ruta": "C:\\BACKUPS\\XE\\XE_EST001_T1_20261004_07541VB9_7_1_1.BKP",
+      "tamano_bytes": 530923520,
+      "existe": true,
+      "tag": null,
+      "conjunto": null,
+      "vence_en": null
+    },
+    {
+      "ruta": "C:\\BACKUPS\\XE\\XE_EST001_T1_20261004_08541VBA_8_1_1.BKP",
+      "tamano_bytes": 73728,
+      "existe": true,
+      "tag": "EST001_T1_261004160557",
+      "conjunto": 8,
+      "vence_en": null
+    },
+    {
+      "ruta": "C:\\BACKUPS\\XE\\XE_EST001_T1_20261004_09541VBB_9_1_1.BKP",
+      "tamano_bytes": 8192,
+      "existe": true,
+      "tag": null,
+      "conjunto": null,
+      "vence_en": null
+    },
+    {
+      "ruta": "C:\\BACKUPS\\XE\\XE_EST001_T1_20261004_0A541VBD_10_1_1.BKP",
+      "tamano_bytes": 18808832,
+      "existe": true,
+      "tag": "EST001_T1_261004160557",
+      "conjunto": 10,
+      "vence_en": null
+    },
+    {
+      "ruta": "C:\\BACKUPS\\XE\\XE_EST001_T1_20261004_0B541VBF_11_1_1.BKP",
+      "tamano_bytes": 114688,
+      "existe": true,
+      "tag": "EST001_T1_261004160557",
+      "conjunto": 11,
+      "vence_en": null
+    },
+    {
+      "ruta": "C:\\BACKUPS\\XE\\C-3124756861-20261004-02",
+      "tamano_bytes": 18841600,
+      "existe": true,
+      "tag": null,
+      "conjunto": null,
+      "vence_en": null
+    }
+  ],
+  "estado_job_rman": "COMPLETED",
+  "reapertura_correcta": null,
+  "pruebas": [
+    {
+      "tipo": "EXISTENCIA",
+      "resultado": "OK",
+      "detalle": "Las 3 pieza(s) existen en disco.",
+      "ejecutada_en": "2026-10-04T22:06:10.546542Z"
+    },
+    {
+      "tipo": "CROSSCHECK",
+      "resultado": "OK",
+      "detalle": "CROSSCHECK: todas las piezas AVAILABLE.",
+      "ejecutada_en": "2026-10-04T22:06:10.546542Z"
+    },
+    {
+      "tipo": "VALIDATE",
+      "resultado": "OK",
+      "detalle": "VALIDATE BACKUPSET leyó todas las piezas sin errores.",
+      "ejecutada_en": "2026-10-04T22:06:10.546542Z"
+    }
+  ],
+  "generado_en": "2026-10-04T22:06:10.400247Z"
+}

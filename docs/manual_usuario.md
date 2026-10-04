@@ -146,6 +146,7 @@ Desde «Script RMAN» de cada tarea (`/estrategias/{bd}/{codigo}/scripts/{tarea}
 - Estado (borrador, aprobado, rechazado, obsoleto), modo, **SHA-256** y si el archivo en disco sigue intacto.
 - El contenido exacto, la tabla **configuración → cláusula RMAN** y la validación de la tarea.
 - **Aprobar** (un respaldo CONSISTENTE exige marcar «Acepto la caída del servicio») y **Rechazar** con motivo.
+- **Respaldo antes de una operación crítica** (enunciado §3): no necesita nada especial. Ejecute «Ejecutar ahora» sobre una tarea ya aprobada, o cree una estrategia con frecuencia «Una sola vez». En la terminal: `cloudcr ejecutar EST001 T1 --ahora`. Queda en el historial como cualquier otra ejecución.
 - Con el script aprobado: **Simular la ejecución** (preflight y comando, sin RMAN) y **Ejecutar ahora** (corre en segundo plano; el enlace lleva al detalle del historial, que se actualiza solo).
 - **Regenerar** y la lista de versiones.
 
@@ -312,6 +313,14 @@ cloudcr param set notificacion.email.destinatarios '["dba@ejemplo.com"]'
 cloudcr param set notificacion.email.severidad_minima ALERTA
 cloudcr param set notificacion.canales '["consola","email"]'
 ```
+
+4. Compruebe la configuración con un correo de prueba, desde la terminal o desde la web:
+
+| Terminal | Web |
+|---|---|
+| `cloudcr alertas probar-correo` | **Sistema → Notificaciones por correo**: «Enviar correo de prueba» (muestra además si el canal está activo, si la configuración está completa y si la contraseña está definida) |
+
+Si falta algún parámetro o el servidor rechaza las credenciales, ambos explican qué revisar.
 
 El asunto incluye el alcance de la tarea, por ejemplo: `[CloudCR][ALERTA] EJECUCION_FALLIDA XE EST001/T1 · VENTAS, FINANZAS, CONTROLFILE`.
 

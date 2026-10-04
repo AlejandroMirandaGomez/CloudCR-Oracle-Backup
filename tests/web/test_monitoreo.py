@@ -92,6 +92,14 @@ def test_estado_muestra_semaforo_con_texto(web: TestClient) -> None:
     assert 'hx-trigger="every 30s"' in html
 
 
+def test_estado_muestra_las_observaciones_de_redo(web: TestClient) -> None:
+    html = web.get("/estado").text
+    assert "Redo logs y archivado" in html
+    assert "RED_003" in html
+    assert "El log switch ocurre en promedio cada 8 minutos." in html
+    assert "Aumentar el tamaño de los redo logs." in html
+
+
 def test_nombres_se_escapan(web: TestClient) -> None:
     for ruta in ("/estado", "/estrategias", "/estrategias/XE/EST001"):
         html = web.get(ruta).text

@@ -79,6 +79,34 @@
 </section>
 
 <section class="panel">
+  <h2>Redo logs y archivado</h2>
+  {% for base in observaciones_redo %}
+  <h3>{{ base.bd }} <span class="nota">(perfil guardado {{ base.capturado_en | local(zona) }})</span></h3>
+  {% if base.hallazgos %}
+  <div class="tabla-desplazable">
+    <table class="tabla compacta">
+      <thead><tr><th scope="col">Nivel</th><th scope="col">Código</th><th scope="col">Observación</th><th scope="col">Acción sugerida</th></tr></thead>
+      <tbody>
+        {% for h in base.hallazgos %}
+        <tr>
+          <td><span class="severidad-{{ h.severidad | lower }}"><span class="insignia">{{ h.severidad | etiqueta_severidad }}</span></span></td>
+          <td><code>{{ h.codigo }}</code></td>
+          <td class="envolver">{{ h.mensaje }}</td>
+          <td class="envolver">{{ h.accion_sugerida or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="nota tono-exito">Sin observaciones de redo logs en el último perfil.</p>
+  {% endif %}
+  {% else %}
+  <p class="nota">No hay perfiles guardados. Inspeccione una base en <a href="/sistema#bases">Sistema → Bases de datos</a>.</p>
+  {% endfor %}
+</section>
+
+<section class="panel">
   <h2>Agente</h2>
   {% if agentes %}
   <div class="tabla-desplazable">

@@ -1,12 +1,15 @@
 from datetime import datetime
+from typing import Any
 
 from cloudcr_backup.agent.bucle import ParametrosAgente
 from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.alertas import SeveridadAlerta, VistaAlerta
 from cloudcr_backup.domain.enums import EstadoEjecucion, EstadoEstrategia, EstadoPrueba
 from cloudcr_backup.domain.historial import FilaHistorial
-from cloudcr_backup.domain.monitoreo import ColorSemaforo, EstadoGeneral, SemaforoEstrategia
+from cloudcr_backup.domain.monitoreo import ColorSemaforo, EstadoGeneral, ObservacionesBase, SemaforoEstrategia
+from cloudcr_backup.oracle.observaciones import afinamiento_redo, redo_logs
 from cloudcr_backup.presentacion.historial import TEXTO_PRUEBAS, TEXTO_RESULTADO
+from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository import ejecuciones as repositorio_ejecuciones
 from cloudcr_backup.scheduling.planificador import Planificador
 from cloudcr_backup.scheduling.reloj import RelojSistema, utc_consciente
@@ -57,6 +60,19 @@ def color_semaforo(
     return ColorSemaforo.VERDE, []
 
 
+def _observaciones_de_redo(conexion: Any, filtro_bd: str | None) -> list[ObservacionesBase]:
+    observaciones: list[ObservacionesBase] = []
+    for base in repositorio_bases_datos.listar(conexion):
+        if not base.activa or filtro_bd not in (None, base.nombre.upper()):
+            continue
+        perfil = repositorio_bases_datos.ultimo_perfil(conexion, base.id)
+        if perfil is None:
+            continue
+        hallazgos = [*redo_logs(perfil), *afinamiento_redo(perfil)]
+        observaciones.append(ObservacionesBase(bd=base.nombre, capturado_en=perfil.capturado_en, hallazgos=hallazgos))
+    return observaciones
+
+
 def estado_general(ajustes: Ajustes, bd: str | None = None, ahora: datetime | None = None) -> EstadoGeneral:
     momento = utc_consciente(ahora or RelojSistema().ahora())
     filtro_bd = bd.strip().upper() if bd else None
@@ -68,6 +84,7 @@ def estado_general(ajustes: Ajustes, bd: str | None = None, ahora: datetime | No
         ultimas = repositorio_ejecuciones.ultimas_por_tarea(fuente.conexion, EJECUCIONES_POR_TAREA)
         alertas = fuente.vigentes()
         en_curso = [fila_historial(e) for e in repositorio_ejecuciones.en_curso(fuente.conexion)]
+        observaciones_redo = _observaciones_de_redo(fuente.conexion, filtro_bd)
         registradas = [r for r in fuente.estrategias_registradas() if filtro_bd in (None, r.base.nombre.upper())]
         semaforos = []
         for registrada in registradas:
@@ -115,5 +132,6 @@ def estado_general(ajustes: Ajustes, bd: str | None = None, ahora: datetime | No
         en_curso=en_curso,
         alertas=alertas,
         agentes=estado_agentes(ajustes, momento, parametros.tick_segundos),
+        observaciones_redo=observaciones_redo,
         tick_segundos=parametros.tick_segundos,
     )

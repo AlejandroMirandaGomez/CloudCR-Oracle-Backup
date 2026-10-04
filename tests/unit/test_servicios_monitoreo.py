@@ -143,3 +143,41 @@ def test_listar_estrategias_con_color(ajustes: Ajustes) -> None:
     assert resumen.codigo == "EST001"
     assert resumen.tareas == 2 and resumen.tareas_con_script == 1
     assert resumen.color is ColorSemaforo.ROJO
+
+
+def test_probar_correo_sin_configuracion_explica_que_falta(ajustes: Ajustes, monkeypatch: pytest.MonkeyPatch) -> None:
+    from cloudcr_backup.services import alertas
+
+    monkeypatch.setattr(alertas, "_parametros", lambda a: {})
+    with pytest.raises(OperacionNoPermitida, match=r"notificacion.email.servidor"):
+        alertas.probar_correo(ajustes)
+    estado = alertas.estado_correo(ajustes)
+    assert not estado.configurado
+    assert not estado.canal_activo
+
+
+def test_probar_correo_traduce_el_rechazo_de_credenciales(ajustes: Ajustes, monkeypatch: pytest.MonkeyPatch) -> None:
+    import smtplib
+
+    from cloudcr_backup.alerts.notificadores.email import NotificadorEmail
+    from cloudcr_backup.services import alertas
+
+    parametros = {
+        "notificacion.email.servidor": "smtp.ejemplo.com",
+        "notificacion.email.remitente": "a@ejemplo.com",
+        "notificacion.email.destinatarios": "b@ejemplo.com",
+        "notificacion.canales": '["consola","email"]',
+    }
+    monkeypatch.setattr(alertas, "_parametros", lambda a: parametros)
+
+    def rechazar(self: NotificadorEmail) -> None:
+        raise smtplib.SMTPAuthenticationError(535, b"mal")
+
+    monkeypatch.setattr(NotificadorEmail, "enviar_prueba", rechazar)
+    with pytest.raises(OperacionNoPermitida, match="rechazó las credenciales"):
+        alertas.probar_correo(ajustes)
+    assert alertas.estado_correo(ajustes).canal_activo
+
+    monkeypatch.setattr(NotificadorEmail, "enviar_prueba", lambda self: None)
+    resultado = alertas.probar_correo(ajustes)
+    assert resultado.destinatarios == ["b@ejemplo.com"]

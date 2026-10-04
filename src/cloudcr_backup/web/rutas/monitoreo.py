@@ -35,6 +35,7 @@ def pagina_estado(request: Request, monitoreo: Monitoreo, bd: FiltroBd = None) -
         "alertas": [fila_alerta(a, zona) for a in general.alertas],
         "agentes": [fila_agente(a, zona) for a in general.agentes],
         "regla": REGLA_SEMAFORO,
+        "observaciones_redo": general.observaciones_redo,
     }
     plantilla = "parciales/_estado.html" if es_htmx(request) else "estado.html"
     return renderizar(request, plantilla, contexto)

@@ -431,3 +431,14 @@ def test_el_nombre_con_html_se_escapa_en_los_datos_embebidos(
     servicio.exploracion = Exploracion(perfil=perfil, hallazgos=servicio.exploracion.hallazgos)
     html = cliente_estrategias.get("/instancias/XE/estrategias/nueva").text
     assert "</script><script>alert(1)" not in html
+
+
+def test_el_asistente_explica_que_parcial_es_un_alcance_y_enlaza_el_vocabulario(
+    cliente_estrategias: TestClient,
+) -> None:
+    html = cliente_estrategias.get("/instancias/XE/estrategias/nueva").text
+    assert "no es un tipo de respaldo distinto" in html
+    assert 'href="/criterios#vocabulario"' in html
+    catalogo = cliente_estrategias.get("/api/instancias/XE/estrategias/catalogo").json()
+    etiquetas = {t["valor"]: t["etiqueta"] for t in catalogo["tipos_respaldo"]}
+    assert etiquetas["INCREMENTAL_N0"] == "Incremental nivel 0 (total+)"

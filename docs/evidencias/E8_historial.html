@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Historial de ejecuciones de respaldo</title>
+<style>
+:root { --fondo: #ffffff; --texto: #1b2230; --suave: #5b6576; --borde: #d9dee6; --cabecera: #eef1f5;
+  --exito: #1d7a46; --advertencia: #9a6400; --peligro: #b3261e; --dato: #0b6a88; color-scheme: light dark; }
+@media (prefers-color-scheme: dark) {
+  :root { --fondo: #0f141b; --texto: #e6ebf2; --suave: #9aa6b8; --borde: #2b3644; --cabecera: #1e2733;
+    --exito: #4cc788; --advertencia: #f0b43c; --peligro: #ff7b72; --dato: #4fc3e8; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px; background: var(--fondo); color: var(--texto);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+p.meta { color: var(--suave); margin: 0 0 16px; }
+.tabla { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--borde); white-space: nowrap; }
+th { background: var(--cabecera); color: var(--suave); font-size: 12px; text-transform: uppercase; }
+td.simbolo { text-align: center; }
+.exito { color: var(--exito); } .advertencia { color: var(--advertencia); }
+.peligro { color: var(--peligro); font-weight: 600; } .atenuado { color: var(--suave); } .dato { color: var(--dato); }
+.tardia { font-style: italic; }
+ul { color: var(--suave); }
+@media print { body { padding: 0; background: #fff; color: #000; } th { background: #eee; color: #000; }
+  .tabla { overflow: visible; } th, td { white-space: normal; font-size: 11px; } }
+</style>
+</head>
+<body>
+<h1>Historial de ejecuciones de respaldo</h1>
+<p class="meta">Generado el 2026-10-04 16:34:04 CST con cloudcr-oracle-backup 0.1.0 · 6 ejecuciones · Filtros: BD XE</p>
+<div class="tabla"><table>
+<thead><tr><th scope="col">Fecha</th><th scope="col">BD</th><th scope="col">Estrategia</th><th scope="col">Tarea</th><th scope="col">Hora</th><th scope="col">◆</th><th scope="col">Tipo</th><th scope="col">Inicio</th><th scope="col">Fin</th><th scope="col">Duración</th><th scope="col">Resultado</th><th scope="col">Pruebas</th></tr></thead>
+<tbody><tr title="RMAN terminó sin errores, el trabajo figura como COMPLETED y todas las piezas existen en disco."><td>2026-10-04</td><td>XE</td><td>EST005</td><td>T1</td><td>16:30</td><td class="simbolo exito">●</td><td>Archived logs</td><td>16:30:09</td><td>16:30:14</td><td>5 s</td><td class="exito">Exitoso</td><td class="exito">OK</td></tr><tr title="RMAN terminó sin errores, el trabajo figura como COMPLETED y todas las piezas existen en disco."><td>2026-10-04</td><td>XE</td><td>EST005</td><td>T1</td><td>16:25</td><td class="simbolo exito">●</td><td>Archived logs</td><td>16:25:08</td><td>16:25:13</td><td>5 s</td><td class="exito">Exitoso</td><td class="exito">OK</td></tr><tr title="RMAN terminó sin errores, el trabajo figura como COMPLETED y todas las piezas existen en disco."><td>2026-10-04</td><td>XE</td><td>EST005</td><td>T1</td><td>16:20</td><td class="simbolo exito">●</td><td>Archived logs</td><td>16:20:06</td><td>16:20:12</td><td>5 s</td><td class="exito">Exitoso</td><td class="exito">OK</td></tr><tr title="RMAN terminó sin errores, el trabajo figura como COMPLETED y todas las piezas existen en disco."><td>2026-10-04</td><td>XE</td><td>EST005</td><td>T1</td><td>16:15</td><td class="simbolo exito">●</td><td>Archived logs</td><td>16:15:05</td><td>16:15:11</td><td>5 s</td><td class="exito">Exitoso</td><td class="exito">OK</td></tr><tr title="RMAN terminó sin errores, el trabajo figura como COMPLETED y todas las piezas existen en disco."><td>2026-10-04</td><td>XE</td><td>EST001</td><td>T1</td><td>16:05</td><td class="simbolo exito">●</td><td>Incremental nivel 1 acumulativo (Incremental acumulativo)</td><td>16:05:58</td><td>16:06:10</td><td>12 s</td><td class="exito">Exitoso</td><td class="exito">OK</td></tr><tr title="RMAN terminó sin errores, el trabajo figura como COMPLETED y todas las piezas existen en disco."><td>2026-10-04</td><td>XE</td><td>EST001</td><td>T1</td><td>16:05</td><td class="simbolo exito">●</td><td>Incremental nivel 1 acumulativo (Incremental acumulativo)</td><td>16:05:09</td><td>16:05:19</td><td>10 s</td><td class="exito">Exitoso</td><td class="exito">OK</td></tr></tbody>
+</table></div>
+<p class="meta">Símbolos: ● exitosa, ▲ con advertencias, ✕ fallida o bloqueada, ○ no ejecutada o cancelada, ◐ en curso, ◌ programada, sin iniciar.</p>
+</body>
+</html>

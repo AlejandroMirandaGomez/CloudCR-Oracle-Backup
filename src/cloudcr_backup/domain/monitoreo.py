@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from cloudcr_backup.domain.alertas import VistaAlerta
 from cloudcr_backup.domain.enums import EstadoEstrategia, ModoRespaldo, Prioridad, TipoRespaldo
 from cloudcr_backup.domain.estrategia import Estrategia, Programacion
+from cloudcr_backup.domain.hallazgos import Hallazgo
 from cloudcr_backup.domain.historial import FilaHistorial
 
 
@@ -54,12 +55,19 @@ class SemaforoEstrategia(BaseModel):
     alertas_vigentes: int = 0
 
 
+class ObservacionesBase(BaseModel):
+    bd: str
+    capturado_en: datetime
+    hallazgos: list[Hallazgo] = []
+
+
 class EstadoGeneral(BaseModel):
     generado_en: datetime
     semaforos: list[SemaforoEstrategia] = []
     en_curso: list[FilaHistorial] = []
     alertas: list[VistaAlerta] = []
     agentes: list[EstadoAgente] = []
+    observaciones_redo: list[ObservacionesBase] = []
     tick_segundos: int
 
 

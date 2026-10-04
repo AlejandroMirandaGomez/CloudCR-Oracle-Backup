@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block titulo %}Evidencias · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Evidencias del proyecto</h1>
+      <p class="subtitulo">{{ catalogo.disponibles }} de {{ catalogo.evidencias | length }} capturadas. Lo mismo que <code>cloudcr evidencias</code>.</p>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="tabla-desplazable">
+      <table class="tabla compacta">
+        <thead>
+          <tr><th scope="col">Id</th><th scope="col">Evidencia</th><th scope="col">Responsable</th><th scope="col">Estado</th><th scope="col">Archivos</th></tr>
+        </thead>
+        <tbody>
+          {% for e in catalogo.evidencias %}
+          <tr>
+            <td><strong>{{ e.id }}</strong></td>
+            <td class="envolver">{{ e.titulo }}</td>
+            <td>{{ e.responsable }}</td>
+            <td>{% if e.disponible %}<span class="tono-exito">● Capturada</span>{% else %}<span class="tono-advertencia">○ Pendiente</span>{% endif %}</td>
+            <td class="envolver">
+              {% if e.archivos %}
+              <details>
+                <summary>{{ e.archivos | length }} archivo(s)</summary>
+                <ul>
+                  {% for archivo in e.archivos %}<li><a href="/evidencias/archivo/{{ archivo | urlencode }}">{{ archivo }}</a></li>{% endfor %}
+                </ul>
+              </details>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if not catalogo.carpeta %}<p class="aviso">No se encontró la carpeta <code>docs/evidencias</code>. Defina <code>CLOUDCR_EVIDENCIAS_DIR</code>.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

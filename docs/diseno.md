@@ -47,6 +47,17 @@ Documento de arquitectura, modelo de datos, máquinas de estado, diagramas de se
 
 **Regla que nadie rompe:** la CLI y la web nunca ejecutan SQL ni RMAN directamente — siempre pasan por `services/`, que a su vez llama a `repository/` (SQL) o a `rman/`/`execution/` (RMAN). `repository/` es el único paquete autorizado a escribir sentencias SQL contra `BKPCAT`.
 
+**Desviaciones conocidas de esa regla (decisión consciente).** Cuatro grupos de archivos de la interfaz importan `oracle/` o `repository/` directamente en lugar de pasar por `services/`:
+
+| Dónde | Qué importa | Por qué se acepta |
+|---|---|---|
+| `cli/cmd_db.py`, `cmd_repo.py`, `cmd_param.py` | `repository/` y `oracle/connection` | Son los comandos de instalación y registro más antiguos, anteriores a la capa `services/`. La web ya tiene su equivalente en `services/administracion.py` y `services/bases_datos.py` |
+| `cli/cmd_estrategia.py`, `asistente_estrategia.py` | `repository/`, `oracle/explorador` | Trabajan con un archivo YAML y con la inspección local de la instancia (modo *thick*), sin repositorio; la restricción de 1.1 obliga a ordenar esas dos conexiones dentro del mismo comando |
+| `cli/cmd_explorar.py`, `web/dependencias.py`, `web/rutas/instancias.py`, `comun.py`, `estrategias.py` | `oracle/discovery`, `oracle/explorador`, `oracle/connection` | El explorador de instancias es el módulo original del proyecto; sus tipos de dato (`Exploracion`, errores de conexión) se usan en la presentación |
+| `web/rutas/sistema.py` | `repository.bases_datos.Ambiente` | Solo importa una enumeración, no ejecuta SQL |
+
+Ninguno de ellos escribe SQL ni invoca RMAN: toda sentencia contra `BKPCAT` sigue viviendo en `repository/` y todo RMAN en `execution/`. Mover estos comandos a `services/` es deuda técnica registrada: no cambia ningún comportamiento y sus pruebas actuales dependen de la forma en que hoy llaman a esos módulos, por lo que se dejó fuera del alcance de la entrega.
+
 **Restricción técnica real descubierta en desarrollo:** `python-oracledb` no permite mezclar modo *thin* (usuario/clave, para el repositorio) y modo *thick* (autenticación de sistema operativo, para inspeccionar la base objetivo) en el mismo proceso. Cualquier comando que necesite las dos conexiones debe completar primero toda la parte thick (inspección local) y recién después abrir la conexión al repositorio.
 
 ### 1.2 Carpeta de trabajo en ejecución
@@ -426,9 +437,9 @@ cloudcr
 
 Cada `cmd_*.py` es dueño exclusivo de un desarrollador (sección 6.4 del plan); `app.py` solo registra sub-aplicaciones vía `add_typer` (comandos agrupados) o `registered_commands.extend` (comandos de nivel superior sueltos, como `descubrir` o `doctor`).
 
-### 6.2 Web (solo lectura)
+### 6.2 Web
 
-FastAPI + HTMX. La regla de arquitectura (1.1) aplica igual: las rutas web llaman a `services/`, nunca a `repository/` ni a `rman/` directo. Pantallas: explorador de instancias (árbol plegable, búsqueda, exportación), estrategias, historial de ejecuciones con detalle, alertas, y una API JSON que expone scripts, ejecuciones, retención y recuperación para quien quiera consumirlas sin la interfaz.
+FastAPI + HTMX. La regla de arquitectura (1.1) aplica igual, con las desviaciones documentadas allí: las rutas web llaman a `services/`, nunca a `rman/` ni a SQL directo. La web opera todo el circuito, igual que la CLI. Pantallas: explorador de instancias (árbol plegable, búsqueda, exportación), estado y semáforo (con las observaciones de redo), estrategias (crear, editar, importar, validar, aplicar recomendaciones), scripts RMAN (generar, aprobar, simular, ejecutar), historial con detalle, alertas, retención, recuperación, criterios de prioridad y vocabulario, evidencias E1 a E10 y la configuración del sistema (repositorio, bases, parámetros, agente, correo). Además, una API JSON que expone estado, estrategias, scripts, ejecuciones, alertas y evidencias.
 
 ### 6.3 Principio de diseño común a ambas interfaces
 

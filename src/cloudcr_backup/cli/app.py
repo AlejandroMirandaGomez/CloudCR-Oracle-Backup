@@ -11,6 +11,7 @@ from cloudcr_backup.cli import (
     cmd_ejecutar,
     cmd_estado,
     cmd_estrategia,
+    cmd_evidencias,
     cmd_explorar,
     cmd_historial,
     cmd_param,
@@ -38,6 +39,7 @@ app.add_typer(cmd_repo.app, name="repo", help="Instala y administra el esquema d
 app.add_typer(cmd_db.app, name="db", help="Registra e inspecciona bases de datos Oracle en el repositorio.")
 app.add_typer(cmd_param.app, name="param", help="Consulta y modifica los parámetros globales del repositorio.")
 app.registered_commands.extend(cmd_estado.app.registered_commands)
+app.registered_commands.extend(cmd_evidencias.app.registered_commands)
 app.add_typer(cmd_agente.app, name="agente", help="Ejecuta y consulta el agente que dispara los respaldos programados.")
 app.add_typer(cmd_historial.app, name="historial", help="Historial de ejecuciones de respaldo y su detalle.")
 app.add_typer(cmd_alertas.app, name="alertas", help="Consulta, reconoce, resuelve y evalúa alertas.")

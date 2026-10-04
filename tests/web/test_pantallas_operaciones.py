@@ -520,7 +520,7 @@ def test_plan_con_fecha_invalida(web: TestClient, monkeypatch: pytest.MonkeyPatc
 def test_sistema_carga_sus_secciones(web: TestClient) -> None:
     html = web.get("/sistema").text
     assert sin_en_linea(html)
-    for zona in ("agente", "bases", "entorno", "archivado", "repositorio", "parametros"):
+    for zona in ("agente", "bases", "entorno", "archivado", "correo", "repositorio", "parametros"):
         assert f'hx-get="/sistema/{zona}"' in html
 
 
@@ -858,3 +858,44 @@ def test_la_web_inicia_el_agente_solo_si_se_pide(
 def test_las_acciones_nuevas_rechazan_otro_origen(web: TestClient, control: ControlFalso, ruta: str) -> None:
     assert web.post(ruta, content="x=1", headers=ORIGEN_AJENO).status_code == 403
     assert control.llamadas == []
+
+
+def test_sistema_correo_muestra_la_configuracion_y_envia_la_prueba(
+    web: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cloudcr_backup.domain.alertas import EstadoCorreo, ResultadoPruebaCorreo
+    from cloudcr_backup.services import alertas as servicio_alertas
+
+    estado = EstadoCorreo(
+        canal_activo=True,
+        configurado=True,
+        servidor="smtp.ejemplo.com",
+        puerto=587,
+        remitente="cloudcr@ejemplo.com",
+        destinatarios=["dba@ejemplo.com"],
+        severidad_minima="ALERTA",
+        clave_definida=True,
+    )
+    monkeypatch.setattr(servicio_alertas, "estado_correo", lambda a: estado)
+    html = web.get("/sistema/correo", headers=HTMX).text
+    assert "smtp.ejemplo.com:587" in html
+    assert "dba@ejemplo.com" in html
+    assert "/sistema/correo/probar" in html
+    resultado = ResultadoPruebaCorreo(
+        enviado_en=datetime(2026, 10, 4, tzinfo=UTC), servidor="smtp.ejemplo.com", destinatarios=["dba@ejemplo.com"]
+    )
+    monkeypatch.setattr(servicio_alertas, "probar_correo", lambda a: resultado)
+    respuesta = web.post("/sistema/correo/probar", headers=HTMX_FORMULARIO)
+    assert respuesta.status_code == 200
+    assert "Correo de prueba enviado por smtp.ejemplo.com a dba@ejemplo.com." in respuesta.text
+
+
+def test_sistema_correo_incompleto_no_ofrece_enviar(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from cloudcr_backup.domain.alertas import EstadoCorreo
+    from cloudcr_backup.services import alertas as servicio_alertas
+
+    incompleto = EstadoCorreo(canal_activo=False, configurado=False, problema="Falta configurar el servidor.")
+    monkeypatch.setattr(servicio_alertas, "estado_correo", lambda a: incompleto)
+    html = web.get("/sistema/correo", headers=HTMX).text
+    assert "Falta configurar el servidor." in html
+    assert "disabled" in html

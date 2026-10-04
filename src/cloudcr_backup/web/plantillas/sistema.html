@@ -48,6 +48,13 @@
     </div>
   </section>
 
+  <section class="panel" id="correo">
+    <h2>Notificaciones por correo</h2>
+    <div id="zona-correo" hx-get="/sistema/correo" hx-trigger="load">
+      <p class="cargando-zona">Consultando la configuración de correo…</p>
+    </div>
+  </section>
+
   <section class="panel" id="parametros">
     <h2>Parámetros globales</h2>
     <div id="zona-parametros" hx-get="/sistema/parametros" hx-trigger="load">

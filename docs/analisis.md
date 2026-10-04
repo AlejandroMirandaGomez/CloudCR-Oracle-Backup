@@ -84,6 +84,17 @@ Estrategia ── prioridad, estado, versión, retención
 
 La estrategia es dato versionado: editarla incrementa `version` y deja `OBSOLETO` solo los scripts que cambiaron. RMAN solo ejecuta el script **aprobado**.
 
+### Respaldo adicional antes de una operación crítica
+
+El enunciado §3 menciona un "respaldo adicional antes de operaciones críticas" (una migración, un cambio de modo de archivado, una carga masiva). No es un tipo de estrategia distinto: es una **ejecución fuera del horario**. Se cubre con dos mecanismos que ya existen, en la CLI y en la web:
+
+| Mecanismo | CLI | Web |
+|---|---|---|
+| Ejecutar ahora una tarea ya aprobada, sin esperar a su horario | `cloudcr ejecutar EST001 T1 --ahora` | Pantalla del script → «Ejecutar ahora» |
+| Una estrategia dedicada con frecuencia `UNA_VEZ` (una sola ocurrencia en la fecha y hora elegidas) | `cloudcr estrategia importar` o el asistente | Asistente de estrategia → Cómo y cuándo → «Una sola vez» |
+
+Ambos pasan por el mismo circuito que un respaldo programado (validación, script aprobado con hash, preflight, clasificación, verificación y evidencia), de modo que el respaldo previo queda en el historial como cualquier otro. Límite conocido: el sistema no registra el **motivo** ("antes de la migración X"); el contexto lo da el nombre y la descripción de la estrategia dedicada.
+
 ## 7. Criterios de prioridad del grupo
 
 El enunciado §1.1 pide que el grupo defina sus propios criterios. Se implementan en `strategy/prioridad.py` y se muestran en la web, pantalla **Criterios**.

@@ -1,9 +1,24 @@
+import os
+import smtplib
 from collections.abc import Callable, Sequence
 
 from cloudcr_backup.alerts.motor import MotorAlertas
-from cloudcr_backup.alerts.notificadores.seleccion import construir_notificadores
+from cloudcr_backup.alerts.notificadores.email import (
+    VARIABLE_CLAVE_SMTP,
+    ConfiguracionCorreoIncompleta,
+    NotificadorEmail,
+    configuracion_desde_parametros,
+)
+from cloudcr_backup.alerts.notificadores.seleccion import canales, construir_notificadores
 from cloudcr_backup.config.ajustes import Ajustes, cargar_ajustes
-from cloudcr_backup.domain.alertas import Condicion, ResumenEvaluacion, SeveridadAlerta, VistaAlerta
+from cloudcr_backup.domain.alertas import (
+    Condicion,
+    EstadoCorreo,
+    ResultadoPruebaCorreo,
+    ResumenEvaluacion,
+    SeveridadAlerta,
+    VistaAlerta,
+)
 from cloudcr_backup.domain.enums import EstadoAlerta
 from cloudcr_backup.domain.errores import FiltroInvalido, OperacionNoPermitida, RecursoNoEncontrado
 from cloudcr_backup.repository import alertas as repositorio_alertas
@@ -111,3 +126,51 @@ def resolver(ajustes: Ajustes, alerta_id: int) -> VistaAlerta:
         actualizada = repositorio_alertas.obtener(conexion, alerta_id)
     assert actualizada is not None
     return vista_alerta(actualizada)
+
+
+def _parametros(ajustes: Ajustes) -> dict[str, str]:
+    with sesion_agente(ajustes) as fuente:
+        return fuente.parametros()
+
+
+def estado_correo(ajustes: Ajustes) -> EstadoCorreo:
+    parametros = _parametros(ajustes)
+    activo = any(c in ("email", "correo") for c in canales(parametros))
+    clave = bool(os.environ.get(VARIABLE_CLAVE_SMTP))
+    try:
+        configuracion = configuracion_desde_parametros(parametros)
+    except ConfiguracionCorreoIncompleta as error:
+        return EstadoCorreo(canal_activo=activo, configurado=False, clave_definida=clave, problema=str(error))
+    return EstadoCorreo(
+        canal_activo=activo,
+        configurado=True,
+        servidor=configuracion.servidor,
+        puerto=configuracion.puerto,
+        remitente=configuracion.remitente,
+        destinatarios=configuracion.destinatarios,
+        severidad_minima=configuracion.severidad_minima.value,
+        clave_definida=clave,
+    )
+
+
+def probar_correo(ajustes: Ajustes) -> ResultadoPruebaCorreo:
+    parametros = _parametros(ajustes)
+    try:
+        configuracion = configuracion_desde_parametros(parametros)
+    except ConfiguracionCorreoIncompleta as error:
+        raise OperacionNoPermitida(str(error), "Complételo en Sistema → Parámetros globales.") from error
+    try:
+        NotificadorEmail(configuracion).enviar_prueba()
+    except smtplib.SMTPAuthenticationError as error:
+        raise OperacionNoPermitida(
+            f"El servidor {configuracion.servidor} rechazó las credenciales.",
+            f"Revise {VARIABLE_CLAVE_SMTP} (con Gmail debe ser una contraseña de aplicación) y el usuario.",
+        ) from error
+    except (smtplib.SMTPException, OSError) as error:
+        raise OperacionNoPermitida(
+            f"No se pudo enviar el correo por {configuracion.servidor}:{configuracion.puerto} ({error}).",
+            "Revise el servidor, el puerto, el cifrado TLS y la conexión de red.",
+        ) from error
+    return ResultadoPruebaCorreo(
+        enviado_en=RelojSistema().ahora(), servidor=configuracion.servidor, destinatarios=configuracion.destinatarios
+    )

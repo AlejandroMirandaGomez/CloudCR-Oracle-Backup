@@ -1,0 +1,606 @@
+{
+  "generado_por": "cloudcr-oracle-backup 0.1.0",
+  "perfil": {
+    "nombre": "XE",
+    "nombre_instancia": "xe",
+    "dbid": 3124756861,
+    "host": "DESKTOP-E064O9O",
+    "version": "21.3.0.0.0",
+    "edicion": "XE",
+    "es_cdb": true,
+    "log_mode": "ARCHIVELOG",
+    "open_mode": "READ WRITE",
+    "estado_instancia": "OPEN",
+    "oracle_home": "C:\\app\\calvo\\product\\21c\\dbhomeXE",
+    "diagnostic_dest": "C:\\APP\\CALVO\\PRODUCT\\21C",
+    "capturado_en": "2026-10-04T16:24:58.862350",
+    "contenedores": [
+      {
+        "con_id": 1,
+        "nombre": "CDB$ROOT",
+        "open_mode": "READ WRITE"
+      },
+      {
+        "con_id": 2,
+        "nombre": "PDB$SEED",
+        "open_mode": "READ ONLY"
+      },
+      {
+        "con_id": 3,
+        "nombre": "XEPDB1",
+        "open_mode": "READ WRITE"
+      },
+      {
+        "con_id": 4,
+        "nombre": "BKPCAT",
+        "open_mode": "READ WRITE"
+      }
+    ],
+    "tablespaces": [
+      {
+        "con_id": 1,
+        "nombre": "SYSAUX",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 1,
+        "nombre": "SYSTEM",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 1,
+        "nombre": "TEMP",
+        "contenido": "TEMPORARY",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 1,
+        "nombre": "UNDOTBS1",
+        "contenido": "UNDO",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 1,
+        "nombre": "USERS",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 2,
+        "nombre": "SYSAUX",
+        "contenido": "DESCONOCIDO",
+        "estado": null,
+        "bigfile": false
+      },
+      {
+        "con_id": 2,
+        "nombre": "SYSTEM",
+        "contenido": "DESCONOCIDO",
+        "estado": null,
+        "bigfile": false
+      },
+      {
+        "con_id": 2,
+        "nombre": "TEMP",
+        "contenido": "TEMPORARY",
+        "estado": null,
+        "bigfile": false
+      },
+      {
+        "con_id": 2,
+        "nombre": "UNDOTBS1",
+        "contenido": "DESCONOCIDO",
+        "estado": null,
+        "bigfile": false
+      },
+      {
+        "con_id": 3,
+        "nombre": "FINANZAS",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 3,
+        "nombre": "IDX_FINANZAS",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 3,
+        "nombre": "IDX_VENTAS",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 3,
+        "nombre": "INVENTARIO",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 3,
+        "nombre": "RRHH",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 3,
+        "nombre": "SYSAUX",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 3,
+        "nombre": "SYSTEM",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 3,
+        "nombre": "TEMP",
+        "contenido": "TEMPORARY",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 3,
+        "nombre": "UNDOTBS1",
+        "contenido": "UNDO",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 3,
+        "nombre": "USERS",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 3,
+        "nombre": "VENTAS",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 4,
+        "nombre": "SYSAUX",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 4,
+        "nombre": "SYSTEM",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 4,
+        "nombre": "TEMP",
+        "contenido": "TEMPORARY",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 4,
+        "nombre": "UNDOTBS1",
+        "contenido": "UNDO",
+        "estado": "ONLINE",
+        "bigfile": false
+      },
+      {
+        "con_id": 4,
+        "nombre": "USERS",
+        "contenido": "PERMANENT",
+        "estado": "ONLINE",
+        "bigfile": false
+      }
+    ],
+    "datafiles": [
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\SYSAUX01.DBF",
+        "file_id": 3,
+        "con_id": 1,
+        "tablespace": "SYSAUX",
+        "bytes": 650117120,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 34359721984,
+        "bytes_libres": 39124992
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\SYSTEM01.DBF",
+        "file_id": 1,
+        "con_id": 1,
+        "tablespace": "SYSTEM",
+        "bytes": 1405091840,
+        "estado": "SYSTEM",
+        "autoextensible": true,
+        "max_bytes": 34359721984,
+        "bytes_libres": 1179648
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\UNDOTBS01.DBF",
+        "file_id": 4,
+        "con_id": 1,
+        "tablespace": "UNDOTBS1",
+        "bytes": 120586240,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 34359721984,
+        "bytes_libres": 90505216
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\USERS01.DBF",
+        "file_id": 7,
+        "con_id": 1,
+        "tablespace": "USERS",
+        "bytes": 5242880,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 34359721984,
+        "bytes_libres": 2424832
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\PDBSEED\\SYSAUX01.DBF",
+        "file_id": 6,
+        "con_id": 2,
+        "tablespace": "SYSAUX",
+        "bytes": 335544320,
+        "estado": "ONLINE",
+        "autoextensible": null,
+        "max_bytes": null,
+        "bytes_libres": null
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\PDBSEED\\SYSTEM01.DBF",
+        "file_id": 5,
+        "con_id": 2,
+        "tablespace": "SYSTEM",
+        "bytes": 283115520,
+        "estado": "SYSTEM",
+        "autoextensible": null,
+        "max_bytes": null,
+        "bytes_libres": null
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\PDBSEED\\UNDOTBS01.DBF",
+        "file_id": 8,
+        "con_id": 2,
+        "tablespace": "UNDOTBS1",
+        "bytes": 104857600,
+        "estado": "ONLINE",
+        "autoextensible": null,
+        "max_bytes": null,
+        "bytes_libres": null
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\XEPDB1\\FINANZAS01.DBF",
+        "file_id": 20,
+        "con_id": 3,
+        "tablespace": "FINANZAS",
+        "bytes": 52428800,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 524288000,
+        "bytes_libres": 50855936
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\XEPDB1\\IDX_FINANZAS01.DBF",
+        "file_id": 24,
+        "con_id": 3,
+        "tablespace": "IDX_FINANZAS",
+        "bytes": 20971520,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 209715200,
+        "bytes_libres": 19660800
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\XEPDB1\\IDX_VENTAS01.DBF",
+        "file_id": 23,
+        "con_id": 3,
+        "tablespace": "IDX_VENTAS",
+        "bytes": 20971520,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 209715200,
+        "bytes_libres": 19660800
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\XEPDB1\\INVENTARIO01.DBF",
+        "file_id": 21,
+        "con_id": 3,
+        "tablespace": "INVENTARIO",
+        "bytes": 31457280,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 314572800,
+        "bytes_libres": 30146560
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\XEPDB1\\RRHH01.DBF",
+        "file_id": 22,
+        "con_id": 3,
+        "tablespace": "RRHH",
+        "bytes": 20971520,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 209715200,
+        "bytes_libres": 19791872
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\XEPDB1\\SYSAUX01.DBF",
+        "file_id": 10,
+        "con_id": 3,
+        "tablespace": "SYSAUX",
+        "bytes": 398458880,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 34359721984,
+        "bytes_libres": 19595264
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\XEPDB1\\SYSTEM01.DBF",
+        "file_id": 9,
+        "con_id": 3,
+        "tablespace": "SYSTEM",
+        "bytes": 293601280,
+        "estado": "SYSTEM",
+        "autoextensible": true,
+        "max_bytes": 34359721984,
+        "bytes_libres": 2490368
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\XEPDB1\\UNDOTBS01.DBF",
+        "file_id": 11,
+        "con_id": 3,
+        "tablespace": "UNDOTBS1",
+        "bytes": 104857600,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 34359721984,
+        "bytes_libres": 78970880
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\XEPDB1\\USERS01.DBF",
+        "file_id": 12,
+        "con_id": 3,
+        "tablespace": "USERS",
+        "bytes": 5242880,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 34359721984,
+        "bytes_libres": 4194304
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\XEPDB1\\VENTAS01.DBF",
+        "file_id": 19,
+        "con_id": 3,
+        "tablespace": "VENTAS",
+        "bytes": 52428800,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 524288000,
+        "bytes_libres": 50855936
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\BKPCAT\\SYSAUX01.DBF",
+        "file_id": 26,
+        "con_id": 4,
+        "tablespace": "SYSAUX",
+        "bytes": 377487360,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 34359721984,
+        "bytes_libres": 19988480
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\BKPCAT\\SYSTEM01.DBF",
+        "file_id": 25,
+        "con_id": 4,
+        "tablespace": "SYSTEM",
+        "bytes": 283115520,
+        "estado": "SYSTEM",
+        "autoextensible": true,
+        "max_bytes": 34359721984,
+        "bytes_libres": 2490368
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\BKPCAT\\UNDOTBS01.DBF",
+        "file_id": 27,
+        "con_id": 4,
+        "tablespace": "UNDOTBS1",
+        "bytes": 104857600,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 34359721984,
+        "bytes_libres": 73072640
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\BKPCAT\\USERS01.DBF",
+        "file_id": 28,
+        "con_id": 4,
+        "tablespace": "USERS",
+        "bytes": 524288000,
+        "estado": "ONLINE",
+        "autoextensible": true,
+        "max_bytes": 34359721984,
+        "bytes_libres": 518586368
+      }
+    ],
+    "tempfiles": [
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\TEMP01.DBF",
+        "file_id": 1,
+        "con_id": 1,
+        "tablespace": "TEMP",
+        "bytes": 248512512,
+        "estado": "ONLINE"
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\PDBSEED\\TEMP012026-09-10_22-30-10-263-PM.DBF",
+        "file_id": 2,
+        "con_id": 2,
+        "tablespace": "TEMP",
+        "bytes": 36700160,
+        "estado": "ONLINE"
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\XEPDB1\\TEMP01.DBF",
+        "file_id": 3,
+        "con_id": 3,
+        "tablespace": "TEMP",
+        "bytes": 222298112,
+        "estado": "ONLINE"
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\BKPCAT\\TEMP012026-09-10_22-30-10-263-PM.DBF",
+        "file_id": 4,
+        "con_id": 4,
+        "tablespace": "TEMP",
+        "bytes": 36700160,
+        "estado": "ONLINE"
+      }
+    ],
+    "controlfiles": [
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\CONTROL01.CTL",
+        "bytes": 18710528,
+        "estado": null
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\CONTROL02.CTL",
+        "bytes": 18710528,
+        "estado": null
+      }
+    ],
+    "redo_grupos": [
+      {
+        "grupo": 1,
+        "hilo": 1,
+        "secuencia": 16,
+        "bytes": 209715200,
+        "estado": "CURRENT",
+        "archivado": false,
+        "miembros": [
+          {
+            "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\REDO01B.LOG",
+            "estado": null,
+            "tipo": "ONLINE"
+          },
+          {
+            "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\REDO01.LOG",
+            "estado": null,
+            "tipo": "ONLINE"
+          }
+        ]
+      },
+      {
+        "grupo": 2,
+        "hilo": 1,
+        "secuencia": 14,
+        "bytes": 209715200,
+        "estado": "INACTIVE",
+        "archivado": true,
+        "miembros": [
+          {
+            "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\REDO02B.LOG",
+            "estado": null,
+            "tipo": "ONLINE"
+          },
+          {
+            "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\REDO02.LOG",
+            "estado": null,
+            "tipo": "ONLINE"
+          }
+        ]
+      },
+      {
+        "grupo": 3,
+        "hilo": 1,
+        "secuencia": 15,
+        "bytes": 209715200,
+        "estado": "ACTIVE",
+        "archivado": true,
+        "miembros": [
+          {
+            "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\REDO03B.LOG",
+            "estado": null,
+            "tipo": "ONLINE"
+          },
+          {
+            "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\ORADATA\\XE\\REDO03.LOG",
+            "estado": null,
+            "tipo": "ONLINE"
+          }
+        ]
+      }
+    ],
+    "archivos_parametros": [
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\DATABASE\\SPFILEXE.ORA",
+        "tipo": "SPFILE"
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\admin\\XE\\pfile\\init.ora.8102026223357",
+        "tipo": "PFILE_CREACION"
+      },
+      {
+        "ruta": "C:\\APP\\CALVO\\PRODUCT\\21C\\DATABASE\\initXE.ora",
+        "tipo": "PFILE_INSTANCIA"
+      },
+      {
+        "ruta": "C:\\app\\calvo\\product\\21c\\dbhomeXE\\dbs\\init.ora",
+        "tipo": "PFILE_EJEMPLO"
+      }
+    ],
+    "destinos_archivado": [
+      {
+        "nombre": "LOG_ARCHIVE_DEST_1",
+        "destino": "C:\\app\\calvo\\product\\21c\\oradata\\XE\\archive",
+        "estado": "VALID"
+      }
+    ],
+    "destino_archivado_configurado": true,
+    "area_recuperacion": null,
+    "archivelogs_sin_respaldo": 0,
+    "ritmo_cambio_log": {
+      "cambios": 4,
+      "horas_observadas": 1.0780555555555555
+    }
+  },
+  "hallazgos": [
+    {
+      "codigo": "CTL_002",
+      "severidad": "RECOMENDACION",
+      "mensaje": "Todas las copias del control file están en el mismo directorio.",
+      "sujeto": "controlfiles",
+      "accion_sugerida": "Ubicar cada copia del control file en un disco distinto."
+    },
+    {
+      "codigo": "DIS_001",
+      "severidad": "RECOMENDACION",
+      "mensaje": "Datafiles, control files y redo logs están todos en la misma unidad (C:\\).",
+      "sujeto": "instancia",
+      "accion_sugerida": "Separar control files, redo logs y respaldos en discos distintos a los datafiles."
+    }
+  ]
+}

@@ -35,6 +35,7 @@ from cloudcr_backup.presentacion.terminal import consola, tabla_hallazgos
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository import conexion as repositorio_conexion
 from cloudcr_backup.repository.conexion import RepositorioNoConfigurado
+from cloudcr_backup.services.catalogo_estrategia import destino_sugerido
 from cloudcr_backup.strategy import servicio
 from cloudcr_backup.strategy.alcance import identificador_tablespace
 from cloudcr_backup.strategy.codigos import siguiente_codigo_sugerido
@@ -42,7 +43,7 @@ from cloudcr_backup.strategy.plantillas_esquema import ParametrosEsquema, tareas
 from cloudcr_backup.strategy.prioridad import criterio_de
 from cloudcr_backup.strategy.yaml_io import estrategia_a_yaml, guardar_estrategia_yaml
 from cloudcr_backup.validation import motor, reglas  # noqa: F401
-from cloudcr_backup.validation.contexto import ContextoValidacion
+from cloudcr_backup.validation.contexto import ContextoValidacion, servicio_de_dsn
 
 
 def construir_opciones_alcance(perfil: PerfilBD) -> list[tuple[str, TipoObjeto, str]]:
@@ -140,8 +141,8 @@ def _paso_que(perfil: PerfilBD, prioridad_estrategia: Prioridad) -> list[ObjetoA
     return alcance
 
 
-def _paso_destino_y_retencion() -> tuple[str, Retencion]:
-    ruta = _preguntar_texto("Ruta de destino de los respaldos", r"C:\backups\XE")
+def _paso_destino_y_retencion(sid: str) -> tuple[str, Retencion]:
+    ruta = _preguntar_texto("Ruta de destino de los respaldos", destino_sugerido(cargar_ajustes(), sid))
     tipo = _preguntar_seleccion(
         "Política de retención",
         ["Ventana de días", "Redundancia (cantidad de copias)", "Sin definir (no recomendado)"],
@@ -193,7 +194,12 @@ def _paso_como_y_cuando(destino_ruta: str) -> list[Tarea]:
 
 
 def _paso_validacion(estrategia: Estrategia, perfil: PerfilBD) -> list[Hallazgo]:
-    hallazgos = motor.validar(ContextoValidacion(estrategia=estrategia, perfil=perfil))
+    contexto = ContextoValidacion(
+        estrategia=estrategia,
+        perfil=perfil,
+        repositorio_servicio=servicio_de_dsn(cargar_ajustes().repositorio_dsn),
+    )
+    hallazgos = motor.validar(contexto)
     salida = consola()
     if hallazgos:
         salida.print(tabla_hallazgos(hallazgos))
@@ -291,7 +297,7 @@ def ejecutar(sid: str | None = None) -> None:
     alcance = _paso_que(perfil, prioridad)
 
     salida.print("\n[bold]Paso 5 — Destino y retención[/]", markup=True)
-    destino_ruta, retencion = _paso_destino_y_retencion()
+    destino_ruta, retencion = _paso_destino_y_retencion(perfil.nombre)
 
     salida.print("\n[bold]Pasos 3 y 4 — Cómo y cuándo[/]", markup=True)
     tareas = _paso_como_y_cuando(destino_ruta)

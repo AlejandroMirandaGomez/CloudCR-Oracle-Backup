@@ -1,6 +1,6 @@
 # CloudCR Oracle Backup — Estado del proyecto contra el plan y el enunciado
 
-Rama `Dev_Luis` · 4 de octubre de 2026 · actualizado después de traer los cambios de `main` y de implementar las reglas `ARCH_*`, la pantalla de criterios y `docs/analisis.md`.
+Rama `Dev_Luis` · 4 de octubre de 2026 · actualizado tras implementar las reglas `ARCH_*`, criterios, evidencias, correo de prueba y observaciones de redo (todo en CLI y web), y producir E3, E5, E6, E8 y E10.
 
 ## Resumen
 
@@ -8,9 +8,9 @@ El producto está **construido de punta a punta**, y la web ya opera todo el cir
 
 | Comprobación | Resultado |
 |---|---|
-| `pytest -m "not oracle"` | 986 pasan (66 de Oracle deseleccionadas, **no corridas**) |
+| `pytest -m "not oracle"` | 998 pasan (69 de Oracle deseleccionadas, **no corridas**; desinstalan el repositorio al terminar) |
 | `ruff check src tests` | Limpio |
-| `mypy src` | Sin errores en 191 archivos |
+| `mypy src` | Sin errores en 195 archivos |
 | Reglas de validación | 35 (todas las del plan) |
 | Tablas del DDL | 12 |
 | Comentarios en `src` | 0 |
@@ -46,8 +46,8 @@ No se corrió nada contra Oracle real en este análisis y no se confirmó si la 
 | `docs/diseno.md` | Listo (435 líneas) |
 | Capa `services/` y `Exploracion` en `domain/` | Hecho |
 | E1 | Listo |
-| **Regla de capas (§12.4)** | **Pendiente**: `cli/` y `web/` importan `repository/` u `oracle/` en 5 archivos de cada lado. Corregir o documentar como excepción |
-| `docs/estado_josue.md` | **Desactualizado**: marca `diseno.md` como no empezado y no refleja el estado actual |
+| Regla de capas (§12.4) | **Documentada como deuda aceptada** en `docs/diseno.md` §1.1: `cli/` y `web/` importan `repository/` u `oracle/` en 11 archivos; no ejecutan SQL ni RMAN |
+| `docs/estado_josue.md` | Actualizado |
 
 ## Luis — estrategias y validación
 
@@ -66,9 +66,9 @@ No se corrió nada contra Oracle real en este análisis y no se confirmó si la 
 | Pantalla web de criterios | Listo |
 | `DevLuis.md` | Actualizado |
 | **E5** (paso real de la XE a ARCHIVELOG) | **Pendiente**: exige tocar la XE |
-| **Presentación** (con Alejandro) | **Pendiente**: no hay archivo |
-| Decidir "respaldo antes de operaciones críticas" | Pendiente |
-| Cambios sin commitear | Reglas `ARCH_*`, contexto, criterios, `analisis.md` y los `.md` |
+| Presentación (con Alejandro) | Guion listo en `docs/presentacion_guion.md`; faltan las diapositivas |
+| "Respaldo antes de operaciones críticas" | **Resuelto**: se cubre con «Ejecutar ahora» y la frecuencia «Una sola vez», documentado en `analisis.md` y el manual |
+| Cambios sin commitear | Todo lo de esta sesión: reglas `ARCH_*`, criterios, evidencias, correo de prueba, observaciones de redo, documentos y evidencias nuevas |
 
 Limitación conocida: `ARCH_009` solo se dispara al crear o editar estrategias desde la web, porque ahí se conoce el DSN del repositorio. La validación desde la CLI y la de `script generar` no la ejecutan.
 
@@ -85,8 +85,8 @@ Limitación conocida: `ARCH_009` solo se dispara al crear o editar estrategias d
 | U18 `docs/transformacion_estrategia_rman.md` | Listo |
 | U19 retención | Listo |
 | E2, E3 (consistente), E4, E9 | Listos |
-| **E3 en línea** (ejecución `EN_LINEA` en ARCHIVELOG) | **Pendiente**: depende de pasar la XE a ARCHIVELOG |
-| Aplicar `ARCH_002` y obtener la v2 con archived logs | Pendiente (mismo requisito) |
+| E3 en línea (ejecución `EN_LINEA` en ARCHIVELOG) | **Listo** (`docs/evidencias/E3_ejecucion_en_linea_v1/`) |
+| Aplicar `ARCH_002` y obtener la v2 con archived logs | **Listo** (`E5_aplicar_arch_002_v2/`) |
 | Ensayo de la demo | Pendiente |
 
 ## Alejandro — agente, alertas, historial, web
@@ -102,11 +102,11 @@ Limitación conocida: `ARCH_009` solo se dispara al crear o editar estrategias d
 | A13 `RED_003` | Listo |
 | A14 `docs/afinamiento_redo_archivelog.md` | Existe; falta el "después" con la XE en ARCHIVELOG |
 | `docs/manual_usuario.md` | Listo |
-| **E6** (ejecuciones automáticas del agente) | **Pendiente** |
-| **E7** (`NO_EJECUTADA` + alerta + correo real) | **Pendiente** |
-| **E8** (historial con Pruebas, exportado a HTML) | **Pendiente** |
-| **E10** (afinamiento antes y después) | **Pendiente** la parte "después" |
-| Botón de correo de prueba en la web | No existe (propuesta) |
+| E6 (ejecuciones automáticas del agente) | **Listo**: 3 ejecuciones automáticas de EST005 (`E6_ejecuciones_agente.md`) |
+| E8 (historial con Pruebas, exportado a HTML) | **Listo** (`E8_historial.html`; conviene re-exportarlo al final) |
+| E10 (afinamiento antes y después) | **Listo**: explorador y mediciones reales; el cambio de modo en sí no quedó registrado (ver `afinamiento_redo_archivelog.md`) |
+| Botón de correo de prueba en la web y en la CLI | **Listo** (sin commitear) |
+| **E7** (`NO_EJECUTADA` + alerta + correo real) | Pendiente: falta la cuenta remitente (un compañero la crea) |
 
 ## Bloqueos y riesgos
 

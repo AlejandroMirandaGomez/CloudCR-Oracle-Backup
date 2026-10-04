@@ -1,0 +1,43 @@
+
+Recovery Manager: Release 21.0.0.0.0 - Production on Sun Oct 4 16:06:10 2026
+Version 21.3.0.0.0
+
+Copyright (c) 1982, 2021, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: XE (DBID=3124756861)
+
+RMAN> CROSSCHECK BACKUP TAG 'EST001_T1_261004160557';
+2> VALIDATE BACKUPSET 8, 10, 11;
+3> 
+using target database control file instead of recovery catalog
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=499 device type=DISK
+crosschecked backup piece: found to be 'AVAILABLE'
+backup piece handle=C:\BACKUPS\XE\XE_EST001_T1_20261004_08541VBA_8_1_1.BKP RECID=8 STAMP=1245773162
+crosschecked backup piece: found to be 'AVAILABLE'
+backup piece handle=C:\BACKUPS\XE\XE_EST001_T1_20261004_0A541VBD_10_1_1.BKP RECID=10 STAMP=1245773166
+crosschecked backup piece: found to be 'AVAILABLE'
+backup piece handle=C:\BACKUPS\XE\XE_EST001_T1_20261004_0B541VBF_11_1_1.BKP RECID=11 STAMP=1245773167
+Crosschecked 3 objects
+
+
+Starting validate at 2026-10-04 16:06:13
+using channel ORA_DISK_1
+channel ORA_DISK_1: starting validation of datafile backup set
+channel ORA_DISK_1: reading from backup piece C:\BACKUPS\XE\XE_EST001_T1_20261004_08541VBA_8_1_1.BKP
+channel ORA_DISK_1: piece handle=C:\BACKUPS\XE\XE_EST001_T1_20261004_08541VBA_8_1_1.BKP tag=EST001_T1_261004160557
+channel ORA_DISK_1: restored backup piece 1
+channel ORA_DISK_1: validation complete, elapsed time: 00:00:01
+channel ORA_DISK_1: starting validation of datafile backup set
+channel ORA_DISK_1: reading from backup piece C:\BACKUPS\XE\XE_EST001_T1_20261004_0A541VBD_10_1_1.BKP
+channel ORA_DISK_1: piece handle=C:\BACKUPS\XE\XE_EST001_T1_20261004_0A541VBD_10_1_1.BKP tag=EST001_T1_261004160557
+channel ORA_DISK_1: restored backup piece 1
+channel ORA_DISK_1: validation complete, elapsed time: 00:00:01
+channel ORA_DISK_1: starting validation of datafile backup set
+channel ORA_DISK_1: reading from backup piece C:\BACKUPS\XE\XE_EST001_T1_20261004_0B541VBF_11_1_1.BKP
+channel ORA_DISK_1: piece handle=C:\BACKUPS\XE\XE_EST001_T1_20261004_0B541VBF_11_1_1.BKP tag=EST001_T1_261004160557
+channel ORA_DISK_1: restored backup piece 1
+channel ORA_DISK_1: validation complete, elapsed time: 00:00:01
+Finished validate at 2026-10-04 16:06:16
+
+Recovery Manager complete.

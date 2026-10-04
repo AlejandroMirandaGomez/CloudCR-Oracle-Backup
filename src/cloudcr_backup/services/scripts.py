@@ -73,12 +73,20 @@ def _perfil(
     return perfil
 
 
-def _hallazgos_de_tarea(resuelta: TareaResuelta, perfil: PerfilBD, parametros: dict[str, str]) -> list[Hallazgo]:
+def _hallazgos_de_tarea(
+    ajustes: Ajustes, resuelta: TareaResuelta, perfil: PerfilBD, parametros: dict[str, str]
+) -> list[Hallazgo]:
     from cloudcr_backup.validation import motor, reglas  # noqa: F401
-    from cloudcr_backup.validation.contexto import ContextoValidacion
+    from cloudcr_backup.validation.contexto import ContextoValidacion, servicio_de_dsn
 
     otras = {t.codigo for t in resuelta.estrategia.tareas if t.codigo != resuelta.tarea.codigo}
-    hallazgos = motor.validar(ContextoValidacion(estrategia=resuelta.estrategia, perfil=perfil, parametros=parametros))
+    contexto = ContextoValidacion(
+        estrategia=resuelta.estrategia,
+        perfil=perfil,
+        parametros=parametros,
+        repositorio_servicio=servicio_de_dsn(ajustes.repositorio_dsn),
+    )
+    hallazgos = motor.validar(contexto)
     return [h for h in hallazgos if h.sujeto not in otras]
 
 
@@ -106,7 +114,7 @@ def vista(
             explicacion = [FilaExplicacion(campo=c, clausula=v) for c, v in explicar(solicitud, construir(solicitud))]
         except ScriptNoGenerable:
             explicacion = []
-        hallazgos = _hallazgos_de_tarea(resuelta, perfil, parametros or {})
+        hallazgos = _hallazgos_de_tarea(ajustes, resuelta, perfil, parametros or {})
     return VistaScript(
         bd=resuelta.base.nombre,
         estrategia=resuelta.estrategia.codigo,
@@ -263,7 +271,8 @@ def aprobar(
         perfil = repositorio_bases_datos.ultimo_perfil(conexion, resuelta.base.id)
         parametros = repositorio_parametros.listar(conexion)
         if perfil is not None:
-            errores = [h for h in _hallazgos_de_tarea(resuelta, perfil, parametros) if h.severidad is Severidad.ERROR]
+            hallazgos = _hallazgos_de_tarea(ajustes, resuelta, perfil, parametros)
+            errores = [h for h in hallazgos if h.severidad is Severidad.ERROR]
             if errores:
                 detalle = "; ".join(f"{h.codigo}: {h.mensaje}" for h in errores)
                 raise OperacionNoPermitida(

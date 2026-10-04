@@ -72,12 +72,16 @@ def test_estado(entorno: Path) -> None:
     assert "Rojo" in resultado.output
     assert "Sin alertas vigentes" in resultado.output
     assert "nunca" in resultado.output
+    assert "Observaciones de redo y archivado de XE" in resultado.output
+    assert "RED_001" in resultado.output
 
 
 def test_estado_json(entorno: Path) -> None:
     resultado = corredor.invoke(app, ["estado", "--json"])
     datos = json.loads(resultado.output)
     assert datos["semaforos"][0]["color"] == "ROJO"
+    assert datos["observaciones_redo"][0]["bd"] == "XE"
+    assert any(h["codigo"] == "RED_001" for h in datos["observaciones_redo"][0]["hallazgos"])
 
 
 def test_estado_sin_repositorio(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

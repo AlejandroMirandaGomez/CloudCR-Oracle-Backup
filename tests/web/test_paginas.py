@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
 
 from tests.web.conftest import ServicioFalso
@@ -87,3 +90,19 @@ def test_criterios_muestra_prioridades_esquemas_y_vocabulario(cliente: TestClien
     assert "total+" in respuesta.text
     assert "BACKUP INCREMENTAL LEVEL 0 DATABASE" in respuesta.text
     assert "Parcial" in respuesta.text
+
+
+def test_evidencias_lista_las_diez_y_descarga_como_adjunto(
+    cliente: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "E1_explorador.html").write_text("<script>alert(1)</script>", encoding="utf-8")
+    monkeypatch.setenv("CLOUDCR_EVIDENCIAS_DIR", str(tmp_path))
+    respuesta = cliente.get("/evidencias")
+    assert respuesta.status_code == 200
+    assert "1 de 10 capturadas" in respuesta.text
+    assert "Pendiente" in respuesta.text
+    descarga = cliente.get("/evidencias/archivo/E1_explorador.html")
+    assert descarga.status_code == 200
+    assert descarga.headers["content-disposition"].startswith("attachment")
+    assert cliente.get("/evidencias/archivo/../x").status_code in (404, 400)
+    assert len(cliente.get("/api/evidencias").json()["evidencias"]) == 10

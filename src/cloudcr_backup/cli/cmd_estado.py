@@ -5,7 +5,7 @@ import typer
 from cloudcr_backup.cli.comun_monitoreo import ajustes, llamar
 from cloudcr_backup.presentacion.estado import REGLA_SEMAFORO
 from cloudcr_backup.presentacion.historial import construir_tabla
-from cloudcr_backup.presentacion.terminal import consola
+from cloudcr_backup.presentacion.terminal import consola, tabla_hallazgos
 from cloudcr_backup.presentacion.terminal_monitoreo import (
     tabla_agentes,
     tabla_alertas,
@@ -40,6 +40,10 @@ def estado(
         salida.print(tabla_alertas(general.alertas, zona, "Alertas vigentes"))
     else:
         salida.print("Sin alertas vigentes.", style="green")
+    for base in general.observaciones_redo:
+        if base.hallazgos:
+            salida.print(f"Observaciones de redo y archivado de {base.bd} (perfil guardado):", style="bold")
+            salida.print(tabla_hallazgos(base.hallazgos))
     if general.agentes:
         salida.print(tabla_agentes(general.agentes, zona))
     else:

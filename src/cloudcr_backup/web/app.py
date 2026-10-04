@@ -27,6 +27,7 @@ from cloudcr_backup.web.rutas import (
     criterios,
     estrategias,
     estrategias_registradas,
+    evidencias,
     exportaciones,
     gestion_estrategias,
     historial,
@@ -132,6 +133,7 @@ def crear_app(
     app.include_router(retencion.router)
     app.include_router(recuperacion.router)
     app.include_router(criterios.router)
+    app.include_router(evidencias.router)
     app.include_router(sistema.router)
     app.include_router(api_gestion.router)
     return app

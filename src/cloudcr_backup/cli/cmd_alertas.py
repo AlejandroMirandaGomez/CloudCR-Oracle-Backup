@@ -70,3 +70,12 @@ def evaluar(
     )
     for error in resumen.errores:
         salida.print(f"[yellow]Aviso:[/] {error}", markup=True)
+
+
+@app.command("probar-correo", help="Envía un correo de prueba con la configuración de notificacion.email.*.")
+def probar_correo() -> None:
+    configuracion = ajustes()
+    resultado = llamar(lambda: servicio_alertas.probar_correo(configuracion))
+    consola().print(
+        f"Correo de prueba enviado por {resultado.servidor} a {', '.join(resultado.destinatarios)}.", style="green"
+    )

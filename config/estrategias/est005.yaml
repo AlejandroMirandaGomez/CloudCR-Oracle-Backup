@@ -1,0 +1,33 @@
+bd_id: 1
+codigo: EST005
+nombre: Archived logs cada 5 minutos (demostración del agente)
+descripcion: Estrategia de demostración para evidenciar que el agente dispara sin intervención.
+prioridad: MEDIA
+estado: INACTIVA
+version: 1
+creada_por: luis
+alcance:
+- tipo: ARCHIVELOG
+  identificador: ''
+  prioridad: MEDIA
+tareas:
+- codigo: T1
+  como:
+    tipo_respaldo: ARCHIVELOG
+    modo_respaldo: EN_LINEA
+    opciones:
+      compresion: NINGUNA
+      canales: 1
+      omitir_solo_lectura: false
+  programacion:
+    tipo_frecuencia: INTERVALO
+    horas: []
+    dias_semana: []
+    intervalo_minutos: 5
+    zona_horaria: America/Costa_Rica
+    politica_omision: EJECUTAR_EN_VENTANA
+  destino:
+    ruta: C:\backups\XE
+retencion:
+  ventana_dias: 7
+  archived_logs_dias: 7

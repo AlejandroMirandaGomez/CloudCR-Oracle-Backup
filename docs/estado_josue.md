@@ -95,8 +95,15 @@ Estos no se ven con mocks ni con `mypy`/`ruff`; si alguien más conecta algo nue
 
 ---
 
-## 4. Lo que queda pendiente del carril de Josué
+## 4. Estado actual del carril de Josué (actualizado el 4/10/2026)
 
-- `docs/diseno.md` (arquitectura, modelo de datos con diagrama ER, máquinas de estado, diagramas de secuencia) — entregable de Día 2/5, todavía no empezado.
-- Funciones de repositorio para `EJECUCION_PIEZA` y `VERIFICACION`, a definir junto con Juan cuando las necesite.
-- Nada de `rman/`, `execution/`, `agent/` ni `scheduling/` — corresponde a Juan y Alejandro.
+Todo lo que este documento listaba como pendiente quedó resuelto:
+
+- `docs/diseno.md` existe (arquitectura, modelo de datos con diagrama ER y diccionario, máquinas de estado, diagramas de secuencia y diseño de interfaz).
+- Las funciones de repositorio de `EJECUCION_PIEZA` y `VERIFICACION` existen en `repository/piezas.py` y `repository/ejecuciones.py`, y las usa el pipeline de Juan.
+- `rman/`, `execution/`, `agent/` y `scheduling/` los implementaron Juan y Alejandro.
+
+Lo que sigue abierto de este carril:
+
+- La regla de capas (CLI y web llaman solo a `services/`) tiene desviaciones conocidas en `cli/cmd_db.py`, `cmd_repo.py` y `cmd_param.py`, entre otros. Están documentadas en `docs/diseno.md`, sección 1.1, como deuda técnica aceptada.
+- Las pruebas de integración contra Oracle (`pytest -m oracle`) hay que correrlas en la máquina con la XE.

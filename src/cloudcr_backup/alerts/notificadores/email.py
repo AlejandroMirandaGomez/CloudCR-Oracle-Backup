@@ -152,13 +152,34 @@ class NotificadorEmail:
         mensaje.set_content(cuerpo(alerta, condicion))
         return mensaje
 
+    def mensaje_de_prueba(self) -> EmailMessage:
+        mensaje = EmailMessage()
+        mensaje["From"] = self._configuracion.remitente
+        mensaje["To"] = ", ".join(self._configuracion.destinatarios)
+        mensaje["Subject"] = "[CloudCR] Correo de prueba"
+        mensaje["Date"] = formatdate(localtime=True)
+        mensaje["Message-ID"] = make_msgid(domain="cloudcr")
+        mensaje.set_content(
+            "Este es un correo de prueba de CloudCR Oracle Backup.\n"
+            "Si lo recibió, las alertas con severidad "
+            f"{self._configuracion.severidad_minima.value} o mayor llegarán a esta dirección.\n\n"
+            f"Enviado desde {socket.gethostname()}."
+        )
+        return mensaje
+
+    def enviar_prueba(self) -> None:
+        self._enviar(self.mensaje_de_prueba())
+
     def notificar(self, alerta: VistaAlerta, condicion: Condicion) -> None:
         if not self.debe_enviar(alerta):
             return
+        self._enviar(self.mensaje(alerta, condicion))
+
+    def _enviar(self, mensaje: EmailMessage) -> None:
         configuracion = self._configuracion
         with self._fabrica_smtp(configuracion.servidor, configuracion.puerto, ESPERA_SEGUNDOS) as smtp:
             if configuracion.tls and configuracion.puerto != PUERTO_SSL:
                 smtp.starttls()
             if self._clave:
                 smtp.login(configuracion.usuario or configuracion.remitente, self._clave)
-            smtp.send_message(self.mensaje(alerta, condicion))
+            smtp.send_message(mensaje)

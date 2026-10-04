@@ -1,0 +1,96 @@
+
+Recovery Manager: Release 21.0.0.0.0 - Production on Sun Oct 4 16:05:58 2026
+Version 21.3.0.0.0
+
+Copyright (c) 1982, 2021, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: XE (DBID=3124756861)
+
+RMAN> RUN {
+2>   SET COMMAND ID TO 'CLOUDCR_21';
+3>   ALLOCATE CHANNEL c1 DEVICE TYPE DISK FORMAT 'C:\backups\XE\%d_EST001_T1_%T_%U.bkp';
+4>   SET CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO 'C:\backups\XE\%F';
+5>   BACKUP INCREMENTAL LEVEL 1 CUMULATIVE TABLESPACE XEPDB1:VENTAS, XEPDB1:FINANZAS TAG 'EST001_T1_261004160557' PLUS ARCHIVELOG;
+6>   BACKUP CURRENT CONTROLFILE TAG 'EST001_T1_261004160557';
+7>   BACKUP SPFILE TAG 'EST001_T1_261004160557';
+8>   RELEASE CHANNEL c1;
+9> }
+10> 
+executing command: SET COMMAND ID
+
+using target database control file instead of recovery catalog
+allocated channel: c1
+channel c1: SID=373 device type=DISK
+
+executing command: SET CONTROLFILE AUTOBACKUP FORMAT
+
+
+Starting backup at 2026-10-04 16:06:00
+current log archived
+channel c1: starting archived log backup set
+channel c1: specifying archived log(s) in backup set
+input archived log thread=1 sequence=3 RECID=1 STAMP=1243638420
+input archived log thread=1 sequence=4 RECID=2 STAMP=1243720944
+input archived log thread=1 sequence=5 RECID=3 STAMP=1243876465
+input archived log thread=1 sequence=6 RECID=4 STAMP=1243950232
+input archived log thread=1 sequence=7 RECID=6 STAMP=1245352240
+input archived log thread=1 sequence=8 RECID=5 STAMP=1245352240
+input archived log thread=1 sequence=9 RECID=7 STAMP=1245352241
+input archived log thread=1 sequence=10 RECID=8 STAMP=1245612417
+input archived log thread=1 sequence=11 RECID=9 STAMP=1245769828
+input archived log thread=1 sequence=12 RECID=10 STAMP=1245773160
+channel c1: starting piece 1 at 2026-10-04 16:06:01
+channel c1: finished piece 1 at 2026-10-04 16:06:02
+piece handle=C:\BACKUPS\XE\XE_EST001_T1_20261004_07541VB9_7_1_1.BKP tag=TAG20261004T160600 comment=NONE
+channel c1: backup set complete, elapsed time: 00:00:01
+Finished backup at 2026-10-04 16:06:02
+
+Starting backup at 2026-10-04 16:06:02
+channel c1: starting incremental level 1 datafile backup set
+channel c1: specifying datafile(s) in backup set
+input datafile file number=00019 name=C:\APP\CALVO\PRODUCT\21C\ORADATA\XE\XEPDB1\VENTAS01.DBF
+input datafile file number=00020 name=C:\APP\CALVO\PRODUCT\21C\ORADATA\XE\XEPDB1\FINANZAS01.DBF
+channel c1: starting piece 1 at 2026-10-04 16:06:02
+channel c1: finished piece 1 at 2026-10-04 16:06:03
+piece handle=C:\BACKUPS\XE\XE_EST001_T1_20261004_08541VBA_8_1_1.BKP tag=EST001_T1_261004160557 comment=NONE
+channel c1: backup set complete, elapsed time: 00:00:01
+Finished backup at 2026-10-04 16:06:03
+
+Starting backup at 2026-10-04 16:06:03
+current log archived
+channel c1: starting archived log backup set
+channel c1: specifying archived log(s) in backup set
+input archived log thread=1 sequence=13 RECID=11 STAMP=1245773163
+channel c1: starting piece 1 at 2026-10-04 16:06:03
+channel c1: finished piece 1 at 2026-10-04 16:06:04
+piece handle=C:\BACKUPS\XE\XE_EST001_T1_20261004_09541VBB_9_1_1.BKP tag=TAG20261004T160603 comment=NONE
+channel c1: backup set complete, elapsed time: 00:00:02
+Finished backup at 2026-10-04 16:06:05
+
+Starting backup at 2026-10-04 16:06:05
+channel c1: starting full datafile backup set
+channel c1: specifying datafile(s) in backup set
+including current control file in backup set
+channel c1: starting piece 1 at 2026-10-04 16:06:06
+channel c1: finished piece 1 at 2026-10-04 16:06:07
+piece handle=C:\BACKUPS\XE\XE_EST001_T1_20261004_0A541VBD_10_1_1.BKP tag=EST001_T1_261004160557 comment=NONE
+channel c1: backup set complete, elapsed time: 00:00:01
+Finished backup at 2026-10-04 16:06:07
+
+Starting backup at 2026-10-04 16:06:07
+channel c1: starting full datafile backup set
+channel c1: specifying datafile(s) in backup set
+including current SPFILE in backup set
+channel c1: starting piece 1 at 2026-10-04 16:06:07
+channel c1: finished piece 1 at 2026-10-04 16:06:08
+piece handle=C:\BACKUPS\XE\XE_EST001_T1_20261004_0B541VBF_11_1_1.BKP tag=EST001_T1_261004160557 comment=NONE
+channel c1: backup set complete, elapsed time: 00:00:01
+Finished backup at 2026-10-04 16:06:08
+
+Starting Control File and SPFILE Autobackup at 2026-10-04 16:06:08
+piece handle=C:\BACKUPS\XE\C-3124756861-20261004-02 comment=NONE
+Finished Control File and SPFILE Autobackup at 2026-10-04 16:06:09
+
+released channel: c1
+
+Recovery Manager complete.

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from email.message import EmailMessage
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
@@ -172,3 +172,38 @@ def test_construir_notificadores_con_correo_completo() -> None:
     notificadores, problemas = construir_notificadores(parametros)
     assert [n.nombre for n in notificadores] == ["email"]
     assert problemas == []
+
+
+class _SmtpFalso:
+    enviados: ClassVar[list[EmailMessage]] = []
+
+    def __init__(self, servidor: str, puerto: int, espera: float) -> None:
+        self.servidor = servidor
+
+    def __enter__(self) -> "_SmtpFalso":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def starttls(self) -> None:
+        return None
+
+    def login(self, usuario: str, clave: str) -> None:
+        return None
+
+    def send_message(self, mensaje: EmailMessage) -> None:
+        self.enviados.append(mensaje)
+
+
+def test_enviar_prueba_manda_un_correo_de_prueba_a_los_destinatarios() -> None:
+    _SmtpFalso.enviados = []
+    notificador = NotificadorEmail(
+        configuracion_desde_parametros(PARAMETROS_CORREO),
+        clave="x",
+        fabrica_smtp=_SmtpFalso,  # type: ignore[arg-type]
+    )
+    notificador.enviar_prueba()
+    assert len(_SmtpFalso.enviados) == 1
+    assert _SmtpFalso.enviados[0]["Subject"] == "[CloudCR] Correo de prueba"
+    assert "dba@example.com" in _SmtpFalso.enviados[0]["To"]

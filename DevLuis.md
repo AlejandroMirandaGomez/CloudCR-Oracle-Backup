@@ -54,10 +54,13 @@ Checklist personal para verificar mi parte (estrategias y validación) antes de 
 | `src/cloudcr_backup/web/rutas/criterios.py`, `web/plantillas/criterios.html` | Pantalla `/criterios`: prioridades (RPO, RTO, recencia, esquema), esquemas predefinidos y vocabulario del profesor frente a RMAN |
 | `src/cloudcr_backup/validation/contexto.py` | Campo `repositorio_servicio` (lo usa `ARCH_009`) y `servicio_de_dsn` |
 | `docs/analisis.md` | Documento de análisis completo |
+| `web/rutas/evidencias.py`, `cli/cmd_evidencias.py`, `services/evidencias.py` | Pantalla `/evidencias` y `cloudcr evidencias`: las 10 evidencias y su estado |
+| `services/alertas.py` (`probar_correo`, `estado_correo`) | Correo de prueba: `cloudcr alertas probar-correo` y *Sistema → Notificaciones por correo* |
+| `docs/presentacion_guion.md` | Guion de los 18 momentos de la demo |
 
 ### Pruebas
 
-Archivos de `tests/unit/` por módulo, más `test_reglas_archivado.py` (`ARCH_004/006/007/009`) y una prueba de `/criterios` en `tests/web/test_paginas.py`. **986 pruebas en total** (66 de Oracle deseleccionadas), todas las demás corren sin necesitar Oracle instalado.
+Archivos de `tests/unit/` por módulo, más `test_reglas_archivado.py` (`ARCH_004/006/007/009`) y una prueba de `/criterios` en `tests/web/test_paginas.py`. **998 pruebas en total** (69 de Oracle deseleccionadas), todas las demás corren sin necesitar Oracle instalado.
 
 ## 2. Qué funciona hoy
 
@@ -139,7 +142,7 @@ Dura solo mientras esta ventana de PowerShell esté abierta.
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 ```
-**Esperado:** `986 passed, 66 deselected`.
+**Esperado:** `998 passed, 69 deselected`.
 
 ```powershell
 .\.venv\Scripts\python.exe -m ruff check src tests
@@ -149,7 +152,7 @@ Dura solo mientras esta ventana de PowerShell esté abierta.
 ```powershell
 .\.venv\Scripts\python.exe -m mypy src
 ```
-**Esperado:** `Success: no issues found in 191 source files`
+**Esperado:** `Success: no issues found in 195 source files`
 
 Si los tres salen bien, el código está sano. Seguimos a probarlo de verdad.
 
@@ -289,7 +292,7 @@ Si alguna vez ves un **ERROR** (no advertencia) que no esperabas, ahí sí revis
 
 ## 8. Checklist final antes de hacer push
 
-- [ ] `pytest -q` → 986 passed
+- [ ] `pytest -q` → 998 passed
 - [ ] `ruff check src tests` → All checks passed
 - [ ] `mypy src` → Success, no issues
 - [ ] `cloudcr estrategia validar --archivo config\estrategias\est001.yaml` corre sin traceback

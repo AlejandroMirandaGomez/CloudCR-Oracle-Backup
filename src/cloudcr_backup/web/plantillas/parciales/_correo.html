@@ -1,0 +1,33 @@
+{% if aviso %}<p class="mensaje-estado" role="status">{{ aviso }}</p>{% endif %}
+<p class="nota">Cuando una ejecución falla o una alerta alcanza la severidad mínima, el agente avisa al DBA por correo. Los datos se configuran en <em>Parámetros globales</em> (<code>notificacion.email.*</code> y <code>notificacion.canales</code>); la contraseña va en la variable de entorno <code>CLOUDCR_SMTP_CLAVE</code>, nunca en el repositorio.</p>
+<div class="tarjetas">
+  <div class="tarjeta">
+    <span class="numero {{ 'tono-exito' if estado.canal_activo else 'tono-advertencia' }}">{{ 'Activo' if estado.canal_activo else 'Inactivo' }}</span>
+    <span class="rotulo">Canal de correo (<code>notificacion.canales</code>)</span>
+  </div>
+  <div class="tarjeta">
+    <span class="numero {{ 'tono-exito' if estado.configurado else 'tono-advertencia' }}">{{ 'Completa' if estado.configurado else 'Incompleta' }}</span>
+    <span class="rotulo">Configuración</span>
+  </div>
+  <div class="tarjeta">
+    <span class="numero {{ 'tono-exito' if estado.clave_definida else 'tono-atenuado' }}">{{ 'Definida' if estado.clave_definida else 'Sin definir' }}</span>
+    <span class="rotulo">Contraseña (<code>CLOUDCR_SMTP_CLAVE</code>)</span>
+  </div>
+</div>
+{% if estado.configurado %}
+<dl class="detalle">
+  <dt>Servidor</dt><dd>{{ estado.servidor }}:{{ estado.puerto }}</dd>
+  <dt>Remitente</dt><dd>{{ estado.remitente }}</dd>
+  <dt>Destinatarios</dt><dd>{{ estado.destinatarios | join(', ') }}</dd>
+  <dt>Severidad mínima</dt><dd>{{ estado.severidad_minima }}</dd>
+</dl>
+{% else %}
+<p class="aviso">{{ estado.problema }}</p>
+{% endif %}
+{% if not estado.canal_activo %}
+<p class="nota">Para que las alertas se envíen por correo, agregue <code>"email"</code> a <code>notificacion.canales</code>, por ejemplo <code>["consola","email"]</code>.</p>
+{% endif %}
+<form class="formulario-accion" method="post" action="/sistema/correo/probar" hx-post="/sistema/correo/probar" hx-target="#zona-correo" hx-disabled-elt="find button"
+      hx-confirm="¿Enviar un correo de prueba a los destinatarios configurados?">
+  <button class="boton primario" type="submit"{% if not estado.configurado %} disabled{% endif %}>Enviar correo de prueba</button>
+</form>

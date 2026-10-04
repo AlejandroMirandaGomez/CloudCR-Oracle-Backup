@@ -86,3 +86,21 @@ class ResumenEvaluacion(BaseModel):
     resueltas: list[str] = []
     notificadas: list[str] = []
     errores: list[str] = []
+
+
+class EstadoCorreo(BaseModel):
+    canal_activo: bool
+    configurado: bool
+    servidor: str | None = None
+    puerto: int | None = None
+    remitente: str | None = None
+    destinatarios: list[str] = []
+    severidad_minima: str | None = None
+    clave_definida: bool = False
+    problema: str | None = None
+
+
+class ResultadoPruebaCorreo(BaseModel):
+    enviado_en: datetime
+    servidor: str
+    destinatarios: list[str]
