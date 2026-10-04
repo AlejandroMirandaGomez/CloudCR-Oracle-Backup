@@ -20,6 +20,20 @@ En los comandos, lo que aparece entre `< >` se reemplaza por el valor de tu equi
 | Oracle instalado y la instancia iniciada | `Get-Service OracleService*` debe mostrar `Running` |
 | Tu usuario de Windows pertenece al grupo `ORA_DBA` | `whoami /groups \| Select-String ORA_DBA` (el usuario que instaló Oracle ya pertenece) |
 
+## Inicio rápido (equipo nuevo)
+
+Con los requisitos de arriba cumplidos, alcanza con tres comandos:
+
+```powershell
+git clone https://github.com/AlejandroMirandaGomez/CloudCR-Oracle-Backup.git
+cd CloudCR-Oracle-Backup
+.\iniciar.cmd
+```
+
+`iniciar.cmd` hace todo lo que falte y se puede volver a ejecutar sin riesgo: crea `.venv`, instala las dependencias (solo si cambió `pyproject.toml`), crea la PDB `BKPCAT` y el usuario `BKP_ADMIN` con los datos del archivo `.env` (solo si todavía no existen), instala las tablas del repositorio y abre la interfaz web. Cuando todo ya está listo, solo abre la web.
+
+Opciones: `.\iniciar.cmd -Puerto <PUERTO>` para usar otro puerto y `.\iniciar.cmd -NoAbrir` para no abrir el navegador. Si el `.env` ya trae otra clave para `BKP_ADMIN`, el script deja el usuario con esa clave.
+
 ## Primera vez: instalación
 
 **1. Obtener el proyecto** (si ya lo tenés, pasá al paso 2)
