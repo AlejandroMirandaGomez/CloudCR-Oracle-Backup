@@ -80,6 +80,7 @@ def test_rman_acepta_la_sintaxis(nombre: str, contenido: str, tmp_path: Path) ->
     salida = subprocess.run(
         [str(rman), "checksyntax", f"cmdfile={script.name}", "using", "TAG_PRUEBA", "CLOUDCR_0"],
         cwd=tmp_path,
+        env={**os.environ, "NLS_LANG": "AMERICAN_AMERICA.AL32UTF8"},
         capture_output=True,
         text=True,
         timeout=120,
