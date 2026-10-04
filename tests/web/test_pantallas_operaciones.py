@@ -8,10 +8,12 @@ from fastapi.testclient import TestClient
 
 from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.administracion import (
+    BorradorEdicion,
     ComprobacionEntorno,
     EjemploEstrategia,
     EstadoControlAgente,
     EstadoRepositorio,
+    EstrategiaEditada,
     EstrategiaImportada,
     ParametroRepositorio,
     PerfilGuardado,
@@ -99,6 +101,9 @@ class ControlFalso:
 
     def apagar(self, esperar_segundos: float) -> None:
         self.llamadas.append("apagar")
+
+    def iniciar_si_corresponde(self) -> None:
+        self.llamadas.append("autoinicio")
 
 
 @pytest.fixture
@@ -515,7 +520,7 @@ def test_plan_con_fecha_invalida(web: TestClient, monkeypatch: pytest.MonkeyPatc
 def test_sistema_carga_sus_secciones(web: TestClient) -> None:
     html = web.get("/sistema").text
     assert sin_en_linea(html)
-    for zona in ("agente", "bases", "entorno", "repositorio", "parametros"):
+    for zona in ("agente", "bases", "entorno", "archivado", "repositorio", "parametros"):
         assert f'hx-get="/sistema/{zona}"' in html
 
 
@@ -589,3 +594,267 @@ def test_navegacion_incluye_las_secciones_nuevas(web: TestClient) -> None:
     html = web.get("/estado").text
     for ruta in ("/retencion", "/recuperacion", "/sistema"):
         assert f'href="{ruta}"' in html
+
+
+def borrador(**cambios: Any) -> BorradorEdicion:
+    base: dict[str, Any] = {
+        "bd": "XE",
+        "codigo": "EST001",
+        "nombre": "Respaldo diario",
+        "version": 1,
+        "contenido": "codigo: EST001\nnombre: Respaldo diario\n",
+    }
+    return BorradorEdicion.model_validate({**base, **cambios})
+
+
+def edicion(**cambios: Any) -> EstrategiaEditada:
+    base: dict[str, Any] = {"bd": "XE", "codigo": "EST001", "nombre": "Respaldo diario", "version": 2}
+    return EstrategiaEditada.model_validate({**base, **cambios})
+
+
+def test_pagina_editar_muestra_el_yaml_y_los_valores_permitidos(
+    web: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pedidos: list[bool] = []
+
+    def contenido(a: Any, bd: str, codigo: str, agregar_tarea: bool) -> BorradorEdicion:
+        pedidos.append(agregar_tarea)
+        return borrador(tarea_agregada="T2" if agregar_tarea else None)
+
+    monkeypatch.setattr(gestion_estrategias, "contenido_para_editar", contenido)
+    html = web.get("/estrategias/XE/EST001/editar").text
+    assert sin_en_linea(html)
+    assert "Editar EST001 — Respaldo diario" in html
+    assert "codigo: EST001" in html
+    assert "Guardar como versión 2" in html
+    assert "INCREMENTAL_N1_ACUMULATIVO" in html and "SEMANAL" in html and "EN_LINEA" in html
+    assert 'hx-post="/estrategias/XE/EST001/editar/validar"' in html
+    assert "Se agregó la tarea" not in html
+    agregada = web.get("/estrategias/XE/EST001/editar?agregar_tarea=true").text
+    assert "Se agregó la tarea T2" in agregada
+    assert pedidos == [False, True]
+
+
+def test_editar_una_estrategia_inexistente_da_404(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def no_existe(a: Any, bd: str, codigo: str, agregar_tarea: bool) -> BorradorEdicion:
+        raise RecursoNoEncontrado("No existe la estrategia EST777.")
+
+    monkeypatch.setattr(gestion_estrategias, "contenido_para_editar", no_existe)
+    assert web.get("/estrategias/XE/EST777/editar").status_code == 404
+
+
+def test_validar_borrador_no_ofrece_aplicar_recomendaciones(
+    web: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    resultado = ResultadoValidacion(
+        bd="XE",
+        estrategia="EST001",
+        version=2,
+        hallazgos=[
+            Hallazgo(
+                codigo="ARCH_002", severidad=Severidad.RECOMENDACION, mensaje="Considere archived", sujeto="EST001"
+            )
+        ],
+        perfil_capturado_en=datetime(2026, 10, 4, 13),
+    )
+    recibido: list[str] = []
+
+    def validar(a: Any, bd: str, codigo: str, contenido: str) -> ResultadoValidacion:
+        recibido.append(contenido)
+        return resultado
+
+    monkeypatch.setattr(gestion_estrategias, "validar_borrador", validar)
+    html = web.post(
+        "/estrategias/XE/EST001/editar/validar", content="contenido=codigo%3A+EST001", headers=HTMX_FORMULARIO
+    ).text
+    assert recibido == ["codigo: EST001"]
+    assert "ARCH_002" in html and "versión 2" in html
+    assert "Aplicar esta recomendación" not in html
+
+
+def test_guardar_edicion_redirige_al_detalle_con_el_aviso(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    guardadas: list[tuple[str, str, str]] = []
+
+    def guardar(a: Any, bd: str, codigo: str, contenido: str) -> EstrategiaEditada:
+        guardadas.append((bd, codigo, contenido))
+        return edicion(tareas_a_regenerar=["T1"])
+
+    monkeypatch.setattr(gestion_estrategias, "guardar_edicion", guardar)
+    htmx = web.post("/estrategias/XE/EST001/editar", content="contenido=x%3A+1", headers=HTMX_FORMULARIO)
+    assert htmx.status_code == 204
+    assert htmx.headers["hx-redirect"].startswith("/estrategias/XE/EST001?aviso=")
+    assert "versi%C3%B3n+2" in htmx.headers["hx-redirect"]
+    sin_js = web.post(
+        "/estrategias/XE/EST001/editar", content="contenido=x%3A+1", headers=FORMULARIO, follow_redirects=False
+    )
+    assert sin_js.status_code == 303
+    assert guardadas[0] == ("XE", "EST001", "x: 1")
+
+
+def test_el_detalle_muestra_el_aviso_de_la_edicion(web: TestClient) -> None:
+    html = web.get("/estrategias/XE/EST001?aviso=Estrategia+EST001+guardada+como+versi%C3%B3n+2.").text
+    assert "Estrategia EST001 guardada como versión 2." in html
+    assert "<script>" not in web.get("/estrategias/XE/EST001?aviso=%3Cscript%3Ealert(1)%3C/script%3E").text
+
+
+def test_guardar_edicion_rechazada_se_muestra_en_el_panel(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def rechazar(a: Any, bd: str, codigo: str, contenido: str) -> EstrategiaEditada:
+        raise OperacionNoPermitida("La tarea T1 ya tiene ejecuciones registradas.", "Los cambios no se guardaron.")
+
+    monkeypatch.setattr(gestion_estrategias, "guardar_edicion", rechazar)
+    respuesta = web.post("/estrategias/XE/EST001/editar", content="contenido=x", headers=HTMX_FORMULARIO)
+    assert "La tarea T1 ya tiene ejecuciones registradas." in respuesta.text
+    assert "Los cambios no se guardaron." in respuesta.text
+
+
+def test_detalle_ofrece_editar_agregar_y_eliminar_tarea(web: TestClient) -> None:
+    html = web.get("/estrategias/XE/EST001").text
+    assert 'href="/estrategias/XE/EST001/editar"' in html
+    assert 'href="/estrategias/XE/EST001/editar?agregar_tarea=true"' in html
+    assert 'action="/estrategias/XE/EST001/tareas/T1/eliminar"' in html
+
+
+def test_eliminar_tarea_actualiza_el_detalle(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    eliminadas: list[tuple[str, str, str]] = []
+
+    def eliminar(a: Any, bd: str, codigo: str, tarea: str) -> EstrategiaEditada:
+        eliminadas.append((bd, codigo, tarea))
+        return edicion(tareas_eliminadas=["T2"])
+
+    monkeypatch.setattr(gestion_estrategias, "eliminar_tarea", eliminar)
+    html = web.post("/estrategias/XE/EST001/tareas/T2/eliminar", headers=HTMX).text
+    assert eliminadas == [("XE", "EST001", "T2")]
+    assert "Tareas eliminadas: T2." in html
+    sin_js = web.post("/estrategias/XE/EST001/tareas/T2/eliminar", follow_redirects=False)
+    assert sin_js.status_code == 303 and sin_js.headers["location"].startswith("/estrategias/XE/EST001?aviso=")
+
+
+def test_eliminar_la_unica_tarea_se_rechaza(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def rechazar(a: Any, bd: str, codigo: str, tarea: str) -> EstrategiaEditada:
+        raise OperacionNoPermitida("T1 es la única tarea de EST001.")
+
+    monkeypatch.setattr(gestion_estrategias, "eliminar_tarea", rechazar)
+    respuesta = web.post("/estrategias/XE/EST001/tareas/T1/eliminar", headers=HTMX)
+    assert "única tarea" in respuesta.text
+
+
+def test_descargar_la_evidencia_de_una_ejecucion(web: TestClient) -> None:
+    pagina = web.get("/historial/40").text
+    assert 'href="/historial/40/evidencia/html"' in pagina and 'href="/historial/40/evidencia/md"' in pagina
+    markdown = web.get("/historial/40/evidencia/md")
+    assert markdown.content == b"evidencia"
+    assert 'filename="evidencia-ejecucion-40.md"' in markdown.headers["content-disposition"]
+    assert "text/html" in web.get("/historial/40/evidencia/html").headers["content-type"]
+    assert web.get("/historial/40/evidencia/csv").status_code == 409
+
+
+def test_reiniciar_repositorio_exige_confirmacion_escrita(web: TestClient) -> None:
+    respuesta = web.post(
+        "/sistema/repositorio/reiniciar", content="confirmacion=borrar&reinstalar=on", headers=HTMX_FORMULARIO
+    )
+    assert "Falta la confirmación escrita." in respuesta.text
+    assert "BORRAR TODO" in respuesta.text
+
+
+def test_reiniciar_repositorio_borra_y_reinstala(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    pedidos: list[tuple[str, bool]] = []
+
+    def reiniciar(a: Any, confirmacion: str, reinstalar: bool) -> EstadoRepositorio:
+        pedidos.append((confirmacion, reinstalar))
+        return EstadoRepositorio(instalado=True, esperadas=12)
+
+    monkeypatch.setattr(administracion, "reiniciar_repositorio", reiniciar)
+    monkeypatch.setattr(
+        administracion, "estado_repositorio", lambda a: EstadoRepositorio(instalado=True, esperadas=12)
+    )
+    html = web.post(
+        "/sistema/repositorio/reiniciar", content="confirmacion=BORRAR+TODO&reinstalar=on", headers=HTMX_FORMULARIO
+    ).text
+    assert pedidos == [("BORRAR TODO", True)]
+    assert "vuelto a instalar vacío" in html
+    web.post("/sistema/repositorio/reiniciar", content="confirmacion=BORRAR+TODO", headers=HTMX_FORMULARIO)
+    assert pedidos[-1] == ("BORRAR TODO", False)
+
+
+def test_no_se_reinicia_el_repositorio_con_el_agente_corriendo(
+    web: TestClient, control: ControlFalso, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    llamadas: list[str] = []
+    monkeypatch.setattr(administracion, "reiniciar_repositorio", lambda a, c, r: llamadas.append("reiniciar"))
+    control.corriendo = True
+    respuesta = web.post(
+        "/sistema/repositorio/reiniciar", content="confirmacion=BORRAR+TODO", headers=HTMX_FORMULARIO
+    )
+    assert "El agente de esta web está corriendo" in respuesta.text
+    assert llamadas == []
+
+
+def test_el_repositorio_ofrece_la_zona_de_borrado(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        administracion, "estado_repositorio", lambda a: EstadoRepositorio(instalado=True, esperadas=12)
+    )
+    html = web.get("/sistema/repositorio", headers=HTMX).text
+    assert 'action="/sistema/repositorio/reiniciar"' in html
+    assert "BORRAR TODO" in html
+
+
+def test_archivado_muestra_el_modo_y_el_procedimiento(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    base = VistaBaseDatos(
+        nombre="XE", registrada=True, id=1, activa=True, log_mode=LogMode.NOARCHIVELOG,
+        perfil_capturado_en=datetime(2026, 10, 4, 13),
+    )
+    monkeypatch.setattr(bases_datos, "listar", lambda a: [base])
+    html = web.get("/sistema/archivado", headers=HTMX).text
+    assert "NOARCHIVELOG" in html
+    assert "ALTER DATABASE ARCHIVELOG;" in html and "SHUTDOWN IMMEDIATE;" in html
+    assert "nunca cambia el modo de archivado" in html
+
+
+def test_interruptor_del_inicio_automatico_del_agente(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    asignados: list[bool] = []
+    monkeypatch.setattr(administracion, "autoinicio_agente", lambda a: True)
+    monkeypatch.setattr(
+        administracion, "asignar_autoinicio_agente", lambda a, activo: asignados.append(activo)
+    )
+    html = web.get("/sistema/agente", headers=HTMX).text
+    assert 'action="/sistema/agente/autoinicio"' in html and "checked" in html
+    web.post("/sistema/agente/autoinicio", content="activo=on", headers=HTMX_FORMULARIO)
+    web.post("/sistema/agente/autoinicio", content="", headers=HTMX_FORMULARIO)
+    assert asignados == [True, False]
+
+
+def test_la_web_inicia_el_agente_solo_si_se_pide(
+    servicio: ServicioFalso, monitoreo: MonitoreoFalso, tmp_path: Path
+) -> None:
+    for iniciar, esperado in ((True, ["autoinicio", "apagar"]), (False, ["apagar"])):
+        control = ControlFalso()
+        config = ConfigWeb(
+            clientes_sin_token=frozenset({"testclient"}),
+            hosts_permitidos=frozenset({"testserver"}),
+            iniciar_agente=iniciar,
+        )
+        app = crear_app(
+            config,
+            servicio=servicio,
+            ajustes=Ajustes(work_dir=tmp_path),
+            monitoreo_servicio=monitoreo,
+            control_agente=control,
+        )
+        with TestClient(app) as cliente:
+            assert cliente.get("/salud").status_code == 200
+        assert control.llamadas == esperado
+
+
+@pytest.mark.parametrize(
+    "ruta",
+    [
+        "/estrategias/XE/EST001/editar",
+        "/estrategias/XE/EST001/editar/validar",
+        "/estrategias/XE/EST001/tareas/T1/eliminar",
+        "/sistema/repositorio/reiniciar",
+        "/sistema/agente/autoinicio",
+    ],
+)
+def test_las_acciones_nuevas_rechazan_otro_origen(web: TestClient, control: ControlFalso, ruta: str) -> None:
+    assert web.post(ruta, content="x=1", headers=ORIGEN_AJENO).status_code == 403
+    assert control.llamadas == []
