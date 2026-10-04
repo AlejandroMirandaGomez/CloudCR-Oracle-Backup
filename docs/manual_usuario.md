@@ -99,7 +99,20 @@ Se ven con `cloudcr param listar` y se cambian con `cloudcr param set <clave> <v
 cloudcr web
 ```
 
-Se abre el navegador en `http://127.0.0.1:8765/`. La barra superior tiene **Estado · Estrategias · Historial · Alertas · Instancias**. Todo funciona con teclado, en tema claro u oscuro (según el sistema) y en pantallas angostas.
+Se abre el navegador en `http://127.0.0.1:8765/`. La barra superior tiene **Estado · Estrategias · Historial · Alertas · Retención · Recuperación · Instancias · Sistema**. Todo funciona con teclado, en tema claro u oscuro (según el sistema) y en pantallas angostas.
+
+**Todo el circuito se puede probar desde la web**, sin abrir la terminal:
+
+| Paso | Dónde |
+|---|---|
+| 1. Registrar la base y guardar su perfil | **Sistema → Bases de datos**: «Registrar» e «Inspeccionar y guardar perfil» |
+| 2. Crear la estrategia | **Instancias → Crear estrategia de respaldo**, o **Estrategias → Importar YAML** (incluye los ejemplos EST001 a EST004) |
+| 3. Validar contra la base real y aplicar recomendaciones | Detalle de la estrategia → «Validar contra la base real» → «Aplicar esta recomendación» (ARCH_002) |
+| 4. Generar, revisar y aprobar el script | Detalle de la estrategia → «Generar los scripts RMAN» → «Script RMAN» de cada tarea → «Aprobar» |
+| 5. Probar sin ejecutar y ejecutar | Pantalla del script → «Simular la ejecución» → «Ejecutar ahora» |
+| 6. Seguir la ejecución y verificarla | **Historial** → detalle (se actualiza solo mientras corre) → «Verificar de nuevo» |
+| 7. Automatizar | **Sistema → Agente**: «Iniciar» (o «Ejecutar un ciclo»), con o sin SIMULACIÓN |
+| 8. Retención y recuperación | **Retención** (informe, consulta a RMAN, purga controlada) y **Recuperación** (puntos, diagnóstico, procedimientos) |
 
 ### 4.1 Instancias → crear una estrategia
 
@@ -116,8 +129,23 @@ Se abre el navegador en `http://127.0.0.1:8765/`. La barra superior tiene **Esta
 - Alcance y retención.
 - Por tarea: el tipo con **las dos etiquetas** (sistema y clase, p. ej. «Incremental nivel 0 (total+)»), el modo, la programación en palabras, el destino, el script RMAN vigente y **las próximas 5 ejecuciones**.
 - Botones **Activar / Desactivar** (piden confirmación).
+- **Validar contra la base real**: inspecciona la base en vivo (o usa el último perfil guardado si no responde) y muestra los hallazgos por severidad. Las recomendaciones aplicables (ARCH_002) tienen su botón: la estrategia sube de versión.
+- **Generar los scripts RMAN**: un borrador por tarea; las tareas imposibles (por ejemplo, en línea con la base en NOARCHIVELOG) se informan sin bloquear las demás.
+- **Exportar YAML** y, desde la lista, **Importar YAML** (pegado o de los ejemplos del proyecto; «Reemplazar si ya existe» sube la versión).
 
 `[PENDIENTE: captura real de /estrategias y del detalle de EST001]`
+
+### 4.2.1 Script RMAN de una tarea
+
+Desde «Script RMAN» de cada tarea (`/estrategias/{bd}/{codigo}/scripts/{tarea}`):
+
+- Estado (borrador, aprobado, rechazado, obsoleto), modo, **SHA-256** y si el archivo en disco sigue intacto.
+- El contenido exacto, la tabla **configuración → cláusula RMAN** y la validación de la tarea.
+- **Aprobar** (un respaldo CONSISTENTE exige marcar «Acepto la caída del servicio») y **Rechazar** con motivo.
+- Con el script aprobado: **Simular la ejecución** (preflight y comando, sin RMAN) y **Ejecutar ahora** (corre en segundo plano; el enlace lleva al detalle del historial, que se actualiza solo).
+- **Regenerar** y la lista de versiones.
+
+> Un respaldo CONSISTENTE apaga la base, y con ella el repositorio `BKPCAT` si vive en la misma CDB: la web deja de responder unos minutos y vuelve sola. La evidencia queda primero en disco y en el buzón.
 
 ### 4.3 Estado
 
@@ -147,7 +175,20 @@ Se abre el navegador en `http://127.0.0.1:8765/`. La barra superior tiene **Esta
 
 `[PENDIENTE: captura real de /alertas]`
 
-### 4.6 API JSON (uso sin pantalla)
+### 4.6 Retención y recuperación
+
+- `/retencion`: por estrategia, la política (ventana o redundancia), las piezas vencidas y el script que se usaría. «Consultar a RMAN» corre `CROSSCHECK BACKUP` + `REPORT OBSOLETE`. El botón de purga **solo aparece** si la estrategia tiene `purga_automatica` activa, y pide confirmación.
+- `/recuperacion`: puntos de recuperación (respaldos correctos con piezas), **Diagnosticar ahora** (`V$RECOVER_FILE`/`V$DATAFILE`) y el generador de procedimientos por escenario. El procedimiento se muestra y se guarda en la carpeta de trabajo; **nunca se ejecuta**.
+
+### 4.7 Sistema
+
+- **Agente**: iniciarlo dentro del servidor web (real o SIMULACIÓN), ejecutar un solo ciclo, detenerlo, latidos y mensajes recientes. No deja iniciar otro si ya hay un agente vivo (por ejemplo, uno abierto con `cloudcr agente ejecutar`). Al cerrar la web, el agente se detiene esperando las ejecuciones en curso.
+- **Bases de datos**: instancias detectadas y bases registradas; registrar (con ambiente), inspeccionar y guardar el perfil, activar o desactivar.
+- **Diagnóstico del entorno**: lo mismo que `cloudcr doctor`.
+- **Repositorio**: tablas y filas. «Instalar» solo se ofrece si el esquema **no** está instalado, porque instalar recrea las 12 tablas y borra sus datos.
+- **Parámetros globales**: editar, restablecer al valor inicial o agregar.
+
+### 4.8 API JSON (uso sin pantalla)
 
 Todo lo anterior tiene su equivalente JSON. Las escrituras (`POST`) solo se aceptan desde la propia interfaz o con la misma cabecera `Origin`.
 
@@ -163,6 +204,14 @@ Todo lo anterior tiene su equivalente JSON. Las escrituras (`POST`) solo se acep
 | `GET /historial/exportar/{csv,md,html}?…` | Descarga |
 | `GET /api/alertas?estado=&severidad=` | Alertas |
 | `POST /api/alertas/{id}/reconocer` · `…/resolver` · `POST /api/alertas/evaluar` | Acciones |
+| `GET /api/estrategias/{bd}/{codigo}/validar` · `POST …/recomendaciones/{codigo}/aplicar` | Validación en vivo y recomendación aplicada |
+| `GET /api/estrategias/ejemplos` · `POST /api/estrategias/importar` · `GET /api/estrategias/{bd}/{codigo}/yaml` | Importar y exportar YAML |
+| `GET /api/sistema/entorno` · `GET /api/sistema/repositorio` | Diagnóstico y estado del repositorio |
+| `GET /api/sistema/parametros` · `PUT /api/sistema/parametros/{clave}` · `POST …/{clave}/restablecer` | Parámetros |
+| `GET /api/sistema/bases` · `POST /api/sistema/bases` · `POST /api/sistema/bases/{nombre}/inspeccionar` | Registro y perfil |
+| `GET /api/sistema/agente` · `POST /api/sistema/agente/{iniciar,ciclo,detener}` | Control del agente de la web |
+
+Los scripts, ejecuciones, retención y recuperación tienen su propia API (§13.4).
 
 Errores: `503` con sugerencia si el repositorio no está configurado o no responde; `404` si no existe; `409` si la acción no se permite; `422` si un filtro es inválido. La pantalla muestra el mismo mensaje en un panel, nunca una traza.
 

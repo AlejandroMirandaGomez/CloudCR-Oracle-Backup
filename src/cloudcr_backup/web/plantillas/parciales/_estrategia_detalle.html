@@ -23,6 +23,22 @@
 </section>
 
 <section class="panel">
+  <div class="encabezado-seccion">
+    <h2>Validar, generar y exportar</h2>
+    <div class="acciones">
+      <button class="boton" type="button" hx-get="{{ ruta }}/validar" hx-target="#resultado-estrategia" hx-disabled-elt="this" hx-indicator="#trabajando-estrategia">Validar contra la base real</button>
+      <form method="post" action="{{ ruta }}/generar-scripts" hx-post="{{ ruta }}/generar-scripts" hx-target="#resultado-estrategia" hx-disabled-elt="find button" hx-indicator="#trabajando-estrategia">
+        <button class="boton primario" type="submit">Generar los scripts RMAN</button>
+      </form>
+      <a class="boton" href="{{ ruta }}/exportar">Exportar YAML</a>
+    </div>
+  </div>
+  <p class="nota">La validación inspecciona la base en vivo (modo de archivado, objetos, destino y espacio). Los scripts se generan como borrador: cada uno se revisa y se aprueba en la pantalla de su tarea.</p>
+  <p id="trabajando-estrategia" class="htmx-indicator">Trabajando…</p>
+  <div id="resultado-estrategia" aria-live="polite"></div>
+</section>
+
+<section class="panel">
   <h2>Resumen</h2>
   <dl class="ficha">
     <dt>Estado</dt><dd>{{ 'Activa' if resumen.estado.value == 'ACTIVA' else 'Inactiva' }}</dd>
@@ -38,7 +54,10 @@
 <section class="tareas" aria-label="Tareas">
   {% for tarea in detalle.tareas %}
   <article class="panel tarea-detalle">
-    <h3>{{ tarea.codigo }} · {{ tarea.etiqueta_tipo }}</h3>
+    <div class="encabezado-seccion">
+      <h3>{{ tarea.codigo }} · {{ tarea.etiqueta_tipo }}</h3>
+      <a class="boton chico" href="{{ ruta }}/scripts/{{ tarea.codigo | urlencode }}">Script RMAN: ver, aprobar y ejecutar</a>
+    </div>
     <dl class="ficha">
       <dt>Tipo (sistema / clase)</dt><dd>{{ tarea.etiqueta_tipo }} · término de clase: «{{ tarea.termino_clase }}»</dd>
       <dt>Modo</dt><dd>{{ tarea.modo_respaldo.value }}</dd>

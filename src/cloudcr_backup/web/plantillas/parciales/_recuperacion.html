@@ -1,0 +1,73 @@
+{% if not bases %}
+<div class="vacio">No hay bases de datos registradas. Regístrela en <a href="/sistema#bases">Sistema → Bases de datos</a>.</div>
+{% elif puntos is none %}
+<div class="vacio">Elija una base de datos.</div>
+{% else %}
+<section class="panel">
+  <div class="encabezado-seccion">
+    <h2>Puntos de recuperación de {{ puntos.bd }}</h2>
+    <span class="semaforo tono-{{ 'exito' if puntos.puntos else 'peligro' }}">{{ puntos.puntos | length }} respaldos utilizables</span>
+  </div>
+  <dl class="ficha">
+    <dt>Modo de archivado</dt><dd>{{ puntos.log_mode.value if puntos.log_mode else 'desconocido (guarde el perfil de la base)' }}</dd>
+    <dt>Recuperable desde</dt><dd>{{ puntos.recuperable_desde | local(zona) }}</dd>
+  </dl>
+  {% for nota in puntos.avisos %}<p class="aviso">{{ nota }}</p>{% endfor %}
+  {% if puntos.puntos %}
+  <div class="tabla-desplazable">
+    <table class="tabla compacta">
+      <thead><tr><th scope="col">Ejecución</th><th scope="col">Estrategia</th><th scope="col">Tipo</th><th scope="col">Completado</th><th scope="col">Alcance</th><th scope="col">Pruebas</th><th scope="col">Piezas</th><th scope="col">Tamaño</th><th scope="col">Tag</th></tr></thead>
+      <tbody>
+        {% for punto in puntos.puntos %}
+        <tr>
+          <td><a href="/historial/{{ punto.ejecucion_id }}">{{ punto.ejecucion_id }}</a></td>
+          <td>{{ punto.estrategia }}/{{ punto.tarea }}</td>
+          <td>{{ punto.tipo_respaldo.value }}</td>
+          <td>{{ punto.completado_en | local(zona) }}</td>
+          <td class="envolver">{{ 'Base completa' if punto.base_completa else (punto.alcance | join(', ')) }}</td>
+          <td>{{ punto.estado_prueba.value }}</td>
+          <td class="cifra">{{ punto.piezas }}</td>
+          <td class="cifra">{{ punto.tamano_bytes | bytes }}</td>
+          <td><code>{{ punto.tag or '—' }}</code></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="nota">Todavía no hay respaldos exitosos registrados para esta base: ejecute uno desde la pantalla del script de una tarea.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="encabezado-seccion">
+    <h2>Diagnóstico</h2>
+    <button class="boton" type="button" hx-get="/recuperacion/{{ puntos.bd | urlencode }}/diagnostico" hx-target="#zona-diagnostico" hx-disabled-elt="this" hx-indicator="#diagnosticando">Diagnosticar ahora</button>
+  </div>
+  <p class="nota">Consulta <code>V$RECOVER_FILE</code> y <code>V$DATAFILE</code> en la instancia para decir qué archivo concreto falta o está dañado: es el primer paso de la línea de tiempo de una falla.</p>
+  <p id="diagnosticando" class="htmx-indicator">Consultando la instancia…</p>
+  <div id="zona-diagnostico" aria-live="polite"></div>
+</section>
+
+<section class="panel">
+  <h2>Generar un procedimiento</h2>
+  <form class="formulario-columna" action="/recuperacion/{{ puntos.bd | urlencode }}/plan" method="get"
+        hx-get="/recuperacion/{{ puntos.bd | urlencode }}/plan" hx-target="#zona-procedimiento" hx-disabled-elt="find button" hx-indicator="#generando-plan">
+    <div class="formulario-accion">
+      <label>Escenario
+        <select name="escenario" required>
+          {% for valor, etiqueta, ayuda in escenarios %}<option value="{{ valor }}">{{ etiqueta }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Objetivo <input type="text" name="objetivo" maxlength="130" placeholder="XEPDB1, XEPDB1:USERS o file#" class="campo-ancho" autocomplete="off" spellcheck="false"></label>
+      <label>Hasta (punto en el tiempo) <input type="datetime-local" name="hasta"></label>
+      <button class="boton primario" type="submit">Generar procedimiento</button>
+    </div>
+    <ul class="nota">
+      {% for valor, etiqueta, ayuda in escenarios %}<li><strong>{{ etiqueta }}:</strong> {{ ayuda }}</li>{% endfor %}
+    </ul>
+  </form>
+  <p id="generando-plan" class="htmx-indicator">Generando…</p>
+  <div id="zona-procedimiento" aria-live="polite"></div>
+</section>
+{% endif %}

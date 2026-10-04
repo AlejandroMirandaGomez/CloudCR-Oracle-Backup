@@ -20,7 +20,7 @@ def ruta_detalle(bd: str, codigo: str) -> str:
     return f"/estrategias/{quote(bd, safe='')}/{quote(codigo, safe='')}"
 
 
-def _contexto_detalle(detalle: DetalleEstrategia, zona: str, aviso: str | None = None) -> dict[str, Any]:
+def contexto_detalle(detalle: DetalleEstrategia, zona: str, aviso: str | None = None) -> dict[str, Any]:
     color = detalle.resumen.color
     return {
         "seccion": "estrategias",
@@ -56,7 +56,7 @@ def pagina_estrategia(
     request: Request, bd: str, codigo: str, monitoreo: Monitoreo, n: Cantidad = 5
 ) -> HTMLResponse:
     detalle = monitoreo.estrategia(bd, codigo, n)
-    return renderizar(request, "estrategia_detalle.html", _contexto_detalle(detalle, monitoreo.zona_horaria))
+    return renderizar(request, "estrategia_detalle.html", contexto_detalle(detalle, monitoreo.zona_horaria))
 
 
 def _cambiar(request: Request, bd: str, codigo: str, monitoreo: ProveedorMonitoreo, activa: bool) -> Response:
@@ -65,7 +65,7 @@ def _cambiar(request: Request, bd: str, codigo: str, monitoreo: ProveedorMonitor
         return RedirectResponse(ruta_detalle(resumen.bd, resumen.codigo), status_code=303)
     detalle = monitoreo.estrategia(bd, codigo, 5)
     aviso = f"Estrategia {resumen.codigo} {'activada' if activa else 'desactivada'}."
-    contexto = _contexto_detalle(detalle, monitoreo.zona_horaria, aviso)
+    contexto = contexto_detalle(detalle, monitoreo.zona_horaria, aviso)
     return renderizar(request, "parciales/_estrategia_detalle.html", contexto)
 
 

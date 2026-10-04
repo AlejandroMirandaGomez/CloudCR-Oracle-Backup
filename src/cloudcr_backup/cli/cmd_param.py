@@ -4,13 +4,13 @@ import oracledb
 import typer
 from rich.table import Table
 
-from cloudcr_backup.cli.cmd_repo import PARAMETROS_INICIALES
 from cloudcr_backup.cli.comun import terminar_con_error
 from cloudcr_backup.config.ajustes import cargar_ajustes
 from cloudcr_backup.oracle.connection import ErrorConexionOracle
 from cloudcr_backup.presentacion.terminal import consola
 from cloudcr_backup.repository import parametros as repositorio_parametros
 from cloudcr_backup.repository.conexion import RepositorioNoConfigurado, abrir_repositorio
+from cloudcr_backup.services.administracion import PARAMETROS_INICIALES
 
 app = typer.Typer(add_completion=False, help="Consulta y modifica los parámetros globales del repositorio.")
 

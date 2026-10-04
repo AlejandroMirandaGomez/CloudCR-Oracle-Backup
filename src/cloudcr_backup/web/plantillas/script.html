@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titulo %}Script {{ resumen.codigo }}/{{ tarea.codigo }} · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Script RMAN · {{ resumen.codigo }} / {{ tarea.codigo }}</h1>
+      <p class="subtitulo">{{ resumen.bd }} · {{ tarea.etiqueta_tipo }} (término de clase: «{{ tarea.termino_clase }}») · modo {{ tarea.modo_respaldo.value }} · {{ tarea.descripcion_programacion }}</p>
+    </div>
+    <div class="acciones">
+      <a class="boton" href="{{ ruta_estrategia }}">Volver a la estrategia</a>
+      <a class="boton" href="/historial?bd={{ resumen.bd | urlencode }}&amp;estrategia={{ resumen.codigo | urlencode }}">Ver historial</a>
+    </div>
+  </section>
+  <div id="panel-script" class="contenido">{% include "parciales/_script.html" %}</div>
+</div>
+{% endblock %}

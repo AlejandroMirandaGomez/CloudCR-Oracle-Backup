@@ -10,6 +10,7 @@
     <div class="acciones">
       {% for bd in bases %}<a class="boton primario" href="/instancias/{{ bd | urlencode }}/estrategias/nueva">Crear estrategia en {{ bd }}</a>{% endfor %}
       <a class="boton" href="/instancias">Elegir instancia</a>
+      <a class="boton" href="/estrategias/importar">Importar YAML</a>
     </div>
   </section>
   <section class="panel">
@@ -39,7 +40,7 @@
     {% else %}
     <div class="vacio">
       <p><strong>No hay estrategias registradas en el repositorio.</strong></p>
-      <p>Cree una desde <a href="/instancias">Instancias</a> → «Crear estrategia de respaldo», o importe un YAML con <code>cloudcr estrategia importar</code>.</p>
+      <p>Cree una desde <a href="/instancias">Instancias</a> → «Crear estrategia de respaldo», o <a href="/estrategias/importar">importe un YAML</a> (por ejemplo las estrategias de demostración EST001 a EST004).</p>
     </div>
     {% endif %}
   </section>

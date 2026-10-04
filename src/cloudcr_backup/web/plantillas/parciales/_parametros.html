@@ -1,0 +1,38 @@
+{% if aviso %}<p class="mensaje-estado" role="status">{{ aviso }}</p>{% endif %}
+<p class="nota">El agente y el pipeline los leen en cada ciclo: un cambio aplica sin reiniciar nada.</p>
+<div class="tabla-desplazable">
+  <table class="tabla compacta">
+    <thead><tr><th scope="col">Clave</th><th scope="col">Valor</th><th scope="col"><span class="oculto">Acciones</span></th></tr></thead>
+    <tbody>
+      {% for parametro in parametros %}
+      <tr>
+        <td><code>{{ parametro.clave }}</code>{% if parametro.modificado %}<span class="etiqueta-modificado">modificado (inicial: {{ parametro.inicial }})</span>{% endif %}</td>
+        <td>
+          <form class="formulario-accion" method="post" action="/sistema/parametros" hx-post="/sistema/parametros" hx-target="#zona-parametros" hx-disabled-elt="find button">
+            <input type="hidden" name="clave" value="{{ parametro.clave }}">
+            <input type="text" name="valor" value="{{ parametro.valor }}" maxlength="4000" class="campo-ancho" aria-label="Valor de {{ parametro.clave }}" spellcheck="false" autocomplete="off">
+            <button class="boton chico" type="submit">Guardar</button>
+          </form>
+        </td>
+        <td>
+          {% if parametro.modificado %}
+          <form method="post" action="/sistema/parametros/restablecer" hx-post="/sistema/parametros/restablecer" hx-target="#zona-parametros" hx-disabled-elt="find button"
+                hx-confirm="¿Restablecer {{ parametro.clave }} a su valor inicial?">
+            <input type="hidden" name="clave" value="{{ parametro.clave }}">
+            <button class="boton chico" type="submit">Restablecer</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<details>
+  <summary>Agregar otro parámetro</summary>
+  <form class="formulario-accion" method="post" action="/sistema/parametros" hx-post="/sistema/parametros" hx-target="#zona-parametros" hx-disabled-elt="find button">
+    <label>Clave <input type="text" name="clave" maxlength="100" required placeholder="notificacion.email.destino" spellcheck="false" autocomplete="off"></label>
+    <label>Valor <input type="text" name="valor" maxlength="4000" class="campo-ancho" spellcheck="false" autocomplete="off"></label>
+    <button class="boton" type="submit">Agregar</button>
+  </form>
+</details>

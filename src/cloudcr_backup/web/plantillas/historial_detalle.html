@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}Ejecución {{ fila.ejecucion_id }} · CloudCR Oracle Backup{% endblock %}
 {% block contenido %}
-<div class="contenido">
+<div class="contenido" id="detalle-ejecucion"{% if en_progreso %} hx-get="/historial/{{ fila.ejecucion_id }}" hx-trigger="every 5s" hx-select="#detalle-ejecucion" hx-swap="outerHTML"{% endif %}>
   <section class="encabezado-seccion">
     <div>
       <h1>Ejecución {{ fila.ejecucion_id }}</h1>
@@ -10,10 +10,19 @@
     <div class="acciones">
       <span class="semaforo tono-{{ fila.tono_resultado.value }}">{{ fila.simbolo }} {{ fila.resultado }}</span>
       <span class="semaforo tono-{{ fila.tono_pruebas.value }}">Pruebas: {{ fila.pruebas }}</span>
+      {% if verificable %}
+      <form method="post" action="/historial/{{ fila.ejecucion_id }}/verificar" hx-post="/historial/{{ fila.ejecucion_id }}/verificar" hx-target="#resultado-verificacion" hx-disabled-elt="find button"
+            hx-confirm="¿Verificar de nuevo el respaldo de la ejecución {{ fila.ejecucion_id }}? Se corre CROSSCHECK, se comprueba cada pieza en disco y VALIDATE BACKUPSET.">
+        <button class="boton primario" type="submit">Verificar de nuevo</button>
+      </form>
+      {% endif %}
+      <a class="boton" href="/estrategias/{{ fila.bd | urlencode }}/{{ fila.estrategia | urlencode }}/scripts/{{ fila.tarea | urlencode }}">Script de la tarea</a>
       <a class="boton" href="/historial">Volver al historial</a>
     </div>
   </section>
-  {% for aviso in detalle.avisos %}<p class="aviso">{{ aviso }}</p>{% endfor %}
+  {% if en_progreso %}<p class="mensaje-estado" role="status">La ejecución está en curso: esta página se actualiza sola cada 5 segundos.</p>{% endif %}
+  <div id="resultado-verificacion" aria-live="polite"></div>
+  {% for aviso_detalle in detalle.avisos %}<p class="aviso">{{ aviso_detalle }}</p>{% endfor %}
   {% for titulo, lineas in secciones %}
   <section class="panel">
     <h2>{{ titulo }}</h2>

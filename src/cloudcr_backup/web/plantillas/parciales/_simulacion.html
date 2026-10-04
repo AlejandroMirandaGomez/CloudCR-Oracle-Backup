@@ -1,0 +1,17 @@
+<section class="panel">
+  <h3>Simulación (no se invocó RMAN)</h3>
+  {% if simulacion.aprobado %}
+  <p class="mensaje-exito">El preflight pasa: la ejecución real arrancaría con este comando.</p>
+  {% else %}
+  <p class="mensaje-error" role="alert">El preflight bloquearía la ejecución (quedaría BLOQUEADA y se abriría una alerta).</p>
+  {% endif %}
+  {% if simulacion.problemas %}
+  <ul class="lista-motivos">{% for problema in simulacion.problemas %}<li>{{ problema }}</li>{% endfor %}</ul>
+  {% endif %}
+  <dl class="ficha">
+    <dt>Script</dt><dd>versión {{ simulacion.version }} · <code>{{ simulacion.archivo }}</code></dd>
+    <dt>Tag</dt><dd><code>{{ simulacion.tag }}</code></dd>
+    <dt>COMMAND ID</dt><dd><code>{{ simulacion.command_id }}</code> (el número real es el id de la ejecución)</dd>
+  </dl>
+  <pre class="registro">{{ simulacion.comando }}</pre>
+</section>

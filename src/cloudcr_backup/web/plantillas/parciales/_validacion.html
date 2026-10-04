@@ -1,0 +1,39 @@
+<section class="panel">
+  <div class="encabezado-seccion">
+    <h3>Validación de {{ resultado.estrategia }} (versión {{ resultado.version }})</h3>
+    {% if resultado.bloqueante %}
+    <span class="semaforo tono-peligro">✕ Con errores: no se puede aprobar</span>
+    {% elif resultado.hallazgos %}
+    <span class="semaforo tono-advertencia">▲ Sin errores bloqueantes</span>
+    {% else %}
+    <span class="semaforo tono-exito">● Sin observaciones</span>
+    {% endif %}
+  </div>
+  <p class="nota">
+    {% if resultado.perfil_en_vivo %}Validada contra la base en vivo{% else %}Validada contra el último perfil guardado{% endif %}
+    ({{ resultado.perfil_capturado_en.strftime('%Y-%m-%d %H:%M') if resultado.perfil_capturado_en else '—' }}).
+    Error bloquea; Advertencia es un riesgo que se acepta; Recomendación es una mejora que se puede aplicar; Informativa solo informa.
+  </p>
+  {% for nota in resultado.avisos %}<p class="aviso">{{ nota }}</p>{% endfor %}
+  {% if conteos %}
+  <p class="pildoras-severidad">{% for severidad, cantidad in conteos %}<span class="severidad-{{ severidad | lower }}"><span class="insignia">{{ conteo_severidad(severidad, cantidad) }}</span></span> {% endfor %}</p>
+  {% endif %}
+  {% if resultado.hallazgos %}
+  <ul class="lista-hallazgos">
+    {% for h in resultado.hallazgos %}
+    <li class="severidad-{{ h.severidad | lower }}">
+      <span class="insignia">{{ h.severidad | etiqueta_severidad }}</span> <code>{{ h.codigo }}</code> · <span class="nota">{{ h.sujeto }}</span>
+      <p>{{ h.mensaje }}</p>
+      {% if h.accion_sugerida %}<p class="accion"><strong>Acción sugerida:</strong> {{ h.accion_sugerida }}</p>{% endif %}
+      {% if h.codigo in aplicables %}
+      <form class="formulario-accion" method="post" action="{{ ruta }}/recomendaciones/{{ h.codigo }}/aplicar"
+            hx-post="{{ ruta }}/recomendaciones/{{ h.codigo }}/aplicar" hx-target="#detalle-estrategia" hx-disabled-elt="find button"
+            hx-confirm="¿Aplicar {{ h.codigo }}? La estrategia sube de versión y habrá que generar y aprobar de nuevo sus scripts.">
+        <button class="boton chico primario" type="submit">Aplicar esta recomendación</button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>

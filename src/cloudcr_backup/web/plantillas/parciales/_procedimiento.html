@@ -1,0 +1,18 @@
+<section class="panel">
+  <div class="encabezado-seccion">
+    <h3>{{ etiqueta }}</h3>
+    <span class="semaforo tono-{{ 'exito' if procedimiento.posible else 'peligro' }}">{{ 'Posible' if procedimiento.posible else 'No es posible' }}</span>
+  </div>
+  <p>{{ procedimiento.motivo }}</p>
+  {% if procedimiento.objetivo %}<p class="nota">Objetivo: <code>{{ procedimiento.objetivo }}</code></p>{% endif %}
+  {% for nota in procedimiento.avisos %}<p class="aviso">{{ nota }}</p>{% endfor %}
+  {% if procedimiento.pasos %}
+  <h4>Pasos</h4>
+  <ol class="pasos">{% for paso in procedimiento.pasos %}<li>{{ paso }}</li>{% endfor %}</ol>
+  {% endif %}
+  {% if procedimiento.script %}
+  <h4>Script RMAN (para revisar; la herramienta no lo ejecuta)</h4>
+  <pre class="registro codigo-script">{{ procedimiento.script }}</pre>
+  {% if procedimiento.archivo %}<p class="nota">Guardado en <code>{{ procedimiento.archivo }}</code>.</p>{% endif %}
+  {% endif %}
+</section>

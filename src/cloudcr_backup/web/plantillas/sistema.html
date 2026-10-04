@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block titulo %}Sistema · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Sistema</h1>
+      <p class="subtitulo">Lo mismo que <code>cloudcr doctor</code>, <code>repo</code>, <code>param</code>, <code>db</code> y <code>agente</code>, desde el navegador.</p>
+    </div>
+  </section>
+  <noscript><p class="aviso">Esta pantalla carga sus secciones con JavaScript: actívelo para usarla.</p></noscript>
+
+  <section class="panel" id="agente">
+    <h2>Agente</h2>
+    <div id="zona-agente" hx-get="/sistema/agente" hx-trigger="load">
+      <p class="cargando-zona">Cargando el estado del agente…</p>
+    </div>
+  </section>
+
+  <section class="panel" id="bases">
+    <h2>Bases de datos</h2>
+    <div id="zona-bases" hx-get="/sistema/bases" hx-trigger="load">
+      <p class="cargando-zona">Buscando instancias y bases registradas…</p>
+    </div>
+  </section>
+
+  <section class="panel" id="entorno">
+    <div class="encabezado-seccion">
+      <h2>Diagnóstico del entorno</h2>
+      <button class="boton" type="button" hx-get="/sistema/entorno" hx-target="#zona-entorno" hx-disabled-elt="this">Volver a diagnosticar</button>
+    </div>
+    <div id="zona-entorno" hx-get="/sistema/entorno" hx-trigger="load">
+      <p class="cargando-zona">Diagnosticando…</p>
+    </div>
+  </section>
+
+  <section class="panel" id="repositorio">
+    <h2>Repositorio BKPCAT</h2>
+    <div id="zona-repositorio" hx-get="/sistema/repositorio" hx-trigger="load">
+      <p class="cargando-zona">Consultando el repositorio…</p>
+    </div>
+  </section>
+
+  <section class="panel" id="parametros">
+    <h2>Parámetros globales</h2>
+    <div id="zona-parametros" hx-get="/sistema/parametros" hx-trigger="load">
+      <p class="cargando-zona">Cargando parámetros…</p>
+    </div>
+  </section>
+</div>
+{% endblock %}
