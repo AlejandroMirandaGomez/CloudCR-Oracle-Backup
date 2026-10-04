@@ -11,24 +11,9 @@ from cloudcr_backup.presentacion.terminal import consola
 from cloudcr_backup.repository import esquema as repositorio_esquema
 from cloudcr_backup.repository import parametros as repositorio_parametros
 from cloudcr_backup.repository.conexion import RepositorioNoConfigurado, abrir_repositorio
+from cloudcr_backup.services.administracion import PARAMETROS_INICIALES
 
 app = typer.Typer(add_completion=False, help="Instala y administra el esquema del repositorio en BKPCAT.")
-
-PARAMETROS_INICIALES = {
-    "agente.tick_segundos": "30",
-    "agente.gracia_omision_min": "15",
-    "rman.nls_lang": "AMERICAN_AMERICA.AL32UTF8",
-    "rman.timeout_max_min": "120",
-    "rman.codigos_advertencia": '["RMAN-08137","RMAN-08138","RMAN-06207","RMAN-06208","RMAN-06214"]',
-    "respaldo.formato_pieza": "%d_{estrategia}_{tarea}_%T_%U.bkp",
-    "verificacion.automatica": "true",
-    "alertas.eval_minutos": "5",
-    "alertas.disco_uso_pct": "85",
-    "alertas.recencia_horas.ALTA": "24",
-    "alertas.recencia_horas.MEDIA": "72",
-    "alertas.recencia_horas.BAJA": "192",
-    "notificacion.canales": '["consola"]',
-}
 
 
 def _conectar() -> oracledb.Connection:

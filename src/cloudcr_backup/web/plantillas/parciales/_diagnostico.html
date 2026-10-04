@@ -1,0 +1,27 @@
+<dl class="ficha">
+  <dt>Base</dt><dd>{{ diagnostico.bd }}</dd>
+  <dt>Modo de archivado</dt><dd>{{ diagnostico.log_mode.value if diagnostico.log_mode else '—' }}</dd>
+  <dt>Estado de apertura</dt><dd>{{ diagnostico.open_mode or '—' }}</dd>
+  <dt>Consultado</dt><dd>{{ diagnostico.generado_en | local(zona, '%Y-%m-%d %H:%M:%S') }}</dd>
+</dl>
+{% for nota in diagnostico.avisos %}<p class="{{ 'mensaje-exito' if diagnostico.sin_danos else 'aviso' }}">{{ nota }}</p>{% endfor %}
+{% if diagnostico.archivos %}
+<div class="tabla-desplazable">
+  <table class="tabla compacta">
+    <thead><tr><th scope="col">file#</th><th scope="col">Archivo</th><th scope="col">Tablespace</th><th scope="col">Contenedor</th><th scope="col">Estado</th><th scope="col">Error</th><th scope="col">Origen</th></tr></thead>
+    <tbody>
+      {% for archivo in diagnostico.archivos %}
+      <tr>
+        <td>{{ archivo.file_id }}</td>
+        <td class="envolver"><code>{{ archivo.ruta }}</code></td>
+        <td>{{ archivo.tablespace or '—' }}</td>
+        <td>{{ archivo.contenedor or '—' }}</td>
+        <td class="tono-peligro">{{ archivo.estado }}</td>
+        <td>{{ archivo.error or '—' }}</td>
+        <td>{{ archivo.origen }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}

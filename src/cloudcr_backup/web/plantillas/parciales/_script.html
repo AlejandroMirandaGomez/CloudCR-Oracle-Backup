@@ -1,0 +1,147 @@
+{% if aviso %}<p class="mensaje-estado" role="status">{{ aviso }}</p>{% endif %}
+{% include "parciales/_error_en_linea.html" %}
+{% if vista is none %}
+<section class="panel">
+  <h2>Todavía no hay script</h2>
+  <p>La tarea {{ tarea.codigo }} no tiene ningún script RMAN. El sistema lo construye a partir de la estrategia (qué, cómo, cuándo y destino); después usted lo revisa y decide si lo aprueba.</p>
+  <form class="formulario-accion" method="post" action="{{ ruta }}/generar" hx-post="{{ ruta }}/generar" hx-target="#panel-script" hx-disabled-elt="find button">
+    <button class="boton primario" type="submit">Generar el script</button>
+  </form>
+</section>
+{% else %}
+<section class="panel">
+  <div class="encabezado-seccion">
+    <h2>Versión {{ vista.version }}</h2>
+    <span class="semaforo tono-{{ vista.estado | tono_script }}">{{ vista.estado | etiqueta_script }}</span>
+  </div>
+  <dl class="ficha">
+    <dt>Modo</dt>
+    <dd>{{ vista.modo.value }}{% if vista.requiere_caida %} · <span class="tono-advertencia">apaga la base durante el respaldo (SHUTDOWN IMMEDIATE)</span>{% endif %}</dd>
+    <dt>SHA-256</dt><dd class="huella">{{ vista.hash_sha256 }}</dd>
+    <dt>Archivo</dt>
+    <dd><code>{{ vista.archivo }}</code> ·
+      {% if vista.archivo_intacto is none %}<span class="tono-atenuado">todavía no está en disco</span>
+      {% elif vista.archivo_intacto %}<span class="tono-exito">intacto: el hash coincide</span>
+      {% else %}<span class="tono-peligro">MODIFICADO: el hash no coincide; la ejecución quedará BLOQUEADA</span>{% endif %}
+    </dd>
+    <dt>Generado</dt><dd>{{ vista.creado_en | hora_servidor(zona) }}</dd>
+    {% if vista.aprobado_por %}<dt>Aprobado</dt><dd>{{ vista.aprobado_por }} · {{ vista.aprobado_en | local(zona) }}{% if vista.acepto_caida %} · aceptó la caída del servicio{% endif %}</dd>{% endif %}
+    {% if vista.motivo_rechazo %}<dt>Motivo del rechazo</dt><dd>{{ vista.motivo_rechazo }}</dd>{% endif %}
+  </dl>
+  {% for nota in vista.avisos %}<p class="aviso">{{ nota }}</p>{% endfor %}
+</section>
+
+<section class="panel">
+  <h2>Acciones</h2>
+  <div class="bloque-acciones">
+    {% if vista.estado.value == 'BORRADOR' %}
+    <div class="tarjeta-accion">
+      <h3>Aprobar</h3>
+      <p>Solo se ejecuta un script aprobado y sin modificar. Revise el contenido de abajo antes de aprobarlo.</p>
+      <form class="formulario-columna" method="post" action="{{ ruta }}/aprobar" hx-post="{{ ruta }}/aprobar" hx-target="#panel-script" hx-disabled-elt="find button"{% if vista.requiere_caida %} hx-confirm="Este respaldo es CONSISTENTE: apaga la base {{ vista.bd }} (y el repositorio, si vive en la misma CDB) mientras dura. ¿Aprobarlo?"{% endif %}>
+        <input type="hidden" name="version" value="{{ vista.version }}">
+        <label>Aprobado por <input type="text" name="aprobado_por" maxlength="100" placeholder="Su nombre (opcional)" autocomplete="name"></label>
+        {% if vista.requiere_caida %}<label class="casilla"><input type="checkbox" name="acepto_caida" value="on"> Acepto la caída del servicio durante el respaldo</label>{% endif %}
+        <button class="boton primario" type="submit">Aprobar la versión {{ vista.version }}</button>
+      </form>
+    </div>
+    <div class="tarjeta-accion">
+      <h3>Rechazar</h3>
+      <p>El script queda registrado como rechazado, con su motivo. Corrija la estrategia y genere uno nuevo.</p>
+      <form class="formulario-columna" method="post" action="{{ ruta }}/rechazar" hx-post="{{ ruta }}/rechazar" hx-target="#panel-script" hx-disabled-elt="find button">
+        <input type="hidden" name="version" value="{{ vista.version }}">
+        <label>Motivo <textarea name="motivo" maxlength="1000" rows="3" required></textarea></label>
+        <button class="boton peligro" type="submit">Rechazar</button>
+      </form>
+    </div>
+    {% endif %}
+    {% if vista.estado.value == 'APROBADO' %}
+    <div class="tarjeta-accion">
+      <h3>Probar sin ejecutar</h3>
+      <p>Corre el preflight (hash, modo de archivado, destino y espacio libre) y muestra el comando exacto, sin invocar RMAN.</p>
+      <button class="boton" type="button" hx-get="{{ ruta }}/simular" hx-target="#resultado-script" hx-disabled-elt="this">Simular la ejecución</button>
+    </div>
+    <div class="tarjeta-accion">
+      <h3>Ejecutar ahora</h3>
+      {% if vista.requiere_caida %}
+      <p><strong class="tono-advertencia">Apaga la base {{ vista.bd }} mientras dura el respaldo.</strong> La web y el repositorio dejan de responder unos minutos y vuelven solos al reabrirse la base.</p>
+      {% else %}
+      <p>Respaldo en línea: la base sigue disponible. La ejecución corre en segundo plano y queda en el historial.</p>
+      {% endif %}
+      <form method="post" action="{{ ruta }}/ejecutar" hx-post="{{ ruta }}/ejecutar" hx-target="#resultado-script" hx-disabled-elt="find button"
+            hx-confirm="{% if vista.requiere_caida %}Se ejecutará SHUTDOWN IMMEDIATE sobre {{ vista.bd }} y se respaldará con la base montada. {% endif %}¿Ejecutar ahora la versión {{ vista.version }} de {{ vista.estrategia }}/{{ vista.tarea }}?">
+        <button class="boton primario" type="submit">Ejecutar ahora</button>
+      </form>
+    </div>
+    {% endif %}
+    <div class="tarjeta-accion">
+      <h3>Generar de nuevo</h3>
+      <p>Reconstruye el script desde la estrategia actual y el modo de archivado de hoy. Si nada cambió, se conserva esta versión.</p>
+      <form method="post" action="{{ ruta }}/generar" hx-post="{{ ruta }}/generar" hx-target="#panel-script" hx-disabled-elt="find button">
+        <button class="boton" type="submit">Regenerar</button>
+      </form>
+    </div>
+  </div>
+  <div id="resultado-script" aria-live="polite"></div>
+</section>
+
+{% if vista.hallazgos %}
+<section class="panel">
+  <h2>Validación de la tarea</h2>
+  <ul class="lista-hallazgos">
+    {% for h in vista.hallazgos %}
+    <li class="severidad-{{ h.severidad | lower }}">
+      <span class="insignia">{{ h.severidad | etiqueta_severidad }}</span> <code>{{ h.codigo }}</code>
+      <p>{{ h.mensaje }}</p>
+      {% if h.accion_sugerida %}<p class="accion"><strong>Acción sugerida:</strong> {{ h.accion_sugerida }}</p>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="panel">
+  <h2>Contenido del script</h2>
+  <p class="nota">Las variables <code>&amp;1</code> (tag) y <code>&amp;2</code> (COMMAND ID) se sustituyen al ejecutar: así el hash aprobado no cambia entre ejecuciones.</p>
+  <pre class="registro codigo-script">{{ vista.contenido }}</pre>
+</section>
+
+{% if vista.explicacion %}
+<section class="panel">
+  <h2>De la estrategia a RMAN</h2>
+  <div class="tabla-desplazable">
+    <table class="tabla compacta">
+      <thead><tr><th scope="col">Configuración de la estrategia</th><th scope="col">Cláusula RMAN generada</th></tr></thead>
+      <tbody>
+        {% for fila in vista.explicacion %}
+        <tr><td class="envolver">{{ fila.campo }}</td><td class="envolver"><code>{{ fila.clausula }}</code></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% if versiones %}
+<section class="panel">
+  <h2>Versiones</h2>
+  <div class="tabla-desplazable">
+    <table class="tabla compacta">
+      <thead><tr><th scope="col">Versión</th><th scope="col">Estado</th><th scope="col">Generada</th><th scope="col">Aprobada por</th><th scope="col">SHA-256</th><th scope="col"><span class="oculto">Ver</span></th></tr></thead>
+      <tbody>
+        {% for otra in versiones %}
+        <tr>
+          <td>{{ otra.version }}{% if otra.version == vista.version %} (mostrada){% endif %}</td>
+          <td><span class="semaforo tono-{{ otra.estado | tono_script }}">{{ otra.estado | etiqueta_script }}</span></td>
+          <td>{{ otra.creado_en | hora_servidor(zona) }}</td>
+          <td>{{ otra.aprobado_por or '—' }}</td>
+          <td class="huella">{{ otra.hash_sha256[:16] }}…</td>
+          <td>{% if otra.version != vista.version %}<a href="{{ ruta }}?version={{ otra.version }}">Ver</a>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endif %}

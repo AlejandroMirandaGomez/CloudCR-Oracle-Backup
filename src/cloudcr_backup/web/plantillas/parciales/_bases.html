@@ -1,0 +1,50 @@
+{% if aviso %}<p class="mensaje-estado" role="status">{{ aviso }}</p>{% endif %}
+<p class="nota">Antes de crear estrategias, la base tiene que estar registrada y con su perfil guardado: el validador y el constructor de scripts trabajan sobre ese perfil.</p>
+{% if bases %}
+<div class="tabla-desplazable">
+  <table class="tabla compacta">
+    <thead><tr><th scope="col">Base</th><th scope="col">Instancia</th><th scope="col">Registro</th><th scope="col">Ambiente</th><th scope="col">Último perfil</th><th scope="col">Modo de archivado</th><th scope="col"><span class="oculto">Acciones</span></th></tr></thead>
+    <tbody>
+      {% for base in bases %}
+      <tr>
+        <td><a href="/instancias/{{ base.nombre | urlencode }}">{{ base.nombre }}</a></td>
+        <td>{% if base.en_ejecucion is none %}<span class="tono-atenuado">no detectada en este equipo</span>{% elif base.en_ejecucion %}<span class="tono-exito">en ejecución</span>{% else %}<span class="tono-advertencia">detenida</span>{% endif %}</td>
+        <td>{% if not base.registrada %}<span class="tono-atenuado">sin registrar</span>{% elif base.activa %}registrada · activa{% else %}<span class="tono-advertencia">registrada · inactiva</span>{% endif %}</td>
+        <td>{{ base.ambiente or '—' }}</td>
+        <td>{% if base.perfil_capturado_en %}{{ base.perfil_capturado_en | hora_servidor(zona) }}{% elif base.registrada %}<span class="tono-advertencia">nunca guardado</span>{% else %}—{% endif %}</td>
+        <td>{% if base.log_mode %}<span class="{{ 'tono-exito' if base.log_mode.value == 'ARCHIVELOG' else 'tono-advertencia' }}">{{ base.log_mode.value }}</span>{% else %}—{% endif %}</td>
+        <td>
+          <div class="acciones-fila">
+            {% if not base.registrada %}
+            <form class="formulario-accion" method="post" action="/sistema/bases/registrar" hx-post="/sistema/bases/registrar" hx-target="#zona-bases" hx-disabled-elt="find button">
+              <input type="hidden" name="sid" value="{{ base.nombre }}">
+              <label>Ambiente
+                <select name="ambiente">{% for ambiente in ambientes %}<option value="{{ ambiente }}"{% if ambiente == 'PRUEBAS' %} selected{% endif %}>{{ ambiente }}</option>{% endfor %}</select>
+              </label>
+              <button class="boton chico primario" type="submit">Registrar</button>
+            </form>
+            {% else %}
+            <form method="post" action="/sistema/bases/{{ base.nombre | urlencode }}/inspeccionar" hx-post="/sistema/bases/{{ base.nombre | urlencode }}/inspeccionar" hx-target="#zona-bases" hx-disabled-elt="find button">
+              <button class="boton chico primario" type="submit">Inspeccionar y guardar perfil</button>
+            </form>
+            {% if base.activa %}
+            <form method="post" action="/sistema/bases/{{ base.nombre | urlencode }}/desactivar" hx-post="/sistema/bases/{{ base.nombre | urlencode }}/desactivar" hx-target="#zona-bases" hx-disabled-elt="find button"
+                  hx-confirm="¿Desactivar {{ base.nombre }}? No se borra nada, pero deja de ofrecerse en Retención y Recuperación.">
+              <button class="boton chico peligro" type="submit">Desactivar</button>
+            </form>
+            {% else %}
+            <form method="post" action="/sistema/bases/{{ base.nombre | urlencode }}/activar" hx-post="/sistema/bases/{{ base.nombre | urlencode }}/activar" hx-target="#zona-bases" hx-disabled-elt="find button">
+              <button class="boton chico" type="submit">Activar</button>
+            </form>
+            {% endif %}
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="vacio">No se encontró ninguna instancia Oracle en este equipo ni bases registradas en el repositorio.</div>
+{% endif %}

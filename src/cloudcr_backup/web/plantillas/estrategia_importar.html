@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block titulo %}Importar estrategia · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Importar una estrategia desde YAML</h1>
+      <p class="subtitulo">Equivale a <code>cloudcr estrategia importar</code>. Pegue el YAML o cargue uno de los ejemplos del proyecto.</p>
+    </div>
+    <div class="acciones"><a class="boton" href="/estrategias">Volver a estrategias</a></div>
+  </section>
+  {% if not bases %}
+  <div class="aviso">No hay bases de datos registradas en el repositorio. Regístrela primero en <a href="/sistema#bases">Sistema → Bases de datos</a>.</div>
+  {% endif %}
+  <section class="panel">
+    <form class="formulario-columna" method="post" action="/estrategias/importar" hx-post="/estrategias/importar" hx-target="#resultado-importacion" hx-disabled-elt="find button[type=submit]">
+      <div class="formulario-accion">
+        <label>Base de datos
+          <select name="bd" required>
+            {% for nombre in bases %}<option value="{{ nombre }}"{% if nombre | upper == bd %} selected{% endif %}>{{ nombre }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Ejemplo del proyecto
+          <select name="ejemplo" hx-get="/estrategias/importar" hx-target="#zona-contenido" hx-trigger="change" hx-include="this">
+            <option value="">— Pegar mi propio YAML —</option>
+            {% for ejemplo_disponible in ejemplos %}<option value="{{ ejemplo_disponible.archivo }}"{% if ejemplo_disponible.archivo == ejemplo %} selected{% endif %}>{{ ejemplo_disponible.codigo }} · {{ ejemplo_disponible.nombre }} ({{ ejemplo_disponible.archivo }})</option>{% endfor %}
+          </select>
+        </label>
+        <label class="casilla"><input type="checkbox" name="reemplazar" value="on"> Reemplazar si ya existe (sube la versión)</label>
+      </div>
+      <label>YAML de la estrategia
+        <span id="zona-contenido">{% include "parciales/_importar_contenido.html" %}</span>
+      </label>
+      <p class="nota">El campo <code>bd_id</code> del YAML se ignora: la estrategia queda en la base elegida arriba. Si el YAML no es válido, se indica qué campo corregir.</p>
+      <div class="grupo-botones"><button class="boton primario" type="submit"{% if not bases %} disabled{% endif %}>Importar</button></div>
+    </form>
+  </section>
+  <div id="resultado-importacion" aria-live="polite"></div>
+</div>
+{% endblock %}

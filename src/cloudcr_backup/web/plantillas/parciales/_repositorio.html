@@ -1,0 +1,20 @@
+{% if aviso %}<p class="mensaje-estado" role="status">{{ aviso }}</p>{% endif %}
+{% if estado.instalado %}
+<p class="nota tono-exito">Instalado: {{ estado.tablas | length }} de {{ estado.esperadas }} tablas.</p>
+{% else %}
+<p class="aviso">El repositorio no está instalado o está incompleto ({{ estado.tablas | length }} de {{ estado.esperadas }} tablas).</p>
+<form class="formulario-accion" method="post" action="/sistema/repositorio/instalar" hx-post="/sistema/repositorio/instalar" hx-target="#zona-repositorio" hx-disabled-elt="find button"
+      hx-confirm="Instalar el repositorio crea las 12 tablas desde cero: si quedó alguna tabla de una instalación anterior, se borra con sus datos. ¿Continuar?">
+  <button class="boton primario" type="submit">Instalar el repositorio</button>
+</form>
+{% endif %}
+{% if estado.tablas %}
+<div class="tabla-desplazable">
+  <table class="tabla compacta">
+    <thead><tr><th scope="col">Tabla</th><th scope="col" class="cifra">Filas</th></tr></thead>
+    <tbody>
+      {% for tabla in estado.tablas %}<tr><td>{{ tabla.nombre }}</td><td class="cifra">{{ tabla.filas }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}

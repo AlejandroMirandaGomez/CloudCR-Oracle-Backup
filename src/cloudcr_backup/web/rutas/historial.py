@@ -2,21 +2,26 @@ from datetime import date
 from typing import Annotated, Any
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from cloudcr_backup.domain.enums import EstadoEjecucion
+from cloudcr_backup.domain.enums import EstadoEjecucion, EstadoPrueba
 from cloudcr_backup.domain.errores import FiltroInvalido
 from cloudcr_backup.domain.historial import ConsultaHistorial
 from cloudcr_backup.presentacion.detalle import secciones
 from cloudcr_backup.presentacion.historial import LEYENDA_SIMBOLOS, TEXTO_RESULTADO, construir_tabla
-from cloudcr_backup.web.monitoreo import ProveedorMonitoreo, obtener_monitoreo
+from cloudcr_backup.services import ejecucion as servicio_ejecucion
+from cloudcr_backup.web.monitoreo import ProveedorMonitoreo, ajustes_de_la_app, obtener_monitoreo
 from cloudcr_backup.web.rutas.comun import es_htmx, renderizar
+from cloudcr_backup.web.segundo_plano import ejecutar_registrando
+from cloudcr_backup.web.seguridad import exigir_origen_confiable
 
 router = APIRouter()
 
 Monitoreo = Annotated[ProveedorMonitoreo, Depends(obtener_monitoreo)]
 FORMATOS_EXPORTACION = ("csv", "md", "html")
+ESTADOS_EN_PROGRESO = (EstadoEjecucion.PROGRAMADA, EstadoEjecucion.EN_CURSO)
+ESTADOS_VERIFICABLES = (EstadoEjecucion.EXITOSA, EstadoEjecucion.CON_ADVERTENCIAS)
 
 
 def _texto(valor: str | None) -> str | None:
@@ -115,16 +120,38 @@ def exportar_historial(formato: str, monitoreo: Monitoreo, consulta: Consulta) -
     )
 
 
-@router.get("/historial/{ejecucion_id}", response_class=HTMLResponse)
-def pagina_detalle(request: Request, ejecucion_id: int, monitoreo: Monitoreo) -> HTMLResponse:
+def _contexto_detalle(monitoreo: ProveedorMonitoreo, ejecucion_id: int) -> dict[str, Any]:
     detalle = monitoreo.detalle_ejecucion(ejecucion_id)
-    contexto = {
+    estado = detalle.fila.estado
+    return {
         "seccion": "historial",
         "detalle": detalle,
         "fila": construir_tabla([detalle.fila]).filas[0],
         "secciones": secciones(detalle),
+        "en_progreso": estado in ESTADOS_EN_PROGRESO,
+        "verificable": estado in ESTADOS_VERIFICABLES and detalle.fila.estado_prueba is not EstadoPrueba.NO_APLICA,
     }
-    return renderizar(request, "historial_detalle.html", contexto)
+
+
+@router.get("/historial/{ejecucion_id}", response_class=HTMLResponse)
+def pagina_detalle(request: Request, ejecucion_id: int, monitoreo: Monitoreo) -> HTMLResponse:
+    return renderizar(request, "historial_detalle.html", _contexto_detalle(monitoreo, ejecucion_id))
+
+
+@router.post(
+    "/historial/{ejecucion_id}/verificar", response_model=None, dependencies=[Depends(exigir_origen_confiable)]
+)
+def verificar(request: Request, ejecucion_id: int, monitoreo: Monitoreo, tareas: BackgroundTasks) -> Response:
+    ajustes = ajustes_de_la_app(request.app)()
+    monitoreo.detalle_ejecucion(ejecucion_id)
+    tareas.add_task(ejecutar_registrando, "verificar", servicio_ejecucion.verificar, ajustes, ejecucion_id)
+    if not es_htmx(request):
+        return RedirectResponse(f"/historial/{ejecucion_id}", status_code=303)
+    aviso = (
+        f"Verificación de la ejecución {ejecucion_id} lanzada (CROSSCHECK + existencia + VALIDATE). "
+        "Recargue esta página en unos segundos para ver la columna Pruebas actualizada."
+    )
+    return renderizar(request, "parciales/_mensaje.html", {"mensaje": aviso, "enlace": f"/historial/{ejecucion_id}"})
 
 
 @router.get("/api/historial")

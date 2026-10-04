@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowEval": false, "historyCacheSize": 0, "refreshOnHistoryMiss": true}'>
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowEval": false, "historyCacheSize": 0, "refreshOnHistoryMiss": true, "responseHandling": [{"code": "204", "swap": false}, {"code": "[23]..", "swap": true}, {"code": "[45]..", "swap": true, "error": true}]}'>
   <link rel="icon" href="data:,">
   <title>{% block titulo %}CloudCR Oracle Backup{% endblock %}</title>
   <link rel="stylesheet" href="/estaticos/app.css">
   <link rel="stylesheet" href="/estaticos/monitoreo.css">
+  <link rel="stylesheet" href="/estaticos/operaciones.css">
   <script src="/estaticos/htmx.min.js" defer></script>
   <script src="/estaticos/app.js" defer></script>
   {% block cabecera %}{% endblock %}
@@ -20,7 +21,10 @@
       <a href="/estrategias"{% if seccion == 'estrategias' %} aria-current="page"{% endif %}>Estrategias</a>
       <a href="/historial"{% if seccion == 'historial' %} aria-current="page"{% endif %}>Historial</a>
       <a href="/alertas"{% if seccion == 'alertas' %} aria-current="page"{% endif %}>Alertas</a>
+      <a href="/retencion"{% if seccion == 'retencion' %} aria-current="page"{% endif %}>Retención</a>
+      <a href="/recuperacion"{% if seccion == 'recuperacion' %} aria-current="page"{% endif %}>Recuperación</a>
       <a href="/instancias"{% if seccion == 'instancias' %} aria-current="page"{% endif %}>Instancias</a>
+      <a href="/sistema"{% if seccion == 'sistema' %} aria-current="page"{% endif %}>Sistema</a>
     </nav>
   </header>
   <main id="principal">{% block contenido %}{% endblock %}</main>

@@ -1,0 +1,16 @@
+<section class="panel">
+  <h3>Resultado de la purga de {{ resultado.estrategia }}</h3>
+  {% if resultado.correcta %}
+  <p class="mensaje-exito">{{ resultado.borradas | length }} piezas borradas por RMAN; {{ resultado.piezas_marcadas }} marcadas como obsoletas en el repositorio.</p>
+  {% else %}
+  <p class="mensaje-error" role="alert">RMAN informó errores durante la purga.</p>
+  <ul class="lista-motivos">{% for error in resultado.errores %}<li>{{ error }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% for nota in resultado.avisos %}<p class="nota">{{ nota }}</p>{% endfor %}
+  {% if resultado.borradas %}<ul>{% for ruta in resultado.borradas %}<li><code>{{ ruta }}</code></li>{% endfor %}</ul>{% endif %}
+  <details>
+    <summary>Script ejecutado{% if resultado.log %} y log{% endif %}</summary>
+    <pre class="registro">{{ resultado.script }}</pre>
+    {% if resultado.log %}<p class="nota">Log: <code>{{ resultado.log }}</code></p>{% endif %}
+  </details>
+</section>
