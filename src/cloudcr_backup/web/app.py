@@ -22,6 +22,7 @@ from cloudcr_backup.web.errores_servicio import registrar_manejador_servicio
 from cloudcr_backup.web.monitoreo import ProveedorMonitoreo, ServicioMonitoreo, ajustes_de_la_app
 from cloudcr_backup.web.rutas import (
     alertas,
+    api_gestion,
     carpetas,
     estrategias,
     estrategias_registradas,
@@ -127,4 +128,5 @@ def crear_app(
     app.include_router(retencion.router)
     app.include_router(recuperacion.router)
     app.include_router(sistema.router)
+    app.include_router(api_gestion.router)
     return app
