@@ -189,7 +189,19 @@ def generar(
         avisos: list[str] = []
         perfil = _perfil(conexion, resueltas[0], obtener_perfil, avisos)
         parametros = repositorio_parametros.listar(conexion)
-        return [_generar_tarea(ajustes, conexion, r, perfil, parametros, avisos) for r in resueltas]
+        vistas: list[VistaScript] = []
+        fallidas: list[str] = []
+        for resuelta in resueltas:
+            try:
+                vistas.append(_generar_tarea(ajustes, conexion, resuelta, perfil, parametros, avisos))
+            except OperacionNoPermitida as error:
+                fallidas.append(error.mensaje)
+    if not vistas:
+        raise OperacionNoPermitida("No se pudo generar ningún script: " + " ".join(fallidas))
+    if not fallidas:
+        return vistas
+    extra = [f"No se generó: {mensaje}" for mensaje in fallidas]
+    return [v.model_copy(update={"avisos": [*v.avisos, *extra]}) for v in vistas]
 
 
 def _elegir(conexion: oracledb.Connection, resuelta: TareaResuelta, version: int | None) -> ScriptRman:

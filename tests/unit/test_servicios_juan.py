@@ -337,3 +337,16 @@ def test_purga_exige_confirmacion_y_purga_automatica(tmp_path: Path, almacen: Al
         retencion.purgar(ajustes(tmp_path), "XE", "EST004", confirmado=False)
     with pytest.raises(OperacionNoPermitida, match="nunca los borra"):
         retencion.purgar(ajustes(tmp_path), "XE", "EST004", confirmado=True)
+
+
+def test_generar_omite_la_tarea_imposible_y_avisa(tmp_path: Path, almacen: Almacen) -> None:
+    almacen.perfil = almacen.perfil.model_copy(update={"log_mode": LogMode.NOARCHIVELOG})
+    vistas = scripts.generar(ajustes(tmp_path), "XE", "EST004", obtener_perfil=perfil_vivo(almacen))
+    assert [v.tarea for v in vistas] == ["T1", "T2"]
+    assert any("EST004/T3" in aviso and "NOARCHIVELOG" in aviso for aviso in vistas[0].avisos)
+
+
+def test_generar_sin_ninguna_tarea_posible_falla(tmp_path: Path, almacen: Almacen) -> None:
+    almacen.perfil = almacen.perfil.model_copy(update={"log_mode": LogMode.NOARCHIVELOG})
+    with pytest.raises(OperacionNoPermitida, match="ningún script"):
+        scripts.generar(ajustes(tmp_path), "XE", "EST004", "T3", obtener_perfil=perfil_vivo(almacen))
