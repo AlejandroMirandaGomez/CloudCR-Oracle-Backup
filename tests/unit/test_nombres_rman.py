@@ -29,3 +29,8 @@ def test_convencion_de_nombres_del_profesor() -> None:
     assert nombres.nombre_log("EST001", "XE") == "EST001.XE.LOG"
     assert nombres.nombre_script("EST004", "xe", "T2", 3) == "EST004.XE.T2.V3.RMAN"
     assert nombres.archivo_script_aprobado("T1", 2) == "T1_v2.rman"
+
+
+def test_tag_de_una_ejecucion_manual_lleva_los_segundos() -> None:
+    assert nombres.tag("EST001", "T1", datetime(2026, 10, 4, 13, 5, 12)) == "EST001_T1_261004130512"
+    assert len(nombres.tag("ESTRATEGIA-LARGUISIMA", "T10", datetime(2026, 10, 4, 13, 5, 12))) <= 30

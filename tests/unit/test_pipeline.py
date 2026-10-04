@@ -369,3 +369,21 @@ def test_compresion_se_respeta_en_el_script_copiado(tmp_path: Path) -> None:
     escenario = Escenario(tmp_path, ctx)
     escenario.ejecutar()
     assert b"AS COMPRESSED BACKUPSET" in escenario.invocaciones[0].script.read_bytes()
+
+
+def test_error_interno_cierra_la_ejecucion_como_fallida_y_reabre_la_base(tmp_path: Path) -> None:
+    ctx = contexto("EST002", LogMode.NOARCHIVELOG, acepto_caida=True)
+    escenario = Escenario(tmp_path, ctx, log_mode=LogMode.NOARCHIVELOG)
+    original = escenario.lanzar
+
+    def lanzar(invocacion: InvocacionRman) -> ResultadoRman:
+        if invocacion.script.name == "EST002.XE.RMAN":
+            raise RuntimeError("disco lleno")
+        return original(invocacion)
+
+    escenario.lanzar = lanzar  # type: ignore[method-assign]
+    resultado = escenario.ejecutar()
+    assert resultado.estado is EstadoEjecucion.FALLIDA
+    assert "disco lleno" in resultado.motivos[0]
+    assert escenario.repositorio.persistidas[-1].estado is EstadoEjecucion.FALLIDA
+    assert any(i.script.name.startswith("asegurar_apertura") for i in escenario.invocaciones)

@@ -3,6 +3,7 @@ from datetime import datetime
 
 LARGO_MAXIMO_TAG = 30
 FORMATO_MARCA_TAG = "%y%m%d%H%M"
+FORMATO_MARCA_TAG_SEGUNDOS = "%y%m%d%H%M%S"
 PREFIJO_COMMAND_ID = "CLOUDCR_"
 FORMATO_PIEZA_POR_DEFECTO = "%d_{estrategia}_{tarea}_%T_%U.bkp"
 FORMATO_AUTOBACKUP = "%F"
@@ -17,7 +18,7 @@ def limpiar(texto: str) -> str:
 
 
 def tag(estrategia: str, tarea: str, momento: datetime) -> str:
-    marca = momento.strftime(FORMATO_MARCA_TAG)
+    marca = momento.strftime(FORMATO_MARCA_TAG_SEGUNDOS if momento.second else FORMATO_MARCA_TAG)
     prefijo = f"{limpiar(estrategia)}_{limpiar(tarea)}"
     espacio = LARGO_MAXIMO_TAG - len(marca) - 1
     return f"{prefijo[:espacio]}_{marca}"

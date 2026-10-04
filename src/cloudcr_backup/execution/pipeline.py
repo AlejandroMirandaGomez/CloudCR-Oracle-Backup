@@ -89,6 +89,21 @@ class ContextoEjecucion:
         return self.tarea.programacion.zona_horaria
 
 
+@dataclass
+class Corrida:
+    contexto: ContextoEjecucion
+    modo: ModoRespaldo
+    carpeta: Path
+    es_cdb: bool
+    timeout: int
+    nls: str
+    tag: str
+    command_id: str
+    script: Path
+    log: Path
+    reapertura_intentada: bool = False
+
+
 class PuertoRepositorio(Protocol):
     def cargar(self, ejecucion_id: int) -> ContextoEjecucion: ...
 
@@ -431,9 +446,7 @@ class Pipeline:
             return Correlacion(consultado=False, error=f"{type(error).__name__}: {error}")
 
     def _apertura(self, contexto: ContextoEjecucion, carpeta: Path, nls: str, es_cdb: bool) -> ResultadoApertura:
-        resultado = apertura.asegurar(
-            contexto.base, carpeta, es_cdb, self._d.lanzar, self._d.comprobar_apertura, nls
-        )
+        resultado = apertura.asegurar(contexto.base, carpeta, es_cdb, self._d.lanzar, self._d.comprobar_apertura, nls)
         if not resultado.abierta:
             self._evento(
                 contexto,
@@ -452,45 +465,60 @@ class Pipeline:
         )
         if not resultado_preflight.aprobado:
             return self._bloquear(contexto, base, carpeta, resultado_preflight)
-        nls = contexto.parametros.get(PARAMETRO_NLS) or "AMERICAN_AMERICA.AL32UTF8"
-        tag = self._tag(contexto)
-        command_id = nombres.command_id(contexto.ejecucion_id)
-        varias = len(contexto.estrategia.tareas) > 1
-        tarea_nombre = contexto.tarea.codigo if varias else None
-        script = carpeta / nombres.nombre_script(contexto.estrategia.codigo, contexto.bd_nombre, tarea_nombre)
-        log = carpeta / nombres.nombre_log(contexto.estrategia.codigo, contexto.bd_nombre, tarea_nombre)
+        tarea_nombre = contexto.tarea.codigo if len(contexto.estrategia.tareas) > 1 else None
+        corrida = Corrida(
+            contexto=contexto,
+            modo=modo,
+            carpeta=carpeta,
+            es_cdb=perfil.es_cdb if perfil is not None else True,
+            timeout=timeout,
+            nls=contexto.parametros.get(PARAMETRO_NLS) or "AMERICAN_AMERICA.AL32UTF8",
+            tag=self._tag(contexto),
+            command_id=nombres.command_id(contexto.ejecucion_id),
+            script=carpeta / nombres.nombre_script(contexto.estrategia.codigo, contexto.bd_nombre, tarea_nombre),
+            log=carpeta / nombres.nombre_log(contexto.estrategia.codigo, contexto.bd_nombre, tarea_nombre),
+        )
         self._d.repositorio.marcar_en_curso(contexto.ejecucion_id, self._d.agente)
         inicio = self._d.ahora()
-        escribir_script(script, contexto.script_contenido)
         en_curso = base.model_copy(
             update={
                 "inicio": inicio,
-                "tag": tag,
-                "command_id": command_id,
-                "script_ruta": str(script),
-                "log_rman": str(log),
+                "tag": corrida.tag,
+                "command_id": corrida.command_id,
+                "script_ruta": str(corrida.script),
+                "log_rman": str(corrida.log),
                 "generado_en": inicio,
             }
         )
-        evidencia.escribir(carpeta, en_curso)
+        try:
+            return self._correr(corrida, en_curso, inicio)
+        except Exception as error:
+            REGISTRO.exception("La ejecución %s falló por un error interno", contexto.ejecucion_id)
+            return self._fallo_interno(corrida, en_curso, inicio, error)
+
+    def _correr(self, corrida: Corrida, en_curso: Evidencia, inicio: datetime) -> ResultadoEjecucion:
+        contexto = corrida.contexto
+        escribir_script(corrida.script, contexto.script_contenido)
+        evidencia.escribir(corrida.carpeta, en_curso)
         resultado_rman = self._d.lanzar(
             InvocacionRman(
                 oracle_home=contexto.base.oracle_home,
                 sid=contexto.base.sid,
-                script=script,
-                log=log,
-                argumentos=(tag, command_id),
-                timeout_segundos=timeout,
-                nls_lang=nls,
+                script=corrida.script,
+                log=corrida.log,
+                argumentos=(corrida.tag, corrida.command_id),
+                timeout_segundos=corrida.timeout,
+                nls_lang=corrida.nls,
             )
         )
         reapertura: ResultadoApertura | None = None
-        if modo is ModoRespaldo.CONSISTENTE:
-            reapertura = self._apertura(contexto, carpeta, nls, perfil.es_cdb if perfil is not None else True)
-        analizado = analizar(leer_log(log), codigos_advertencia(contexto.parametros))
-        correlacion = self._correlacionar(contexto, tag, command_id)
+        if corrida.modo is ModoRespaldo.CONSISTENTE:
+            corrida.reapertura_intentada = True
+            reapertura = self._apertura(contexto, corrida.carpeta, corrida.nls, corrida.es_cdb)
+        analizado = analizar(leer_log(corrida.log), codigos_advertencia(contexto.parametros))
+        correlacion = self._correlacionar(contexto, corrida.tag, corrida.command_id)
         fin = self._d.ahora()
-        piezas = self._piezas(contexto, tag, [p.handle for p in analizado.piezas], correlacion, fin)
+        piezas = self._piezas(contexto, corrida.tag, [p.handle for p in analizado.piezas], correlacion, fin)
         clasificacion = clasificar(
             EntradaClasificacion(
                 codigo_salida=resultado_rman.codigo_salida,
@@ -524,22 +552,61 @@ class Pipeline:
                 "generado_en": fin,
             }
         )
-        ruta, en_buzon = self._registrar(carpeta, registro)
+        ruta, en_buzon = self._registrar(corrida.carpeta, registro)
         avisos = [correlacion.error] if correlacion.error else []
         if clasificacion.correcta and verificacion_automatica(contexto.parametros):
-            registro = self._con_verificacion(contexto, registro, tag, carpeta, nls)
-            ruta, en_buzon = self._registrar(carpeta, registro)
+            registro = self._con_verificacion(contexto, registro, corrida.tag, corrida.carpeta, corrida.nls)
+            ruta, en_buzon = self._registrar(corrida.carpeta, registro)
         self._evaluar(contexto.ejecucion_id)
         return ResultadoEjecucion(
             ejecucion_id=contexto.ejecucion_id,
             estado=registro.estado,
             estado_prueba=registro.estado_prueba,
             motivos=registro.motivos,
-            carpeta=str(carpeta),
+            carpeta=str(corrida.carpeta),
             evidencia=str(ruta),
             en_buzon=en_buzon,
             piezas=registro.piezas,
             avisos=avisos,
+        )
+
+    def _fallo_interno(
+        self, corrida: Corrida, en_curso: Evidencia, inicio: datetime, error: Exception
+    ) -> ResultadoEjecucion:
+        contexto = corrida.contexto
+        if corrida.modo is ModoRespaldo.CONSISTENTE and not corrida.reapertura_intentada:
+            try:
+                self._apertura(contexto, corrida.carpeta, corrida.nls, corrida.es_cdb)
+            except Exception:
+                REGISTRO.exception("No se pudo asegurar la apertura tras el error en %s", contexto.ejecucion_id)
+        fin = self._d.ahora()
+        motivo = f"Error interno durante la ejecución: {type(error).__name__}: {error}"
+        registro = en_curso.model_copy(
+            update={
+                "estado": EstadoEjecucion.FALLIDA,
+                "estado_prueba": EstadoPrueba.NO_APLICA,
+                "fin": fin,
+                "duracion_segundos": max(int((fin - inicio).total_seconds()), 0),
+                "motivos": [motivo],
+                "mensaje_rman": motivo,
+                "errores": [motivo],
+                "generado_en": fin,
+            }
+        )
+        try:
+            ruta, en_buzon = self._registrar(corrida.carpeta, registro)
+        except Exception:
+            REGISTRO.exception("No se pudo guardar la evidencia del error en %s", contexto.ejecucion_id)
+            ruta, en_buzon = corrida.carpeta / evidencia.ARCHIVO_EVIDENCIA, False
+        self._evaluar(contexto.ejecucion_id)
+        return ResultadoEjecucion(
+            ejecucion_id=contexto.ejecucion_id,
+            estado=EstadoEjecucion.FALLIDA,
+            estado_prueba=EstadoPrueba.NO_APLICA,
+            motivos=[motivo],
+            carpeta=str(corrida.carpeta),
+            evidencia=str(ruta),
+            en_buzon=en_buzon,
         )
 
     def _con_verificacion(
