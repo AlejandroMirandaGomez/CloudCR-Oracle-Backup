@@ -132,6 +132,10 @@ Se abre el navegador en `http://127.0.0.1:8765/`. La barra superior tiene **Esta
 - **Validar contra la base real**: inspecciona la base en vivo (o usa el último perfil guardado si no responde) y muestra los hallazgos por severidad. Las recomendaciones aplicables (ARCH_002) tienen su botón: la estrategia sube de versión.
 - **Generar los scripts RMAN**: un borrador por tarea; las tareas imposibles (por ejemplo, en línea con la base en NOARCHIVELOG) se informan sin bloquear las demás.
 - **Exportar YAML** y, desde la lista, **Importar YAML** (pegado o de los ejemplos del proyecto; «Reemplazar si ya existe» sube la versión).
+- **Editar estrategia** (`/estrategias/{bd}/{codigo}/editar`): muestra la definición completa en YAML (alcance, tareas, retención, estado). **Validar sin guardar** la revisa contra la base real sin tocar nada; **Guardar como versión N+1** la graba. El código de la estrategia no se puede cambiar.
+- **Agregar tarea**: abre el mismo editor con una tarea de ejemplo ya agregada (código siguiente libre, completo, diario a las 02:00, destino por defecto) para que la ajuste y guarde.
+- **Eliminar tarea** (en cada tarea, pide confirmación): crea una versión nueva sin ella. No se permite eliminar la única tarea ni una tarea que ya tiene ejecuciones registradas, porque esas ejecuciones son la evidencia de lo que se respaldó.
+- Al editar, el script de una tarea queda **obsoleto** solo si cambió lo que se respalda (el alcance) o cómo se respalda (la tarea o su destino): hay que generar y aprobar uno nuevo. Cambiar solo los horarios no afecta el script aprobado.
 
 `[PENDIENTE: captura real de /estrategias y del detalle de EST001]`
 
@@ -161,7 +165,7 @@ Desde «Script RMAN» de cada tarea (`/estrategias/{bd}/{codigo}/scripts/{tarea}
 
 ### 4.4 Historial
 
-`/historial` tiene filtros por base, estrategia, resultado y rango de fechas (se aplican sin recargar y quedan en la dirección del navegador), paginación y exportación a **CSV, Markdown y HTML** con los mismos filtros. El número de la columna *Id* abre el detalle de la ejecución: script y versión, quién lo aprobó, log de RMAN (primeras y últimas líneas), piezas, verificaciones y la evidencia del pipeline cuando existe.
+`/historial` tiene filtros por base, estrategia, resultado y rango de fechas (se aplican sin recargar y quedan en la dirección del navegador), paginación y exportación a **CSV, Markdown y HTML** con los mismos filtros. El número de la columna *Id* abre el detalle de la ejecución: script y versión, quién lo aprobó, log de RMAN (primeras y últimas líneas), piezas, verificaciones y la evidencia del pipeline cuando existe. Desde el detalle se puede **verificar de nuevo** el respaldo y **descargar la evidencia** de esa ejecución en HTML o Markdown (equivale a `cloudcr reporte evidencia`).
 
 `[PENDIENTE: captura real de /historial con ejecuciones del agente]`
 
@@ -182,10 +186,11 @@ Desde «Script RMAN» de cada tarea (`/estrategias/{bd}/{codigo}/scripts/{tarea}
 
 ### 4.7 Sistema
 
-- **Agente**: iniciarlo dentro del servidor web (real o SIMULACIÓN), ejecutar un solo ciclo, detenerlo, latidos y mensajes recientes. No deja iniciar otro si ya hay un agente vivo (por ejemplo, uno abierto con `cloudcr agente ejecutar`). Al cerrar la web, el agente se detiene esperando las ejecuciones en curso.
+- **Agente**: **arranca solo al abrir la web** (con el pipeline real de RMAN) mientras la casilla «Iniciar el agente automáticamente al abrir la web» esté marcada; se puede desmarcar ahí mismo, o abrir con `.\iniciar.cmd -SinAgente`. También se puede iniciar a mano (real o SIMULACIÓN), ejecutar un solo ciclo, detenerlo, y ver latidos y mensajes recientes. No deja iniciar otro si ya hay un agente vivo (por ejemplo, uno abierto con `cloudcr agente ejecutar`). Al cerrar la web, el agente se detiene esperando las ejecuciones en curso.
 - **Bases de datos**: instancias detectadas y bases registradas; registrar (con ambiente), inspeccionar y guardar el perfil, activar o desactivar.
 - **Diagnóstico del entorno**: lo mismo que `cloudcr doctor`.
-- **Repositorio**: tablas y filas. «Instalar» solo se ofrece si el esquema **no** está instalado, porque instalar recrea las 12 tablas y borra sus datos.
+- **Modo de archivado**: el modo de cada base según su último perfil y el procedimiento para pasar a ARCHIVELOG. CloudCR **nunca** cambia el modo de archivado: la decisión y la ejecución son del administrador, porque el procedimiento apaga la base unos minutos.
+- **Repositorio**: tablas y filas. «Instalar» solo se ofrece si el esquema **no** está instalado, porque instalar recrea las 12 tablas y borra sus datos. «Borrar todo el repositorio» (equivale a `cloudcr repo desinstalar`) exige escribir `BORRAR TODO`, se niega si hay respaldos en curso o el agente de la web está corriendo, y puede volver a instalarlo vacío. Los archivos de respaldo en disco no se tocan.
 - **Parámetros globales**: editar, restablecer al valor inicial o agregar.
 
 ### 4.8 API JSON (uso sin pantalla)
@@ -206,6 +211,7 @@ Todo lo anterior tiene su equivalente JSON. Las escrituras (`POST`) solo se acep
 | `POST /api/alertas/{id}/reconocer` · `…/resolver` · `POST /api/alertas/evaluar` | Acciones |
 | `GET /api/estrategias/{bd}/{codigo}/validar` · `POST …/recomendaciones/{codigo}/aplicar` | Validación en vivo y recomendación aplicada |
 | `GET /api/estrategias/ejemplos` · `POST /api/estrategias/importar` · `GET /api/estrategias/{bd}/{codigo}/yaml` | Importar y exportar YAML |
+| `PUT /api/estrategias/{bd}/{codigo}` · `POST …/editar/validar` · `DELETE …/tareas/{tarea}` | Editar (YAML), validar un borrador y eliminar una tarea |
 | `GET /api/sistema/entorno` · `GET /api/sistema/repositorio` | Diagnóstico y estado del repositorio |
 | `GET /api/sistema/parametros` · `PUT /api/sistema/parametros/{clave}` · `POST …/{clave}/restablecer` | Parámetros |
 | `GET /api/sistema/bases` · `POST /api/sistema/bases` · `POST /api/sistema/bases/{nombre}/inspeccionar` | Registro y perfil |
