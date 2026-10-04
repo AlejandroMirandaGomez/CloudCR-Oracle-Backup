@@ -91,6 +91,15 @@ def desactivar(conexion: oracledb.Connection, nombre: str) -> None:
         cursor.close()
 
 
+def activar(conexion: oracledb.Connection, nombre: str) -> None:
+    cursor = conexion.cursor()
+    try:
+        cursor.execute("UPDATE bd_registrada SET activa = 'S' WHERE nombre = :nombre", nombre=nombre)
+        conexion.commit()
+    finally:
+        cursor.close()
+
+
 def guardar_perfil(conexion: oracledb.Connection, bd_id: int, perfil: PerfilBD) -> None:
     cursor = conexion.cursor()
     try:
