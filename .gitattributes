@@ -1,0 +1,2 @@
+*.rman -text
+tests/fixtures/rman_logs/*.log -text

@@ -1,0 +1,19 @@
+{% for linea in previas %}
+{{ linea }}
+{% endfor %}
+RUN {
+  SET COMMAND ID TO '&2';
+{% for canal in canales %}
+  ALLOCATE CHANNEL {{ canal }} DEVICE TYPE DISK FORMAT '{{ formato_pieza }}';
+{% endfor %}
+  SET CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '{{ formato_autobackup }}';
+{% for sentencia in sentencias %}
+  {{ sentencia }}
+{% endfor %}
+{% for canal in canales %}
+  RELEASE CHANNEL {{ canal }};
+{% endfor %}
+}
+{% for linea in posteriores %}
+{{ linea }}
+{% endfor %}
