@@ -1,0 +1,11 @@
+{% if pdb %}
+ALTER PLUGGABLE DATABASE {{ pdb }} CLOSE IMMEDIATE;
+RESTORE TABLESPACE {{ tablespace }};
+RECOVER TABLESPACE {{ tablespace }};
+ALTER PLUGGABLE DATABASE {{ pdb }} OPEN;
+{% else %}
+ALTER TABLESPACE {{ tablespace }} OFFLINE IMMEDIATE;
+RESTORE TABLESPACE {{ tablespace }};
+RECOVER TABLESPACE {{ tablespace }};
+ALTER TABLESPACE {{ tablespace }} ONLINE;
+{% endif %}

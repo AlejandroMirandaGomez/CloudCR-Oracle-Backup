@@ -1,0 +1,11 @@
+{% if pdb %}
+ALTER PLUGGABLE DATABASE {{ pdb }} CLOSE IMMEDIATE;
+RESTORE DATAFILE {{ datafile }};
+RECOVER DATAFILE {{ datafile }};
+ALTER PLUGGABLE DATABASE {{ pdb }} OPEN;
+{% else %}
+ALTER DATABASE DATAFILE {{ datafile }} OFFLINE;
+RESTORE DATAFILE {{ datafile }};
+RECOVER DATAFILE {{ datafile }};
+ALTER DATABASE DATAFILE {{ datafile }} ONLINE;
+{% endif %}
