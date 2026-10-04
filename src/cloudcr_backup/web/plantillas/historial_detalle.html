@@ -16,6 +16,8 @@
         <button class="boton primario" type="submit">Verificar de nuevo</button>
       </form>
       {% endif %}
+      <a class="boton" href="/historial/{{ fila.ejecucion_id }}/evidencia/html" download>Evidencia (HTML)</a>
+      <a class="boton" href="/historial/{{ fila.ejecucion_id }}/evidencia/md" download>Evidencia (Markdown)</a>
       <a class="boton" href="/estrategias/{{ fila.bd | urlencode }}/{{ fila.estrategia | urlencode }}/scripts/{{ fila.tarea | urlencode }}">Script de la tarea</a>
       <a class="boton" href="/historial">Volver al historial</a>
     </div>

@@ -14,13 +14,16 @@ class ConfigWeb:
     ttl_cache_segundos: int = TTL_CACHE_POR_DEFECTO
     clientes_sin_token: frozenset[str] = field(default_factory=lambda: HOSTS_LOCALES)
     hosts_permitidos: frozenset[str] | None = field(default_factory=lambda: HOSTS_LOCALES)
+    iniciar_agente: bool = False
 
     @property
     def es_local(self) -> bool:
         return self.host in HOSTS_LOCALES
 
     @classmethod
-    def desde_opciones(cls, host: str, puerto: int, token: str | None, ttl_cache_segundos: int) -> "ConfigWeb":
+    def desde_opciones(
+        cls, host: str, puerto: int, token: str | None, ttl_cache_segundos: int, iniciar_agente: bool = False
+    ) -> "ConfigWeb":
         local = host in HOSTS_LOCALES
         token_efectivo = token or (None if local else secrets.token_urlsafe(32))
         return cls(
@@ -29,4 +32,5 @@ class ConfigWeb:
             token=token_efectivo,
             ttl_cache_segundos=ttl_cache_segundos,
             hosts_permitidos=HOSTS_LOCALES if local else None,
+            iniciar_agente=iniciar_agente,
         )

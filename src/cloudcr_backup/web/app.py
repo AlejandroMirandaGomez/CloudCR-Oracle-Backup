@@ -82,8 +82,11 @@ def crear_plantillas() -> Jinja2Templates:
 
 @asynccontextmanager
 async def ciclo_de_vida(app: FastAPI) -> AsyncIterator[None]:
-    yield
+    config: ConfigWeb = app.state.config
     control: ControlAgente | None = getattr(app.state, "control_agente", None)
+    if config.iniciar_agente and control is not None:
+        control.iniciar_si_corresponde()
+    yield
     if control is not None:
         control.apagar(SEGUNDOS_APAGADO_AGENTE)
 

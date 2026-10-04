@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from cloudcr_backup.config.ajustes import Ajustes
+from cloudcr_backup.domain.errores import ErrorServicio, OperacionNoPermitida
 from cloudcr_backup.repository.bases_datos import Ambiente
 from cloudcr_backup.services import administracion as servicio_administracion
 from cloudcr_backup.services import bases_datos as servicio_bases
@@ -57,6 +58,22 @@ def _repositorio(request: Request, aviso: str | None = None) -> HTMLResponse:
 @router.get("/sistema/repositorio", response_class=HTMLResponse)
 def repositorio(request: Request) -> HTMLResponse:
     return _repositorio(request)
+
+
+@router.post("/sistema/repositorio/reiniciar", response_model=None, dependencies=OrigenConfiable)
+def reiniciar_repositorio(request: Request, control: Control, campos: Formulario) -> Response:
+    if control.estado().corriendo:
+        raise OperacionNoPermitida(
+            "El agente de esta web está corriendo y usa el repositorio.", "Deténgalo en Sistema → Agente y reintente."
+        )
+    reinstalar = marcado(campos, "reinstalar")
+    servicio_administracion.reiniciar_repositorio(_ajustes(request), campos.get("confirmacion", ""), reinstalar)
+    aviso = (
+        "Repositorio borrado y vuelto a instalar vacío, con sus parámetros iniciales."
+        if reinstalar
+        else "Repositorio borrado. Instálelo de nuevo para volver a usar la herramienta."
+    )
+    return _volver(request, "repositorio") or _repositorio(request, aviso)
 
 
 @router.post("/sistema/repositorio/instalar", response_model=None, dependencies=OrigenConfiable)
@@ -136,14 +153,41 @@ def desactivar_base(request: Request, nombre: str) -> Response:
     return _volver(request, "bases") or _bases(request, f"Base {nombre.upper()} desactivada.")
 
 
+@router.get("/sistema/archivado", response_class=HTMLResponse)
+def archivado(request: Request) -> HTMLResponse:
+    contexto = {
+        "bases": servicio_bases.listar(_ajustes(request)),
+        "procedimiento": servicio_administracion.PROCEDIMIENTO_ARCHIVELOG,
+    }
+    return renderizar(request, "parciales/_archivado.html", contexto)
+
+
+def _autoinicio(ajustes: Ajustes) -> bool | None:
+    try:
+        return servicio_administracion.autoinicio_agente(ajustes)
+    except ErrorServicio:
+        return None
+
+
 def _agente(request: Request, control: ControlAgente, monitoreo: ProveedorMonitoreo) -> HTMLResponse:
-    contexto = {"control": control.estado(), "agentes": monitoreo.agentes(), "zona": monitoreo.zona_horaria}
+    contexto = {
+        "control": control.estado(),
+        "agentes": monitoreo.agentes(),
+        "zona": monitoreo.zona_horaria,
+        "autoinicio": _autoinicio(_ajustes(request)),
+    }
     return renderizar(request, "parciales/_agente.html", contexto)
 
 
 @router.get("/sistema/agente", response_class=HTMLResponse)
 def agente(request: Request, control: Control, monitoreo: Monitoreo) -> HTMLResponse:
     return _agente(request, control, monitoreo)
+
+
+@router.post("/sistema/agente/autoinicio", response_model=None, dependencies=OrigenConfiable)
+def autoinicio_agente(request: Request, control: Control, monitoreo: Monitoreo, campos: Formulario) -> Response:
+    servicio_administracion.asignar_autoinicio_agente(_ajustes(request), marcado(campos, "activo"))
+    return _volver(request, "agente") or _agente(request, control, monitoreo)
 
 
 @router.post("/sistema/agente/iniciar", response_model=None, dependencies=OrigenConfiable)

@@ -120,6 +120,16 @@ def exportar_historial(formato: str, monitoreo: Monitoreo, consulta: Consulta) -
     )
 
 
+@router.get("/historial/{ejecucion_id}/evidencia/{formato}", response_model=None)
+def descargar_evidencia(ejecucion_id: int, formato: str, monitoreo: Monitoreo) -> Response:
+    archivo = monitoreo.exportar_evidencia(ejecucion_id, formato)
+    return Response(
+        content=archivo.contenido,
+        media_type=archivo.tipo_contenido,
+        headers={"Content-Disposition": f'attachment; filename="{archivo.nombre}"'},
+    )
+
+
 def _contexto_detalle(monitoreo: ProveedorMonitoreo, ejecucion_id: int) -> dict[str, Any]:
     detalle = monitoreo.detalle_ejecucion(ejecucion_id)
     estado = detalle.fila.estado

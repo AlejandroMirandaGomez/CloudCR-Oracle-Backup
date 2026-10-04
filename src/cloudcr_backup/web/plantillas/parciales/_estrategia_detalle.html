@@ -18,6 +18,8 @@
       <button class="boton primario" type="submit">Activar</button>
     </form>
     {% endif %}
+    <a class="boton" href="{{ ruta }}/editar">Editar estrategia</a>
+    <a class="boton" href="{{ ruta }}/editar?agregar_tarea=true">Agregar tarea</a>
     <a class="boton" href="/historial?bd={{ resumen.bd | urlencode }}&amp;estrategia={{ resumen.codigo | urlencode }}">Ver historial</a>
   </div>
 </section>
@@ -56,7 +58,14 @@
   <article class="panel tarea-detalle">
     <div class="encabezado-seccion">
       <h3>{{ tarea.codigo }} · {{ tarea.etiqueta_tipo }}</h3>
-      <a class="boton chico" href="{{ ruta }}/scripts/{{ tarea.codigo | urlencode }}">Script RMAN: ver, aprobar y ejecutar</a>
+      <div class="acciones">
+        <a class="boton chico" href="{{ ruta }}/scripts/{{ tarea.codigo | urlencode }}">Script RMAN: ver, aprobar y ejecutar</a>
+        <a class="boton chico" href="{{ ruta }}/editar">Editar</a>
+        <form method="post" action="{{ ruta }}/tareas/{{ tarea.codigo | urlencode }}/eliminar" hx-post="{{ ruta }}/tareas/{{ tarea.codigo | urlencode }}/eliminar" hx-target="#detalle-estrategia" hx-disabled-elt="find button"
+              hx-confirm="¿Eliminar la tarea {{ tarea.codigo }}? Se crea una versión nueva de la estrategia. Si la tarea ya tiene ejecuciones registradas no se podrá eliminar.">
+          <button class="boton chico peligro" type="submit">Eliminar tarea</button>
+        </form>
+      </div>
     </div>
     <dl class="ficha">
       <dt>Tipo (sistema / clase)</dt><dd>{{ tarea.etiqueta_tipo }} · término de clase: «{{ tarea.termino_clase }}»</dd>

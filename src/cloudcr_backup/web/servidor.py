@@ -4,6 +4,7 @@ import time
 import urllib.request
 import webbrowser
 from collections.abc import Callable
+from dataclasses import replace
 
 import uvicorn
 
@@ -55,14 +56,7 @@ def _abrir_cuando_responda(config: ConfigWeb) -> None:
 
 def iniciar_servidor(config: ConfigWeb, abrir_navegador: bool, avisar: Callable[[str], None]) -> None:
     puerto = puerto_libre(config.host, config.puerto)
-    config_final = ConfigWeb(
-        host=config.host,
-        puerto=puerto,
-        token=config.token,
-        ttl_cache_segundos=config.ttl_cache_segundos,
-        clientes_sin_token=config.clientes_sin_token,
-        hosts_permitidos=config.hosts_permitidos,
-    )
+    config_final = replace(config, puerto=puerto)
     home = preparar_cliente_oracle()
     if home is not None:
         avisar(f"Cliente Oracle iniciado desde {home} (antes de abrir el repositorio).")

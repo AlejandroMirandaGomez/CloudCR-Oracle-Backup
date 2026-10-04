@@ -34,6 +34,13 @@
     </div>
   </section>
 
+  <section class="panel" id="archivado">
+    <h2>Modo de archivado</h2>
+    <div id="zona-archivado" hx-get="/sistema/archivado" hx-trigger="load">
+      <p class="cargando-zona">Consultando el modo de archivado…</p>
+    </div>
+  </section>
+
   <section class="panel" id="repositorio">
     <h2>Repositorio BKPCAT</h2>
     <div id="zona-repositorio" hx-get="/sistema/repositorio" hx-trigger="load">

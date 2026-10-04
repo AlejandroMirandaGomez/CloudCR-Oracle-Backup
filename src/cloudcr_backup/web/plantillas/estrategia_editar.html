@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block titulo %}Editar {{ borrador.codigo }} · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Editar {{ borrador.codigo }} — {{ borrador.nombre }}</h1>
+      <p class="subtitulo">{{ borrador.bd }} · versión actual {{ borrador.version }}. Al guardar se crea la versión {{ borrador.version + 1 }}.</p>
+    </div>
+    <div class="acciones"><a class="boton" href="{{ ruta }}">Cancelar y volver</a></div>
+  </section>
+  {% if borrador.tarea_agregada %}
+  <p class="mensaje-estado" role="status">Se agregó la tarea {{ borrador.tarea_agregada }} al final de la lista <code>tareas</code> con valores de ejemplo: ajústela y guarde.</p>
+  {% endif %}
+  <section class="panel">
+    <form class="formulario-columna" method="post" action="{{ ruta }}/editar" hx-post="{{ ruta }}/editar" hx-target="#resultado-edicion" hx-disabled-elt="find button">
+      <label>Definición de la estrategia (YAML)
+        <textarea class="alto" name="contenido" spellcheck="false" autocomplete="off" rows="32">{{ borrador.contenido }}</textarea>
+      </label>
+      <p class="nota">
+        <code>alcance</code> es el qué; cada elemento de <code>tareas</code> es un cómo, un cuándo y un destino; <code>retencion</code> define cuánto se conservan los respaldos.
+        Para quitar una tarea borre su bloque. El <code>codigo</code> de la estrategia no se puede cambiar.
+        Si cambia lo que se respalda o cómo se respalda una tarea, su script anterior queda obsoleto y hay que generar y aprobar uno nuevo; cambiar solo el horario no lo afecta.
+      </p>
+      <details>
+        <summary>Valores permitidos</summary>
+        <dl class="ficha">
+          {% for campo, opciones in valores %}<dt><code>{{ campo }}</code></dt><dd>{{ opciones }}</dd>{% endfor %}
+        </dl>
+      </details>
+      <div class="grupo-botones">
+        <button class="boton" type="button" hx-post="{{ ruta }}/editar/validar" hx-include="closest form" hx-target="#resultado-edicion" hx-disabled-elt="this">Validar sin guardar</button>
+        <button class="boton primario" type="submit">Guardar como versión {{ borrador.version + 1 }}</button>
+      </div>
+    </form>
+  </section>
+  <div id="resultado-edicion" aria-live="polite"></div>
+</div>
+{% endblock %}

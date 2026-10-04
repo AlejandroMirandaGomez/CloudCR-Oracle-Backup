@@ -25,6 +25,10 @@ class SolicitudImportacion(BaseModel):
     reemplazar: bool = False
 
 
+class SolicitudEdicion(BaseModel):
+    contenido: str = Field(min_length=1, max_length=servicio_gestion.LARGO_MAXIMO_YAML)
+
+
 class SolicitudParametro(BaseModel):
     valor: str = Field(max_length=servicio_administracion.LARGO_MAXIMO_VALOR)
 
@@ -51,6 +55,24 @@ def api_validar(request: Request, bd: str, codigo: str) -> dict[str, Any]:
 @router.post("/estrategias/{bd}/{codigo}/recomendaciones/{recomendacion}/aplicar", dependencies=OrigenConfiable)
 def api_aplicar_recomendacion(request: Request, bd: str, codigo: str, recomendacion: str) -> dict[str, Any]:
     return servicio_gestion.aplicar_recomendacion(_ajustes(request), bd, codigo, recomendacion).model_dump(mode="json")
+
+
+@router.post("/estrategias/{bd}/{codigo}/editar/validar", dependencies=OrigenConfiable)
+def api_validar_borrador(request: Request, bd: str, codigo: str, solicitud: SolicitudEdicion) -> dict[str, Any]:
+    resultado = servicio_gestion.validar_borrador(_ajustes(request), bd, codigo, solicitud.contenido)
+    return {**resultado.model_dump(mode="json"), "bloqueante": resultado.bloqueante}
+
+
+@router.put("/estrategias/{bd}/{codigo}", dependencies=OrigenConfiable)
+def api_guardar_edicion(request: Request, bd: str, codigo: str, solicitud: SolicitudEdicion) -> dict[str, Any]:
+    editada = servicio_gestion.guardar_edicion(_ajustes(request), bd, codigo, solicitud.contenido)
+    return {**editada.model_dump(mode="json"), "mensaje": editada.mensaje}
+
+
+@router.delete("/estrategias/{bd}/{codigo}/tareas/{tarea}", dependencies=OrigenConfiable)
+def api_eliminar_tarea(request: Request, bd: str, codigo: str, tarea: str) -> dict[str, Any]:
+    editada = servicio_gestion.eliminar_tarea(_ajustes(request), bd, codigo, tarea)
+    return {**editada.model_dump(mode="json"), "mensaje": editada.mensaje}
 
 
 @router.get("/estrategias/{bd}/{codigo}/yaml")
