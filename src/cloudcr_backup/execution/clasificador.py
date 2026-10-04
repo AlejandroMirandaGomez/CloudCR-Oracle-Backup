@@ -52,7 +52,8 @@ def _motivos_de_fallo(entrada: EntradaClasificacion) -> list[str]:
         motivos.append(f"RMAN terminó con código de salida {entrada.codigo_salida}.")
     if log.errores:
         principal = log.primer_error
-        motivos.append(f"El log de RMAN contiene {len(log.errores)} error(es); el principal: {principal}.")
+        texto = str(principal).rstrip(".")
+        motivos.append(f"El log de RMAN contiene {len(log.errores)} error(es); el principal: {texto}.")
     if log.tiene_pila_error and not log.errores:
         motivos.append("El log de RMAN contiene una pila de errores (ERROR MESSAGE STACK FOLLOWS).")
     if not log.completo and not entrada.agotado and entrada.error_lanzamiento is None:
@@ -71,7 +72,8 @@ def _motivos_de_advertencia(entrada: EntradaClasificacion) -> list[str]:
     motivos = []
     if entrada.log.advertencias:
         motivos.append(
-            f"El log de RMAN contiene {len(entrada.log.advertencias)} advertencia(s): {entrada.log.advertencias[0]}."
+            f"El log de RMAN contiene {len(entrada.log.advertencias)} advertencia(s): "
+            f"{str(entrada.log.advertencias[0]).rstrip('.')}."
         )
     if entrada.estado_job in ESTADOS_JOB_CON_ADVERTENCIAS:
         motivos.append(f"V$RMAN_BACKUP_JOB_DETAILS informa el trabajo como {entrada.estado_job}.")
