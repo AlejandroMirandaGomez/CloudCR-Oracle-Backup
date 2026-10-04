@@ -34,7 +34,12 @@ from cloudcr_backup.execution.destino import (
 )
 from cloudcr_backup.execution.parser import CODIGOS_ADVERTENCIA_POR_DEFECTO, analizar
 from cloudcr_backup.execution.persistencia import persistir, repositorio
-from cloudcr_backup.execution.preflight import EntradaPreflight, ResultadoPreflight
+from cloudcr_backup.execution.preflight import (
+    CodigoPreflight,
+    EntradaPreflight,
+    ProblemaPreflight,
+    ResultadoPreflight,
+)
 from cloudcr_backup.execution.runner import InvocacionRman, Lanzador, escribir_script, lanzar, leer_log
 from cloudcr_backup.rman import nombres
 from cloudcr_backup.rman.aprobacion import modo_de_script
@@ -256,8 +261,16 @@ class Pipeline:
                 f"La ejecución {ejecucion_id} está {contexto.estado.value}; solo se ejecuta una PROGRAMADA."
             )
         timeout = _entero(contexto.parametros, PARAMETRO_TIMEOUT, TIMEOUT_POR_DEFECTO_MIN) * 60
-        with bloqueo_bd(self._d.carpeta_ejecuciones, contexto.bd_nombre, timeout + 600):
-            return self._ejecutar(contexto, timeout)
+        try:
+            with bloqueo_bd(self._d.carpeta_ejecuciones, contexto.bd_nombre, timeout + 600):
+                return self._ejecutar(contexto, timeout)
+        except EjecucionEnCurso as ocupada:
+            modo = modo_de_script(contexto.script_contenido)
+            carpeta = evidencia.carpeta_ejecucion(self._d.carpeta_ejecuciones, ejecucion_id)
+            problema = ProblemaPreflight(CodigoPreflight.BD_OCUPADA, ocupada.mensaje, ocupada.sugerencia)
+            return self._bloquear(
+                contexto, self._base_evidencia(contexto, modo), carpeta, ResultadoPreflight([problema])
+            )
 
     def _base_evidencia(self, contexto: ContextoEjecucion, modo: ModoRespaldo) -> Evidencia:
         return Evidencia(
@@ -342,6 +355,7 @@ class Pipeline:
             REGISTRO.warning("La evidencia %s queda en el buzón: %s", registro.ejecucion_id, error)
             buzon.depositar(self._d.carpeta_buzon, registro)
             return ruta, True
+        buzon.descartar(self._d.carpeta_buzon, registro.ejecucion_id)
         return ruta, False
 
     def _bloquear(

@@ -34,6 +34,12 @@ def depositar(carpeta: Path, evidencia: Evidencia, momento: datetime | None = No
     return destino
 
 
+def descartar(carpeta: Path, ejecucion_id: int) -> None:
+    if carpeta.is_dir():
+        for archivo in carpeta.glob(f"*_{ejecucion_id}{SUFIJO}"):
+            archivo.unlink(missing_ok=True)
+
+
 def pendientes(carpeta: Path) -> list[Path]:
     if not carpeta.is_dir():
         return []

@@ -103,6 +103,8 @@ def escribir_script(ruta: Path, contenido: str) -> bytes:
 def lanzar(invocacion: InvocacionRman) -> ResultadoRman:
     partes = comando(invocacion)
     invocacion.log.parent.mkdir(parents=True, exist_ok=True)
+    if not invocacion.agregar_al_log:
+        invocacion.log.unlink(missing_ok=True)
     inicio = time.monotonic()
     argumentos: str | list[str] = linea_de_comando(partes) if ES_WINDOWS else partes
     try:

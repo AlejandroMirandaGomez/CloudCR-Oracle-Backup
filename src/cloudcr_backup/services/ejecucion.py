@@ -1,3 +1,5 @@
+import time
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -7,7 +9,7 @@ from cloudcr_backup.domain.ejecucion import ResultadoEjecucion
 from cloudcr_backup.domain.enums import EstadoScript
 from cloudcr_backup.domain.errores import OperacionNoPermitida
 from cloudcr_backup.domain.scripts import SimulacionEjecucion
-from cloudcr_backup.execution import pipeline, preflight
+from cloudcr_backup.execution import buzon, pipeline, preflight
 from cloudcr_backup.execution.destino import BaseDestino, perfil_actual
 from cloudcr_backup.execution.pipeline import medir_carpeta
 from cloudcr_backup.execution.preflight import EntradaPreflight
@@ -22,6 +24,8 @@ from cloudcr_backup.services.cliente_oracle import preparar_cliente_oracle
 from cloudcr_backup.services.scripts import ruta_archivo
 from cloudcr_backup.services.sesion import conexion_repositorio
 
+REINTENTOS_BUZON = 6
+ESPERA_BUZON_SEGUNDOS = 10.0
 SUGERENCIA_APROBAR = "Genere y apruebe el script con 'cloudcr script generar' y 'cloudcr script aprobar'."
 
 
@@ -46,8 +50,17 @@ def programar_ahora(ajustes: Ajustes, bd: str | None, codigo: str, tarea: str) -
     return reclamada.id
 
 
-def ejecutar(ajustes: Ajustes, ejecucion_id: int) -> ResultadoEjecucion:
-    return pipeline.ejecutar(ejecucion_id, ajustes)
+def ejecutar(ajustes: Ajustes, ejecucion_id: int, esperar: Callable[[float], None] = time.sleep) -> ResultadoEjecucion:
+    resultado = pipeline.ejecutar(ejecucion_id, ajustes)
+    if not resultado.en_buzon:
+        return resultado
+    for _ in range(REINTENTOS_BUZON):
+        esperar(ESPERA_BUZON_SEGUNDOS)
+        buzon.sincronizar(ajustes)
+        if not buzon.pendientes(ajustes.rutas.buzon):
+            aviso = "El repositorio volvió a responder: la evidencia del buzón ya quedó registrada."
+            return resultado.model_copy(update={"en_buzon": False, "avisos": [*resultado.avisos, aviso]})
+    return resultado
 
 
 def ejecutar_ahora(ajustes: Ajustes, bd: str | None, codigo: str, tarea: str) -> ResultadoEjecucion:
