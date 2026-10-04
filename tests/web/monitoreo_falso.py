@@ -254,6 +254,17 @@ class MonitoreoFalso:
         }
         return ArchivoExportado(nombre=f"historial-prueba.{formato}", tipo_contenido=tipos[formato], contenido=b"x")
 
+    def exportar_evidencia(self, ejecucion_id: int, formato: str) -> ArchivoExportado:
+        self._fallar()
+        if formato not in ("md", "html"):
+            raise OperacionNoPermitida("La evidencia de una ejecución se exporta en md o html.")
+        tipos = {"md": "text/markdown; charset=utf-8", "html": "text/html; charset=utf-8"}
+        return ArchivoExportado(
+            nombre=f"evidencia-ejecucion-{ejecucion_id}.{formato}",
+            tipo_contenido=tipos[formato],
+            contenido=b"evidencia",
+        )
+
     def alertas(self, estado: str | None, severidad: str | None) -> list[VistaAlerta]:
         self._fallar()
         return list(self.lista_alertas)

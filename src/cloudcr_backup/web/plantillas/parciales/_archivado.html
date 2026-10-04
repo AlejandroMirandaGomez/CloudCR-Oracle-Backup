@@ -1,0 +1,29 @@
+<p class="nota">CloudCR nunca cambia el modo de archivado: es una decisión del administrador y el procedimiento apaga la base unos minutos. Aquí se muestra el procedimiento para que lo ejecute quien corresponda.</p>
+{% if bases %}
+<div class="tabla-desplazable">
+  <table class="tabla compacta">
+    <thead><tr><th scope="col">Base</th><th scope="col">Modo de archivado</th><th scope="col">Perfil guardado</th></tr></thead>
+    <tbody>
+      {% for base in bases if base.registrada %}
+      <tr>
+        <td>{{ base.nombre }}</td>
+        <td>{% if base.log_mode is none %}<span class="tono-atenuado">sin perfil: inspeccione la base primero</span>{% elif base.log_mode.value == 'ARCHIVELOG' %}<span class="tono-exito">ARCHIVELOG</span>{% else %}<span class="tono-advertencia">{{ base.log_mode.value }}</span>{% endif %}</td>
+        <td>{{ base.perfil_capturado_en | hora_servidor('America/Costa_Rica') if base.perfil_capturado_en else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+<details>
+  <summary>Ver el procedimiento para pasar a ARCHIVELOG</summary>
+  <ol>
+    <li>Haga un respaldo antes del cambio (por ejemplo una estrategia en modo <code>CONSISTENTE</code>).</li>
+    <li>Como administrador, en SQL*Plus conectado como <code>/ AS SYSDBA</code>, ejecute:</li>
+  </ol>
+  <pre class="registro">{{ procedimiento }}</pre>
+  <ol start="3">
+    <li>Haga un respaldo en línea después del cambio.</li>
+    <li>Vuelva a esta pantalla, en <strong>Bases de datos</strong> pulse <em>Inspeccionar y guardar perfil</em>: la alerta <code>BD_NOARCHIVELOG</code> se resuelve sola y la validación recomendará incluir los archived logs.</li>
+  </ol>
+</details>

@@ -33,6 +33,8 @@ class ProveedorMonitoreo(Protocol):
 
     def exportar_historial(self, consulta: ConsultaHistorial, formato: str) -> ArchivoExportado: ...
 
+    def exportar_evidencia(self, ejecucion_id: int, formato: str) -> ArchivoExportado: ...
+
     def alertas(self, estado: str | None, severidad: str | None) -> list[VistaAlerta]: ...
 
     def reconocer_alerta(self, alerta_id: int) -> VistaAlerta: ...
@@ -76,6 +78,9 @@ class ServicioMonitoreo:
 
     def exportar_historial(self, consulta: ConsultaHistorial, formato: str) -> ArchivoExportado:
         return historial.exportar(self._ajustes(), consulta, formato)
+
+    def exportar_evidencia(self, ejecucion_id: int, formato: str) -> ArchivoExportado:
+        return historial.exportar_evidencia(self._ajustes(), ejecucion_id, formato)
 
     def alertas(self, estado: str | None, severidad: str | None) -> list[VistaAlerta]:
         return alertas.listar(self._ajustes(), estado, severidad)

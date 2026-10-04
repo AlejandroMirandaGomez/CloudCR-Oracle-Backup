@@ -32,7 +32,7 @@ cd CloudCR-Oracle-Backup
 
 `iniciar.cmd` hace todo lo que falte y se puede volver a ejecutar sin riesgo: crea `.venv`, instala las dependencias (solo si cambió `pyproject.toml`), crea la PDB `BKPCAT` y el usuario `BKP_ADMIN` con los datos del archivo `.env` (solo si todavía no existen), instala las tablas del repositorio y abre la interfaz web. Cuando todo ya está listo, solo abre la web.
 
-Opciones: `.\iniciar.cmd -Puerto <PUERTO>` para usar otro puerto y `.\iniciar.cmd -NoAbrir` para no abrir el navegador. Si el `.env` ya trae otra clave para `BKP_ADMIN`, el script deja el usuario con esa clave.
+Opciones: `.\iniciar.cmd -Puerto <PUERTO>` para usar otro puerto, `.\iniciar.cmd -NoAbrir` para no abrir el navegador y `.\iniciar.cmd -SinAgente` para que el agente de respaldos no arranque junto con la web (por defecto arranca solo y ejecuta las tareas activas con script aprobado cuando les toca; se puede detener o desactivar en Sistema → Agente). Si el `.env` ya trae otra clave para `BKP_ADMIN`, el script deja el usuario con esa clave.
 
 ## Primera vez: instalación
 

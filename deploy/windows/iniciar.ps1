@@ -1,7 +1,8 @@
 ﻿[CmdletBinding()]
 param(
     [int]$Puerto = 0,
-    [switch]$NoAbrir
+    [switch]$NoAbrir,
+    [switch]$SinAgente
 )
 
 $ErrorActionPreference = 'Stop'
@@ -215,6 +216,9 @@ if ($Puerto -gt 0) {
 }
 if ($NoAbrir) {
     $argumentosWeb += '--no-abrir'
+}
+if ($SinAgente) {
+    $argumentosWeb += '--sin-agente'
 }
 Paso 'Iniciando la interfaz web (Ctrl+C para detenerla)'
 & $cloudcr @argumentosWeb

@@ -53,10 +53,15 @@ def pagina_estrategias(request: Request, monitoreo: Monitoreo) -> HTMLResponse:
 
 @router.get("/estrategias/{bd}/{codigo}", response_class=HTMLResponse)
 def pagina_estrategia(
-    request: Request, bd: str, codigo: str, monitoreo: Monitoreo, n: Cantidad = 5
+    request: Request,
+    bd: str,
+    codigo: str,
+    monitoreo: Monitoreo,
+    n: Cantidad = 5,
+    aviso: Annotated[str | None, Query(max_length=600)] = None,
 ) -> HTMLResponse:
     detalle = monitoreo.estrategia(bd, codigo, n)
-    return renderizar(request, "estrategia_detalle.html", contexto_detalle(detalle, monitoreo.zona_horaria))
+    return renderizar(request, "estrategia_detalle.html", contexto_detalle(detalle, monitoreo.zona_horaria, aviso))
 
 
 def _cambiar(request: Request, bd: str, codigo: str, monitoreo: ProveedorMonitoreo, activa: bool) -> Response:

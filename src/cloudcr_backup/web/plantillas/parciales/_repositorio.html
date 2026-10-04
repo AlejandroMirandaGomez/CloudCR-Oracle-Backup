@@ -8,6 +8,18 @@
   <button class="boton primario" type="submit">Instalar el repositorio</button>
 </form>
 {% endif %}
+<details class="zona-peligrosa">
+  <summary>Borrar todo el repositorio</summary>
+  <p class="aviso">Elimina las 12 tablas y <strong>todos</strong> los datos: bases registradas, estrategias, scripts, historial de ejecuciones y alertas. Los archivos de respaldo en disco no se tocan. No se puede deshacer; el agente de esta web debe estar detenido.</p>
+  <form class="formulario-columna" method="post" action="/sistema/repositorio/reiniciar" hx-post="/sistema/repositorio/reiniciar" hx-target="#zona-repositorio" hx-disabled-elt="find button"
+        hx-confirm="Se borrarán las 12 tablas del repositorio con todos sus datos. ¿Seguro?">
+    <label>Para confirmar escriba <strong>BORRAR TODO</strong>
+      <input type="text" name="confirmacion" autocomplete="off" spellcheck="false" required>
+    </label>
+    <label class="casilla"><input type="checkbox" name="reinstalar" value="on" checked> Volver a instalarlo vacío, con los parámetros iniciales</label>
+    <button class="boton peligro" type="submit">Borrar el repositorio</button>
+  </form>
+</details>
 {% if estado.tablas %}
 <div class="tabla-desplazable">
   <table class="tabla compacta">

@@ -23,7 +23,12 @@ from cloudcr_backup.domain.estrategia import (
     Retencion,
     Tarea,
     Ventana,
+    tareas_con_script_afectado,
 )
+
+
+class TareaConHistorial(ValueError):
+    pass
 
 
 def _cargar_alcance(cursor: oracledb.Cursor, estrategia_id: int) -> list[ObjetoAlcance]:
@@ -125,25 +130,89 @@ def _guardar_tareas(cursor: oracledb.Cursor, estrategia_id: int, tareas: list[Ta
             omitir_solo_lectura="S" if tarea.como.opciones.omitir_solo_lectura else "N",
             tarea_id=tarea_id_var,
         )
-        tarea_id = int(tarea_id_var.getvalue()[0])
-        prog = tarea.programacion
+        _insertar_programacion(cursor, int(tarea_id_var.getvalue()[0]), tarea.programacion)
+
+
+def _insertar_programacion(cursor: oracledb.Cursor, tarea_id: int, prog: Programacion) -> None:
+    cursor.execute(
+        """
+        INSERT INTO programacion (tarea_id, tipo_frecuencia, horas, dias_semana, intervalo_minutos,
+                                   fecha_inicio, ventana_inicio, ventana_fin, zona_horaria, politica_omision)
+        VALUES (:tarea_id, :tipo_frecuencia, :horas, :dias_semana, :intervalo_minutos,
+                :fecha_inicio, :ventana_inicio, :ventana_fin, :zona_horaria, :politica_omision)
+        """,
+        tarea_id=tarea_id,
+        tipo_frecuencia=prog.tipo_frecuencia.value,
+        horas=",".join(h.strftime("%H:%M") for h in prog.horas) or None,
+        dias_semana=",".join(d.value for d in prog.dias_semana) or None,
+        intervalo_minutos=prog.intervalo_minutos,
+        fecha_inicio=prog.fecha_inicio,
+        ventana_inicio=prog.ventana.inicio.strftime("%H:%M") if prog.ventana else None,
+        ventana_fin=prog.ventana.fin.strftime("%H:%M") if prog.ventana else None,
+        zona_horaria=prog.zona_horaria,
+        politica_omision=prog.politica_omision.value,
+    )
+
+
+def _actualizar_tarea(cursor: oracledb.Cursor, tarea_id: int, tarea: Tarea) -> None:
+    cursor.execute(
+        """
+        UPDATE tarea
+        SET tipo_respaldo = :tipo_respaldo, modo_respaldo = :modo_respaldo, compresion = :compresion,
+            canales = :canales, destino_ruta = :destino_ruta, destino_etiqueta = :destino_etiqueta,
+            omitir_solo_lectura = :omitir_solo_lectura
+        WHERE id = :id
+        """,
+        tipo_respaldo=tarea.como.tipo_respaldo.value,
+        modo_respaldo=tarea.como.modo_respaldo.value,
+        compresion=tarea.como.opciones.compresion.value,
+        canales=tarea.como.opciones.canales,
+        destino_ruta=tarea.destino.ruta,
+        destino_etiqueta=tarea.destino.etiqueta,
+        omitir_solo_lectura="S" if tarea.como.opciones.omitir_solo_lectura else "N",
+        id=tarea_id,
+    )
+    cursor.execute("DELETE FROM programacion WHERE tarea_id = :id", id=tarea_id)
+    _insertar_programacion(cursor, tarea_id, tarea.programacion)
+
+
+def _retirar_tarea(cursor: oracledb.Cursor, tarea_id: int, codigo: str) -> None:
+    cursor.execute("SELECT COUNT(*) FROM ejecucion WHERE tarea_id = :id", id=tarea_id)
+    if int(cursor.fetchone()[0]) > 0:
+        raise TareaConHistorial(
+            f"La tarea {codigo} ya tiene ejecuciones registradas y no se puede eliminar: son la evidencia de lo "
+            "que se respaldó. Desactive la estrategia si ya no debe ejecutarse."
+        )
+    cursor.execute("UPDATE alerta SET tarea_id = NULL WHERE tarea_id = :id", id=tarea_id)
+    cursor.execute("DELETE FROM script_rman WHERE tarea_id = :id", id=tarea_id)
+    cursor.execute("DELETE FROM programacion WHERE tarea_id = :id", id=tarea_id)
+    cursor.execute("DELETE FROM tarea WHERE id = :id", id=tarea_id)
+
+
+def _sincronizar_tareas(cursor: oracledb.Cursor, estrategia_id: int, tareas: list[Tarea]) -> None:
+    cursor.execute("SELECT codigo, id FROM tarea WHERE estrategia_id = :id", id=estrategia_id)
+    existentes = {str(codigo): int(tarea_id) for codigo, tarea_id in cursor.fetchall()}
+    codigos_nuevos = {tarea.codigo for tarea in tareas}
+    for codigo, tarea_id in existentes.items():
+        if codigo not in codigos_nuevos:
+            _retirar_tarea(cursor, tarea_id, codigo)
+    for tarea in tareas:
+        if tarea.codigo in existentes:
+            _actualizar_tarea(cursor, existentes[tarea.codigo], tarea)
+        else:
+            _guardar_tareas(cursor, estrategia_id, [tarea])
+
+
+def _obsoletar_scripts(cursor: oracledb.Cursor, estrategia_id: int, codigos_tarea: list[str]) -> None:
+    for codigo in codigos_tarea:
         cursor.execute(
             """
-            INSERT INTO programacion (tarea_id, tipo_frecuencia, horas, dias_semana, intervalo_minutos,
-                                       fecha_inicio, ventana_inicio, ventana_fin, zona_horaria, politica_omision)
-            VALUES (:tarea_id, :tipo_frecuencia, :horas, :dias_semana, :intervalo_minutos,
-                    :fecha_inicio, :ventana_inicio, :ventana_fin, :zona_horaria, :politica_omision)
+            UPDATE script_rman SET estado = 'OBSOLETO'
+            WHERE estado IN ('BORRADOR', 'APROBADO')
+              AND tarea_id IN (SELECT id FROM tarea WHERE estrategia_id = :estrategia_id AND codigo = :codigo)
             """,
-            tarea_id=tarea_id,
-            tipo_frecuencia=prog.tipo_frecuencia.value,
-            horas=",".join(h.strftime("%H:%M") for h in prog.horas) or None,
-            dias_semana=",".join(d.value for d in prog.dias_semana) or None,
-            intervalo_minutos=prog.intervalo_minutos,
-            fecha_inicio=prog.fecha_inicio,
-            ventana_inicio=prog.ventana.inicio.strftime("%H:%M") if prog.ventana else None,
-            ventana_fin=prog.ventana.fin.strftime("%H:%M") if prog.ventana else None,
-            zona_horaria=prog.zona_horaria,
-            politica_omision=prog.politica_omision.value,
+            estrategia_id=estrategia_id,
+            codigo=codigo,
         )
 
 
@@ -218,6 +287,9 @@ def crear(conexion: oracledb.Connection, estrategia: Estrategia) -> Estrategia:
 
 
 def actualizar(conexion: oracledb.Connection, estrategia: Estrategia) -> Estrategia:
+    anterior = obtener(conexion, estrategia.bd_id, estrategia.codigo)
+    if anterior is None:
+        raise ValueError(f"No existe la estrategia {estrategia.codigo} en la base {estrategia.bd_id}.")
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -225,10 +297,7 @@ def actualizar(conexion: oracledb.Connection, estrategia: Estrategia) -> Estrate
             bd_id=estrategia.bd_id,
             codigo=estrategia.codigo,
         )
-        fila = cursor.fetchone()
-        if fila is None:
-            raise ValueError(f"No existe la estrategia {estrategia.codigo} en la base {estrategia.bd_id}.")
-        estrategia_id = fila[0]
+        estrategia_id = int(cursor.fetchone()[0])
         cursor.execute(
             """
             UPDATE estrategia
@@ -249,16 +318,15 @@ def actualizar(conexion: oracledb.Connection, estrategia: Estrategia) -> Estrate
             purga="S" if estrategia.retencion.purga_automatica else "N",
             id=estrategia_id,
         )
-        cursor.execute(
-            "DELETE FROM programacion WHERE tarea_id IN (SELECT id FROM tarea WHERE estrategia_id = :id)",
-            id=estrategia_id,
-        )
-        cursor.execute("DELETE FROM tarea WHERE estrategia_id = :id", id=estrategia_id)
         cursor.execute("DELETE FROM estrategia_objeto WHERE estrategia_id = :id", id=estrategia_id)
         _guardar_alcance(cursor, estrategia_id, estrategia.alcance)
-        _guardar_tareas(cursor, estrategia_id, estrategia.tareas)
+        _sincronizar_tareas(cursor, estrategia_id, estrategia.tareas)
+        _obsoletar_scripts(cursor, estrategia_id, tareas_con_script_afectado(anterior, estrategia))
         conexion.commit()
         return estrategia.model_copy(update={"id": estrategia_id})
+    except Exception:
+        conexion.rollback()
+        raise
     finally:
         cursor.close()
 

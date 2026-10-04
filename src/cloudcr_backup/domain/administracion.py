@@ -108,3 +108,40 @@ class EstadoControlAgente(BaseModel):
     iniciado_en: datetime | None = None
     ciclo_en_curso: bool = False
     mensajes: list[MensajeAgente] = Field(default_factory=list)
+
+
+class BorradorEdicion(BaseModel):
+    bd: str
+    codigo: str
+    nombre: str
+    version: int
+    contenido: str
+    tarea_agregada: str | None = None
+
+
+class EstrategiaEditada(BaseModel):
+    bd: str
+    codigo: str
+    nombre: str
+    version: int
+    tareas_agregadas: list[str] = Field(default_factory=list)
+    tareas_eliminadas: list[str] = Field(default_factory=list)
+    tareas_a_regenerar: list[str] = Field(default_factory=list)
+
+    @property
+    def mensaje(self) -> str:
+        partes = [f"Estrategia {self.codigo} guardada como versión {self.version}."]
+        if self.tareas_agregadas:
+            partes.append(f"Tareas agregadas: {', '.join(self.tareas_agregadas)}.")
+        if self.tareas_eliminadas:
+            partes.append(f"Tareas eliminadas: {', '.join(self.tareas_eliminadas)}.")
+        if self.tareas_a_regenerar:
+            partes.append(
+                f"Cambió lo que se respalda o cómo se respalda en {', '.join(self.tareas_a_regenerar)}: "
+                "su script anterior quedó obsoleto, genere y apruebe uno nuevo."
+            )
+        if self.tareas_agregadas:
+            partes.append(
+                f"Genere y apruebe el script de {', '.join(self.tareas_agregadas)} para que el agente las ejecute."
+            )
+        return " ".join(partes)

@@ -94,3 +94,15 @@ class Estrategia(BaseModel):
 
     def tarea(self, codigo: str) -> Tarea | None:
         return next((t for t in self.tareas if t.codigo == codigo), None)
+
+
+def tareas_con_script_afectado(anterior: Estrategia, nueva: Estrategia) -> list[str]:
+    alcance_cambio = anterior.alcance != nueva.alcance
+    afectadas = []
+    for tarea in nueva.tareas:
+        previa = anterior.tarea(tarea.codigo)
+        if previa is None:
+            continue
+        if alcance_cambio or previa.como != tarea.como or previa.destino != tarea.destino:
+            afectadas.append(tarea.codigo)
+    return afectadas

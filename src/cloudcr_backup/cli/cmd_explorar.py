@@ -174,11 +174,21 @@ def web(
         int,
         typer.Option("--cache", envvar="CLOUDCR_WEB_CACHE", min=0, help="Segundos que se reutiliza una inspección."),
     ] = 60,
+    agente: Annotated[
+        bool,
+        typer.Option(
+            "--agente/--sin-agente",
+            envvar="CLOUDCR_WEB_AGENTE",
+            help="Inicia el agente de respaldos junto con la web (se puede desactivar en Sistema → Agente).",
+        ),
+    ] = True,
 ) -> None:
     from cloudcr_backup.web.config import ConfigWeb
     from cloudcr_backup.web.servidor import PuertoNoDisponible, iniciar_servidor
 
-    config = ConfigWeb.desde_opciones(host=host, puerto=puerto, token=token, ttl_cache_segundos=cache)
+    config = ConfigWeb.desde_opciones(
+        host=host, puerto=puerto, token=token, ttl_cache_segundos=cache, iniciar_agente=agente
+    )
     salida = consola()
     if not config.es_local:
         salida.print(

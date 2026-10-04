@@ -43,6 +43,12 @@
   </div>
 </div>
 {% endif %}
+{% if autoinicio is not none %}
+<form class="formulario-accion" method="post" action="/sistema/agente/autoinicio" hx-post="/sistema/agente/autoinicio" hx-target="#zona-agente" hx-disabled-elt="find button">
+  <label class="casilla"><input type="checkbox" name="activo" value="on"{% if autoinicio %} checked{% endif %}> Iniciar el agente automáticamente al abrir la web</label>
+  <button class="boton chico" type="submit">Guardar</button>
+</form>
+{% endif %}
 {% if agentes %}
 <div class="tabla-desplazable">
   <table class="tabla compacta">

@@ -13,6 +13,7 @@ from cloudcr_backup.domain.administracion import (
 )
 from cloudcr_backup.domain.errores import ErrorServicio, OperacionNoPermitida, RecursoNoEncontrado
 from cloudcr_backup.oracle.discovery import descubrir_instancias
+from cloudcr_backup.repository import ejecuciones as repositorio_ejecuciones
 from cloudcr_backup.repository import esquema as repositorio_esquema
 from cloudcr_backup.repository import parametros as repositorio_parametros
 from cloudcr_backup.services.sesion import conexion_repositorio
@@ -20,10 +21,20 @@ from cloudcr_backup.services.sesion import conexion_repositorio
 MODULOS_REQUERIDOS = ("oracledb", "pydantic", "typer", "fastapi", "yaml", "dateutil", "questionary", "dotenv")
 LARGO_MAXIMO_CLAVE = 100
 LARGO_MAXIMO_VALOR = 4000
+FRASE_REINICIO = "BORRAR TODO"
+VALORES_VERDADEROS = frozenset({"true", "1", "on", "si", "sí", "yes"})
+PARAMETRO_AUTOINICIO_AGENTE = "agente.iniciar_con_web"
+PROCEDIMIENTO_ARCHIVELOG = """SHUTDOWN IMMEDIATE;
+STARTUP MOUNT;
+ALTER DATABASE ARCHIVELOG;
+ALTER DATABASE OPEN;
+ALTER PLUGGABLE DATABASE ALL OPEN;
+ARCHIVE LOG LIST;"""
 
 PARAMETROS_INICIALES = {
     "agente.tick_segundos": "30",
     "agente.gracia_omision_min": "15",
+    "agente.iniciar_con_web": "true",
     "rman.nls_lang": "AMERICAN_AMERICA.AL32UTF8",
     "rman.timeout_max_min": "120",
     "rman.codigos_advertencia": '["RMAN-08137","RMAN-08138","RMAN-06207","RMAN-06208","RMAN-06214"]',
@@ -237,3 +248,34 @@ def restablecer_parametro(ajustes: Ajustes, clave: str) -> ParametroRepositorio:
     if clave_limpia not in PARAMETROS_INICIALES:
         raise RecursoNoEncontrado(f"{clave_limpia} no es uno de los parámetros iniciales conocidos.")
     return asignar_parametro(ajustes, clave_limpia, PARAMETROS_INICIALES[clave_limpia])
+
+
+def reiniciar_repositorio(ajustes: Ajustes, confirmacion: str, reinstalar: bool) -> EstadoRepositorio:
+    if confirmacion.strip() != FRASE_REINICIO:
+        raise OperacionNoPermitida(
+            "Falta la confirmación escrita.",
+            f"Escriba exactamente «{FRASE_REINICIO}» para borrar las 12 tablas del repositorio y todos sus datos.",
+        )
+    with conexion_repositorio(ajustes) as conexion:
+        if repositorio_esquema.estado(conexion).instalado and repositorio_ejecuciones.contar_en_curso(conexion) > 0:
+            raise OperacionNoPermitida(
+                "Hay respaldos en curso: borrar el repositorio ahora los dejaría sin registro.",
+                "Espere a que terminen y vuelva a intentarlo.",
+            )
+        repositorio_esquema.desinstalar(conexion)
+        if reinstalar:
+            repositorio_esquema.instalar(conexion)
+    if reinstalar:
+        cargar_parametros_iniciales(ajustes)
+    return estado_repositorio(ajustes)
+
+
+def autoinicio_agente(ajustes: Ajustes) -> bool:
+    with conexion_repositorio(ajustes) as conexion:
+        valor = repositorio_parametros.obtener(conexion, PARAMETRO_AUTOINICIO_AGENTE)
+    efectivo = PARAMETROS_INICIALES[PARAMETRO_AUTOINICIO_AGENTE] if valor is None else valor
+    return efectivo.strip().lower() in VALORES_VERDADEROS
+
+
+def asignar_autoinicio_agente(ajustes: Ajustes, activo: bool) -> ParametroRepositorio:
+    return asignar_parametro(ajustes, PARAMETRO_AUTOINICIO_AGENTE, "true" if activo else "false")

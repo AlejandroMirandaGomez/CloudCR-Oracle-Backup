@@ -475,6 +475,15 @@ def ultimas_por_tarea(conexion: oracledb.Connection, n: int) -> dict[int, list[E
         cursor.close()
 
 
+def contar_en_curso(conexion: oracledb.Connection) -> int:
+    cursor = conexion.cursor()
+    try:
+        cursor.execute("SELECT COUNT(*) FROM ejecucion WHERE estado = 'EN_CURSO'")
+        return int(cursor.fetchone()[0])
+    finally:
+        cursor.close()
+
+
 def en_curso(conexion: oracledb.Connection) -> list[EjecucionDetallada]:
     cursor = conexion.cursor()
     try:
