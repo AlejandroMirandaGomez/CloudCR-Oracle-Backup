@@ -70,6 +70,10 @@ def purgar(
     configuracion = ajustes()
     resultado = llamar(lambda: servicio_retencion.purgar(configuracion, bd, codigo, confirmar))
     salida = consola()
+    for aviso in resultado.avisos:
+        salida.print(aviso, style="yellow", highlight=False)
+    for ruta in resultado.candidatas:
+        salida.print(f"  Obsoleta según RMAN: {ruta}", highlight=False)
     salida.print(resultado.script, highlight=False)
     if resultado.errores:
         salida.print("[bold red]RMAN informó errores durante la purga:[/]", markup=True)

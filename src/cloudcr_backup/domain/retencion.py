@@ -52,9 +52,11 @@ class ResultadoPurga(BaseModel):
     estrategia: str
     script: str
     log: str | None = None
+    candidatas: list[str] = Field(default_factory=list)
     piezas_marcadas: int = 0
     borradas: list[str] = Field(default_factory=list)
     errores: list[str] = Field(default_factory=list)
+    avisos: list[str] = Field(default_factory=list)
 
     @property
     def correcta(self) -> bool:

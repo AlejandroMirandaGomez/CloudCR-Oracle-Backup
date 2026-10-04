@@ -1,0 +1,6 @@
+{% if piezas %}
+DELETE NOPROMPT BACKUPPIECE {{ piezas | join(', ') }};
+{% endif %}
+{% if archived_logs_dias %}
+DELETE NOPROMPT ARCHIVELOG ALL BACKED UP 1 TIMES TO DISK COMPLETED BEFORE 'SYSDATE-{{ archived_logs_dias }}';
+{% endif %}

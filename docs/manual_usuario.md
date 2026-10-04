@@ -395,7 +395,7 @@ cloudcr historial mostrar 41                   # evidencia, log de RMAN, piezas 
 ```powershell
 cloudcr retencion informe XE           # obsoletos según la ventana o redundancia de cada estrategia; no borra
 cloudcr retencion informe XE --rman    # además CROSSCHECK + REPORT OBSOLETE en RMAN
-cloudcr retencion purgar XE EST004 --purgar   # solo si la estrategia tiene purga_automatica: true
+cloudcr retencion purgar XE EST004 --purgar   # solo con purga_automatica: true; borra solo piezas propias obsoletas
 ```
 
 ### 13.3 Recuperación (se genera, nunca se ejecuta)

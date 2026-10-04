@@ -172,8 +172,14 @@ La ventana va **en línea, dentro del comando** (`REPORT OBSOLETE RECOVERY WINDO
   o las ejecuciones que exceden la redundancia). Con `--rman` además corre `CROSSCHECK BACKUP` y
   `REPORT OBSOLETE`. **No borra nada.**
 - `cloudcr retencion purgar XE EST004 --purgar` solo funciona si la estrategia tiene
-  `purga_automatica: true`. Genera `DELETE NOPROMPT OBSOLETE …` y, si hay `archived_logs_dias`,
-  `DELETE NOPROMPT ARCHIVELOG ALL BACKED UP 1 TIMES TO DISK COMPLETED BEFORE 'SYSDATE-n'`.
+  `purga_automatica: true`. Primero corre `CROSSCHECK BACKUP` y `REPORT OBSOLETE <política de la estrategia>`, y
+  después borra **solo las piezas de esa estrategia** que RMAN informa obsoletas
+  (`DELETE NOPROMPT BACKUPPIECE '<pieza>', …`). No se usa `DELETE OBSOLETE`, que actúa sobre toda la base y
+  podría borrar copias que otra estrategia todavía necesita para su ventana o redundancia. Si hay
+  `archived_logs_dias`, también corre
+  `DELETE NOPROMPT ARCHIVELOG ALL BACKED UP 1 TIMES TO DISK COMPLETED BEFORE 'SYSDATE-n'`, que solo borra
+  archived logs ya respaldados. El script con `DELETE NOPROMPT OBSOLETE` del plan queda como referencia
+  (`politica.script(..., purgar=True)`) y no se ejecuta.
 
 ## 9. Recuperación (se genera, nunca se ejecuta)
 

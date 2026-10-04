@@ -50,6 +50,9 @@ def _scripts() -> dict[str, str]:
     scripts["retencion_purga"] = politica.script(
         Retencion(ventana_dias=30, archived_logs_dias=7, purga_automatica=True), purgar=True
     )
+    scripts["retencion_purga_piezas"] = politica.script_purga(
+        [r"C:\backups\XE\XE_EST004_T1_1.BKP", r"C:\backups\XE\XE_EST004_T1_2.BKP"], 7
+    )
     scripts["retencion_redundancia"] = politica.script(Retencion(redundancia=2))
     scripts["verificacion"] = script_verificacion("EST001_T1_2610041300", [3, 4])
     for escenario in Escenario:

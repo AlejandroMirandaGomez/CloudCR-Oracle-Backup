@@ -8,6 +8,7 @@ from cloudcr_backup.repository.piezas import PiezaRegistrada
 from cloudcr_backup.rman.render import renderizar
 
 PLANTILLA_RETENCION = "retencion.rman.j2"
+PLANTILLA_PURGA = "purga.rman.j2"
 TIPOS_OBSOLETOS = ("Backup Piece", "Archive Log", "Datafile Copy", "Control File Copy")
 PATRON_RUTA = re.compile(r"\s((?:[A-Za-z]:[\\/]|/|\+)\S.*)$")
 
@@ -56,6 +57,20 @@ def script(retencion: Retencion, purgar: bool = False) -> str:
     )
 
 
+def _cadena_rman(ruta: str) -> str:
+    if "'" in ruta:
+        raise ValueError(f"La ruta {ruta} contiene una comilla simple y no se puede pasar a RMAN.")
+    return f"'{ruta}'"
+
+
+def script_purga(rutas: list[str], archived_logs_dias: int | None) -> str:
+    if not rutas and archived_logs_dias is None:
+        raise PoliticaNoDefinida("No hay piezas obsoletas ni archived logs que purgar.")
+    return renderizar(
+        PLANTILLA_PURGA, piezas=[_cadena_rman(r) for r in rutas], archived_logs_dias=archived_logs_dias
+    )
+
+
 def vence_en(fin: datetime, retencion: Retencion) -> datetime | None:
     if retencion.ventana_dias is None:
         return None
@@ -90,12 +105,13 @@ def _como_pieza(pieza: PiezaRegistrada, vencida: bool, obsoletas: set[str]) -> P
 
 
 def _ejecuciones_fuera_de_redundancia(piezas: list[PiezaRegistrada], redundancia: int) -> set[int]:
-    orden = sorted(
-        {(p.fin or datetime.min, p.ejecucion_id) for p in piezas},
-        key=lambda par: par,
-        reverse=True,
-    )
-    return {ejecucion_id for _, ejecucion_id in orden[redundancia:]}
+    por_tarea: dict[str, set[tuple[datetime, int]]] = {}
+    for pieza in piezas:
+        por_tarea.setdefault(pieza.tarea_codigo, set()).add((pieza.fin or datetime.min, pieza.ejecucion_id))
+    fuera: set[int] = set()
+    for ejecuciones in por_tarea.values():
+        fuera |= {ejecucion_id for _, ejecucion_id in sorted(ejecuciones, reverse=True)[redundancia:]}
+    return fuera
 
 
 def vencidas(

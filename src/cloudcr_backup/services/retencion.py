@@ -135,33 +135,55 @@ def purgar(ajustes: Ajustes, bd: str, codigo: str, confirmado: bool) -> Resultad
     with conexion_repositorio(ajustes) as conexion:
         base, estrategia = resolucion.estrategia(conexion, bd, codigo)
         try:
-            contenido = politica.script(estrategia.retencion, purgar=True)
+            politica.script(estrategia.retencion, purgar=True)
         except (PoliticaNoDefinida, PurgaNoPermitida) as error:
             raise OperacionNoPermitida(
                 str(error), "Active purga_automatica en la retención de la estrategia si el DBA lo decide."
             ) from error
         piezas = repositorio_piezas.de_base(conexion, base.id)
         nls = repositorio_parametros.listar(conexion).get(PARAMETRO_NLS) or NLS_POR_DEFECTO
+    clausula = politica.clausula(estrategia.retencion)
     carpeta = carpeta_retencion(ajustes, base.nombre)
-    texto, log, fallo = _ejecutar_rman(base, carpeta, f"purga_{estrategia.codigo}_{_marca(ahora)}", contenido, nls)
+    marca = _marca(ahora)
+    informe_rman = f"CROSSCHECK BACKUP;\nREPORT OBSOLETE {clausula};\n"
+    texto, log, fallo = _ejecutar_rman(base, carpeta, f"purga_{estrategia.codigo}_{marca}_informe", informe_rman, nls)
+    errores_informe = [fallo] if fallo else [str(e) for e in analizar(texto).errores]
+    if errores_informe:
+        return ResultadoPurga(
+            bd=base.nombre, estrategia=estrategia.codigo, script=informe_rman, log=str(log), errores=errores_informe
+        )
+    obsoletas = {ruta.upper() for ruta in politica.obsoletas_de_reporte(texto)}
+    propias = [p for p in piezas if p.estrategia_id == estrategia.id and not p.obsoleta]
+    candidatas = [p for p in propias if p.nombre_archivo.upper() in obsoletas]
+    archived_logs_dias = estrategia.retencion.archived_logs_dias
+    avisos = [
+        "Solo se borran las piezas de esta estrategia que RMAN informa obsoletas según su política; "
+        "las de otras estrategias no se tocan."
+    ]
+    if not candidatas and archived_logs_dias is None:
+        avisos.append("RMAN no informa piezas obsoletas de esta estrategia: no se borró nada.")
+        return ResultadoPurga(
+            bd=base.nombre, estrategia=estrategia.codigo, script=informe_rman, log=str(log), avisos=avisos
+        )
+    contenido = politica.script_purga([p.nombre_archivo for p in candidatas], archived_logs_dias)
+    texto, log, fallo = _ejecutar_rman(base, carpeta, f"purga_{estrategia.codigo}_{marca}", contenido, nls)
     analizado = analizar(texto)
     errores = [fallo] if fallo else [str(e) for e in analizado.errores]
     borradas = [p.handle for p in analizado.piezas]
-    vencidas = politica.vencidas(
-        [p for p in piezas if p.estrategia_id == estrategia.id and not p.obsoleta],
-        estrategia.retencion,
-        utc_ingenuo(ahora),
-    )
+    borradas_mayusculas = {ruta.upper() for ruta in borradas}
     marcadas = 0
-    if not errores:
+    eliminadas = [p.id for p in candidatas if p.nombre_archivo.upper() in borradas_mayusculas]
+    if eliminadas:
         with conexion_repositorio(ajustes) as conexion:
-            marcadas = repositorio_piezas.marcar_obsoletas(conexion, [p.pieza_id for p in vencidas])
+            marcadas = repositorio_piezas.marcar_obsoletas(conexion, eliminadas)
     return ResultadoPurga(
         bd=base.nombre,
         estrategia=estrategia.codigo,
         script=contenido,
         log=str(log),
+        candidatas=[p.nombre_archivo for p in candidatas],
         piezas_marcadas=marcadas,
         borradas=borradas,
         errores=errores,
+        avisos=avisos,
     )
