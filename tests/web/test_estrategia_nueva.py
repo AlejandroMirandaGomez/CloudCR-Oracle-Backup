@@ -121,6 +121,9 @@ def test_cada_casilla_declara_que_la_cubre(cliente_estrategias: TestClient) -> N
     tablespace = _casilla(html, "TABLESPACE", "XEPDB1:USERS")
     assert tablespace["data-cubierta-por"].split()[-1] == "instancia"
     assert _casilla(html, "BASE_DATOS", "")["data-cubierta-por"] == ""
+    assert _casilla(html, "CONTROLFILE", "")["data-cubierta-por"] == "instancia"
+    assert _casilla(html, "SPFILE", "")["data-cubierta-por"] == "instancia"
+    assert _casilla(html, "ARCHIVELOG", "")["data-cubierta-por"] == ""
 
 
 def test_el_arbol_del_formulario_no_incluye_la_semilla_ni_ofrece_los_temporales(

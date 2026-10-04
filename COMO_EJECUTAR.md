@@ -301,7 +301,7 @@ La terminal muestra una dirección con `?token=...`. Esa dirección es la que se
 El botón **Crear estrategia de respaldo** del explorador abre un asistente de cinco pasos sobre la instancia que se está viendo:
 
 1. **General**: código (se sugiere el siguiente libre), nombre, descripción, responsable y prioridad.
-2. **Qué respaldar**: el mismo árbol del explorador, con datos reales de la instancia y casillas para marcar la base completa, una PDB, tablespaces, datafiles, control files, SPFILE o archived logs. Al marcar un elemento quedan incluidos los que contiene, y cada objeto marcado lleva su propia prioridad.
+2. **Qué respaldar**: el mismo árbol del explorador, con datos reales de la instancia y casillas para marcar la base completa, una PDB, tablespaces, datafiles, control files, SPFILE o archived logs. Al marcar un elemento quedan incluidos los que contiene (la base completa incluye también control files y SPFILE; los archived logs se eligen aparte), y cada objeto marcado lleva su propia prioridad.
 3. **Cómo y cuándo**: un esquema predefinido (se sugiere uno según la prioridad y el modo de archivado) o tareas definidas a mano, con frecuencia, horas, días, intervalo, ventana de respaldo, política de omisión y zona horaria.
 4. **Destino y retención**: se escribe la ruta o se elige con el explorador de carpetas de este equipo (con opción de crear una carpeta nueva), y se define la retención.
 5. **Revisar y guardar**: se valida la estrategia contra la instancia real, se muestran los hallazgos por severidad y la vista previa en YAML. Un ERROR impide guardar. Si alguna tarea se ejecuta en modo consistente (apaga la base) hay que aceptar la caída del servicio.

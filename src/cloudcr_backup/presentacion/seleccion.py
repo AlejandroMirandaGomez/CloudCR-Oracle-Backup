@@ -42,6 +42,7 @@ def _opciones_de_instancia(perfil: PerfilBD, raiz: str) -> list[OpcionAlcance]:
             etiqueta="Control files",
             habilitada=bool(perfil.controlfiles),
             motivo=None if perfil.controlfiles else "No se encontraron control files.",
+            cubierta_por=(raiz,),
         ),
         OpcionAlcance(
             nodo_id=id_nodo(SUJETO_PARAMETROS),
@@ -50,6 +51,7 @@ def _opciones_de_instancia(perfil: PerfilBD, raiz: str) -> list[OpcionAlcance]:
             etiqueta="SPFILE",
             habilitada=tiene_spfile,
             motivo=None if tiene_spfile else "La instancia no usa un SPFILE.",
+            cubierta_por=(raiz,),
         ),
         OpcionAlcance(
             nodo_id=id_nodo(SUJETO_ARCHIVADO),

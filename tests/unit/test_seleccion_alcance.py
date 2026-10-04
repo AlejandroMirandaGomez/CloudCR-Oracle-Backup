@@ -79,6 +79,13 @@ def test_spfile_y_control_files_estan_habilitados_cuando_existen(perfil_xe: Perf
     assert _por_identificador(opciones, TipoObjeto.CONTROLFILE, "").habilitada
 
 
+def test_la_base_completa_cubre_control_files_y_spfile_pero_no_archived_logs(perfil_xe: PerfilBD) -> None:
+    opciones = opciones_de_alcance(perfil_xe.model_copy(update={"log_mode": LogMode.ARCHIVELOG}))
+    assert _por_identificador(opciones, TipoObjeto.CONTROLFILE, "").cubierta_por == ("instancia",)
+    assert _por_identificador(opciones, TipoObjeto.SPFILE, "").cubierta_por == ("instancia",)
+    assert _por_identificador(opciones, TipoObjeto.ARCHIVELOG, "").cubierta_por == ()
+
+
 def test_sin_spfile_ni_control_files_se_deshabilitan(perfil_xe: PerfilBD) -> None:
     perfil = perfil_xe.model_copy(update={"archivos_parametros": [], "controlfiles": []})
     opciones = opciones_de_alcance(perfil)
