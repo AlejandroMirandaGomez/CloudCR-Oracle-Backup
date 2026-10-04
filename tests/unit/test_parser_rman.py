@@ -62,3 +62,26 @@ def test_tolera_fin_de_linea_windows() -> None:
     log = analizar("connected to target database: XE\r\nRecovery Manager complete.\r\n")
     assert log.completo
     assert log.conectado
+
+
+def test_el_log_real_del_respaldo_consistente_es_limpio_y_lista_las_piezas() -> None:
+    log = analizar((LOGS / "exito_est002_consistente.log").read_text(encoding="utf-8"))
+    assert log.completo
+    assert log.errores == []
+    assert log.advertencias == []
+    assert not log.tiene_pila_error
+    assert len(log.piezas) == 6
+    assert all(p.tag == "EST002_T1_2610041008" for p in log.piezas[:5])
+    assert log.piezas[5].handle.endswith("C-3114375768-20261004-00")
+
+
+def test_el_log_real_de_reapertura_solo_trae_el_error_de_base_ya_abierta() -> None:
+    log = analizar((LOGS / "asegurar_apertura_ya_abierta.log").read_text(encoding="utf-8"))
+    assert {e.codigo for e in log.errores} <= {"RMAN-03002", "ORA-01531"}
+
+
+def test_el_log_real_de_verificacion_con_pieza_borrada_trae_rman_06160() -> None:
+    texto = (LOGS / "verificacion_pieza_expirada.log").read_text(encoding="utf-8", errors="replace")
+    log = analizar(texto)
+    assert "found to be 'EXPIRED'" in texto
+    assert "RMAN-06160" in {e.codigo for e in log.errores}

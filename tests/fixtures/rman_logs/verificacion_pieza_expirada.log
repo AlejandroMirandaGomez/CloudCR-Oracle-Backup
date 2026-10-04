@@ -1,0 +1,36 @@
+
+Recovery Manager: Release 21.0.0.0.0 - Production on Sun Oct 4 10:10:33 2026
+Version 21.3.0.0.0
+
+Copyright (c) 1982, 2021, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: XE (DBID=3114375768)
+
+RMAN> CROSSCHECK BACKUP TAG 'EST002_T1_2610041008';
+2> VALIDATE BACKUPSET 1, 2, 3, 4, 5;
+3> 
+using target database control file instead of recovery catalog
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=488 device type=DISK
+crosschecked backup piece: found to be 'AVAILABLE'
+backup piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_01541ADT_1_1_1.BKP RECID=1 STAMP=1245751741
+crosschecked backup piece: found to be 'AVAILABLE'
+backup piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_02541AE0_2_1_1.BKP RECID=2 STAMP=1245751744
+crosschecked backup piece: found to be 'AVAILABLE'
+backup piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_03541AE3_3_1_1.BKP RECID=3 STAMP=1245751748
+crosschecked backup piece: found to be 'AVAILABLE'
+backup piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_04541AE5_4_1_1.BKP RECID=4 STAMP=1245751750
+crosschecked backup piece: found to be 'EXPIRED'
+backup piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_05541AE7_5_1_1.BKP RECID=5 STAMP=1245751751
+Crosschecked 5 objects
+
+
+Starting validate at 2026-10-04 10:10:34
+using channel ORA_DISK_1
+RMAN-00571: ===========================================================
+RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============
+RMAN-00571: ===========================================================
+RMAN-03002: failure of validate command at 10/04/2026 10:10:34
+RMAN-06160: no backup pieces found for backup set key: 5
+
+Recovery Manager complete.

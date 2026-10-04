@@ -1,0 +1,116 @@
+
+Recovery Manager: Release 21.0.0.0.0 - Production on Sun Oct 4 10:08:45 2026
+Version 21.3.0.0.0
+
+Copyright (c) 1982, 2021, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: XE (DBID=3114375768)
+
+RMAN> SHUTDOWN IMMEDIATE;
+2> STARTUP MOUNT;
+3> RUN {
+4>   SET COMMAND ID TO 'CLOUDCR_1001';
+5>   ALLOCATE CHANNEL c1 DEVICE TYPE DISK FORMAT 'C:\backups\XE\%d_EST002_T1_%T_%U.bkp';
+6>   SET CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO 'C:\backups\XE\%F';
+7>   BACKUP INCREMENTAL LEVEL 0 DATABASE TAG 'EST002_T1_2610041008';
+8>   BACKUP CURRENT CONTROLFILE TAG 'EST002_T1_2610041008';
+9>   BACKUP SPFILE TAG 'EST002_T1_2610041008';
+10>   RELEASE CHANNEL c1;
+11> }
+12> ALTER DATABASE OPEN;
+13> ALTER PLUGGABLE DATABASE ALL OPEN;
+14> 
+using target database control file instead of recovery catalog
+database closed
+database dismounted
+Oracle instance shut down
+
+connected to target database (not started)
+Oracle instance started
+database mounted
+
+Total System Global Area    1610611672 bytes
+
+Fixed Size                     9858008 bytes
+Variable Size               1006632960 bytes
+Database Buffers             587202560 bytes
+Redo Buffers                   6918144 bytes
+
+executing command: SET COMMAND ID
+
+allocated channel: c1
+channel c1: SID=245 device type=DISK
+
+executing command: SET CONTROLFILE AUTOBACKUP FORMAT
+
+Starting backup at 2026-10-04 10:09:01
+channel c1: starting incremental level 0 datafile backup set
+channel c1: specifying datafile(s) in backup set
+input datafile file number=00001 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\SYSTEM01.DBF
+input datafile file number=00003 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\SYSAUX01.DBF
+input datafile file number=00004 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\UNDOTBS01.DBF
+input datafile file number=00007 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\USERS01.DBF
+channel c1: starting piece 1 at 2026-10-04 10:09:01
+channel c1: finished piece 1 at 2026-10-04 10:09:04
+piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_01541ADT_1_1_1.BKP tag=EST002_T1_2610041008 comment=NONE
+channel c1: backup set complete, elapsed time: 00:00:03
+channel c1: starting incremental level 0 datafile backup set
+channel c1: specifying datafile(s) in backup set
+input datafile file number=00010 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\XEPDB1\SYSAUX01.DBF
+input datafile file number=00009 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\XEPDB1\SYSTEM01.DBF
+input datafile file number=00012 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\XEPDB1\USERS01.DBF
+input datafile file number=00018 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\XEPDB1\ST5_01.DBF
+input datafile file number=00011 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\XEPDB1\UNDOTBS01.DBF
+input datafile file number=00017 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\XEPDB1\ST4_01.DBF
+input datafile file number=00019 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\XEPDB1\IDX_PK_01.DBF
+input datafile file number=00020 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\XEPDB1\IDX_FK_01.DBF
+input datafile file number=00013 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\XEPDB1\CLOUDCR_STRESS_TS.DBF
+input datafile file number=00014 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\XEPDB1\ST1_01.DBF
+input datafile file number=00015 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\XEPDB1\ST2_01.DBF
+input datafile file number=00016 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\XEPDB1\ST3_01.DBF
+channel c1: starting piece 1 at 2026-10-04 10:09:04
+channel c1: finished piece 1 at 2026-10-04 10:09:07
+piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_02541AE0_2_1_1.BKP tag=EST002_T1_2610041008 comment=NONE
+channel c1: backup set complete, elapsed time: 00:00:03
+channel c1: starting incremental level 0 datafile backup set
+channel c1: specifying datafile(s) in backup set
+input datafile file number=00006 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\PDBSEED\SYSAUX01.DBF
+input datafile file number=00005 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\PDBSEED\SYSTEM01.DBF
+input datafile file number=00008 name=C:\APP\JUANP\PRODUCT\21C\ORADATA\XE\PDBSEED\UNDOTBS01.DBF
+channel c1: starting piece 1 at 2026-10-04 10:09:08
+channel c1: finished piece 1 at 2026-10-04 10:09:09
+piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_03541AE3_3_1_1.BKP tag=EST002_T1_2610041008 comment=NONE
+channel c1: backup set complete, elapsed time: 00:00:01
+Finished backup at 2026-10-04 10:09:09
+
+Starting backup at 2026-10-04 10:09:09
+channel c1: starting full datafile backup set
+channel c1: specifying datafile(s) in backup set
+including current control file in backup set
+channel c1: starting piece 1 at 2026-10-04 10:09:10
+channel c1: finished piece 1 at 2026-10-04 10:09:11
+piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_04541AE5_4_1_1.BKP tag=EST002_T1_2610041008 comment=NONE
+channel c1: backup set complete, elapsed time: 00:00:01
+Finished backup at 2026-10-04 10:09:11
+
+Starting backup at 2026-10-04 10:09:11
+channel c1: starting full datafile backup set
+channel c1: specifying datafile(s) in backup set
+including current SPFILE in backup set
+channel c1: starting piece 1 at 2026-10-04 10:09:11
+channel c1: finished piece 1 at 2026-10-04 10:09:12
+piece handle=C:\BACKUPS\XE\XE_EST002_T1_20261004_05541AE7_5_1_1.BKP tag=EST002_T1_2610041008 comment=NONE
+channel c1: backup set complete, elapsed time: 00:00:01
+Finished backup at 2026-10-04 10:09:12
+
+Starting Control File and SPFILE Autobackup at 2026-10-04 10:09:12
+piece handle=C:\BACKUPS\XE\C-3114375768-20261004-00 comment=NONE
+Finished Control File and SPFILE Autobackup at 2026-10-04 10:09:13
+
+released channel: c1
+
+Statement processed
+
+Statement processed
+
+Recovery Manager complete.

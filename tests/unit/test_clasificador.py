@@ -30,9 +30,7 @@ def entrada(**cambios: object) -> EntradaClasificacion:
 
 def test_fixture_rman06817_es_fallida_aunque_diga_recovery_manager_complete() -> None:
     log = analizar((LOGS / "fallo_rman06817_noarchivelog.log").read_text(encoding="utf-8"))
-    resultado = clasificar(
-        entrada(codigo_salida=0, log=log, estado_job="FAILED", piezas=[], catalogo_consultado=True)
-    )
+    resultado = clasificar(entrada(codigo_salida=0, log=log, estado_job="FAILED", piezas=[], catalogo_consultado=True))
     assert resultado.estado is EstadoEjecucion.FALLIDA
     assert any("RMAN-06817" in m for m in resultado.motivos)
     assert any("no bastan" in m for m in resultado.motivos)
@@ -100,3 +98,10 @@ def test_error_al_lanzar_rman_es_fallida() -> None:
     )
     assert resultado.estado is EstadoEjecucion.FALLIDA
     assert resultado.motivos[0] == "No se pudo iniciar RMAN"
+
+
+def test_log_real_del_respaldo_consistente_es_exitoso() -> None:
+    log = analizar((LOGS / "exito_est002_consistente.log").read_text(encoding="utf-8"))
+    piezas = [PiezaVerificada(ruta=p.handle, existe=True, tamano_bytes=1) for p in log.piezas]
+    resultado = clasificar(entrada(log=log, piezas=piezas, estado_job="COMPLETED", reapertura_correcta=True))
+    assert resultado.estado is EstadoEjecucion.EXITOSA
