@@ -6,7 +6,7 @@ descripcion: Reproduce "EST004 (a)" y "EST004 (b)" de la clase como dos tareas d
 prioridad: ALTA
 estado: INACTIVA
 version: 1
-creada_por: luis
+creada_por: equipo
 alcance:
 - tipo: BASE_DATOS
   identificador: ''

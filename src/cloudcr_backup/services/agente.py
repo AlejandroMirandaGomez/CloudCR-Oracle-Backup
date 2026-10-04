@@ -109,7 +109,7 @@ def crear_ejecutor(ajustes: Ajustes, agente: str, simulado: bool) -> EjecutorRes
     if modulo is None:
         raise PipelineNoDisponible(
             "El agente no puede ejecutar respaldos reales: todavía no existe el pipeline de ejecución "
-            f"({MODULO_PIPELINE}, carril de Juan).",
+            f"({MODULO_PIPELINE}).",
             "Para probar el agente sin RMAN use --simulado: cada ejecución queda rotulada como SIMULACION.",
         )
     return EjecutorPipeline(modulo, ajustes)

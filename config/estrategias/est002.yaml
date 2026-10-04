@@ -6,7 +6,7 @@ descripcion: Respaldo consistente de referencia, pensado para demostrar el escen
 prioridad: ALTA
 estado: INACTIVA
 version: 1
-creada_por: luis
+creada_por: equipo
 alcance:
 - tipo: BASE_DATOS
   identificador: ''

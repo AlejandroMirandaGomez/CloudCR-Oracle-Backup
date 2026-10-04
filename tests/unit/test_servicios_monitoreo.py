@@ -169,6 +169,7 @@ def test_probar_correo_traduce_el_rechazo_de_credenciales(ajustes: Ajustes, monk
         "notificacion.canales": '["consola","email"]',
     }
     monkeypatch.setattr(alertas, "_parametros", lambda a: parametros)
+    monkeypatch.setenv("CLOUDCR_SMTP_CLAVE", "x")
 
     def rechazar(self: NotificadorEmail) -> None:
         raise smtplib.SMTPAuthenticationError(535, b"mal")
@@ -181,3 +182,28 @@ def test_probar_correo_traduce_el_rechazo_de_credenciales(ajustes: Ajustes, monk
     monkeypatch.setattr(NotificadorEmail, "enviar_prueba", lambda self: None)
     resultado = alertas.probar_correo(ajustes)
     assert resultado.destinatarios == ["b@ejemplo.com"]
+
+
+def test_probar_correo_sin_clave_explica_que_falta_la_contrasena(
+    ajustes: Ajustes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import smtplib
+
+    from cloudcr_backup.alerts.notificadores.email import NotificadorEmail
+    from cloudcr_backup.services import alertas
+
+    parametros = {
+        "notificacion.email.servidor": "smtp.ejemplo.com",
+        "notificacion.email.remitente": "a@ejemplo.com",
+        "notificacion.email.destinatarios": "b@ejemplo.com",
+    }
+    monkeypatch.setattr(alertas, "_parametros", lambda a: parametros)
+    monkeypatch.delenv("CLOUDCR_SMTP_CLAVE", raising=False)
+
+    def sin_autenticar(self: NotificadorEmail) -> None:
+        raise smtplib.SMTPSenderRefused(530, b"Authentication Required", "a@ejemplo.com")
+
+    monkeypatch.setattr(NotificadorEmail, "enviar_prueba", sin_autenticar)
+    with pytest.raises(OperacionNoPermitida, match="no está definida") as error:
+        alertas.probar_correo(ajustes)
+    assert ".env" in (error.value.sugerencia or "")

@@ -1,6 +1,6 @@
 # Guion de la presentación — CloudCR Oracle Backup
 
-Equipo: Josué · Luis · Juan · Alejandro. Curso EIF402, II ciclo 2026.
+Curso EIF402, II ciclo 2026.
 
 Estructura que marca el enunciado: **qué se configuró → cómo → cuándo → qué script se genera → cómo se ejecuta → qué evidencia queda.** Cada momento muestra la **web** y dice el comando equivalente de la **CLI**: son la misma funcionalidad.
 
@@ -56,12 +56,3 @@ Estructura que marca el enunciado: **qué se configuró → cómo → cuándo �
 | ¿La herramienta borra respaldos? | Solo con `purga_automatica` activa y confirmación; si no, solo informa |
 | ¿Qué diferencia hay entre diferencial y acumulativo? | Diferencial: cambios desde el último respaldo de cualquier nivel; acumulativo: desde el último nivel 0 |
 | ¿Por qué CLI y web? | Ambas llaman a la misma capa de servicios, así que muestran lo mismo |
-
-## Reparto sugerido
-
-| Quién | Momentos |
-|---|---|
-| Luis | 3, 4, 5, 6, 13 y el cierre (análisis, prioridades, validación) |
-| Juan | 7, 8, 9, 10, 15 y 16 (script, ejecución, recuperación) y conduce la terminal |
-| Alejandro | 11, 12, 14 y 17 (agente, alertas, historial, afinamiento) |
-| Josué | 1, 2 y la arquitectura (capas, repositorio, modelo de datos) |

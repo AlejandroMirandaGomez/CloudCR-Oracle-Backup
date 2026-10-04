@@ -366,7 +366,7 @@ Usuario      cli/cmd_estrategia   services/estrategias   repository/estrategias 
   │◀────────────────│                     │                        │                │
 ```
 
-### 5.2 Generar, aprobar y ejecutar un script (resumen del pipeline de 13 pasos de Juan)
+### 5.2 Generar, aprobar y ejecutar un script (resumen del pipeline de 13 pasos)
 
 ```
 cmd_script generar ──▶ rman/constructor ──▶ services/scripts.guardar_borrador
@@ -461,7 +461,7 @@ sequenceDiagram
     participant B as Buzón (pipeline)
     participant R as Repositorio BKPCAT
     participant P as Planificador
-    participant E as Ejecutor (pipeline de Juan)
+    participant E as Ejecutor (pipeline)
     participant M as Motor de alertas
     participant N as Notificadores
 
@@ -574,4 +574,12 @@ flowchart LR
     repository --> domain
 ```
 
-Medido con un análisis de imports el 03/10/2026: sin ciclos; `scheduling` y `alerts` no importan `web`, `cli` ni `presentacion`; los archivos nuevos de `cli` y `web` no importan `repository`, `oracle` ni `execution`.
+Medido con un análisis de imports (incluidos los que se hacen dentro de funciones) el 04/10/2026: `domain`, `oracle`, `scheduling`, `rman`, `agent` y `alerts` no tienen dependencias hacia arriba, y `scheduling` y `alerts` no importan `web`, `cli` ni `presentacion`. **Sí hay ciclos entre paquetes**, todos alrededor de `execution`:
+
+| Ciclo | Por qué existe |
+|---|---|
+| `execution` ↔ `verification` | El pipeline llama al verificador, y el verificador reutiliza el lanzador de RMAN, el parser y los tipos de destino de `execution` |
+| `execution` ↔ `services` | El pipeline importa `services.alertas` y `services.cliente_oracle` dentro de funciones (importación diferida), y `services` orquesta el pipeline |
+| `recovery` → `execution` → `services` → `recovery` | `recovery.diagnostico` reutiliza el tipo `Consulta` de `execution.correlator` |
+
+Ninguno es un ciclo entre módulos (el intérprete no falla al importar): son ciclos entre paquetes, resueltos con importaciones diferidas. Resolverlos exige mover los tipos compartidos (`Consulta`, `PiezaCatalogo`, `BaseDestino` y los helpers del lanzador) a un módulo común; queda registrado como deuda técnica.

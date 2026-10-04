@@ -161,7 +161,14 @@ def probar_correo(ajustes: Ajustes) -> ResultadoPruebaCorreo:
         raise OperacionNoPermitida(str(error), "Complételo en Sistema → Parámetros globales.") from error
     try:
         NotificadorEmail(configuracion).enviar_prueba()
-    except smtplib.SMTPAuthenticationError as error:
+    except (smtplib.SMTPAuthenticationError, smtplib.SMTPSenderRefused) as error:
+        if not os.environ.get(VARIABLE_CLAVE_SMTP):
+            raise OperacionNoPermitida(
+                f"El servidor {configuracion.servidor} exige autenticación y {VARIABLE_CLAVE_SMTP} no está definida "
+                "en este proceso.",
+                f"Defina {VARIABLE_CLAVE_SMTP} en el archivo .env y reinicie el programa (la web y el agente leen el "
+                ".env solo al arrancar).",
+            ) from error
         raise OperacionNoPermitida(
             f"El servidor {configuracion.servidor} rechazó las credenciales.",
             f"Revise {VARIABLE_CLAVE_SMTP} (con Gmail debe ser una contraseña de aplicación) y el usuario.",

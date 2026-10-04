@@ -4,7 +4,6 @@ from pydantic import BaseModel
 class EvidenciaEsperada(BaseModel):
     id: str
     titulo: str
-    responsable: str
     archivos: list[str] = []
 
     @property

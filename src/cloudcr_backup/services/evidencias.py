@@ -10,17 +10,17 @@ PREFIJOS_IGNORADOS = ("procedimiento",)
 IDENTIFICADOR = re.compile(r"^E\d+$")
 LIMITE_ARCHIVOS_POR_EVIDENCIA = 40
 
-ESPERADAS: tuple[tuple[str, str, str], ...] = (
-    ("E1", "Explorador con la base en NOARCHIVELOG y la observación ARCH_001", "Josué"),
-    ("E2", "Script generado, hash y aprobación; rechazo por script alterado", "Juan"),
-    ("E3", "Ejecución exitosa con piezas en disco y evidencia.json", "Juan"),
-    ("E4", "Ejecución fallida real, clasificada correctamente", "Juan"),
-    ("E5", "Recomendación ARCH_002 aplicada: script v1 frente a v2", "Luis"),
-    ("E6", "Ejecuciones automáticas del agente", "Alejandro"),
-    ("E7", "Ocurrencia NO_EJECUTADA, alerta y correo al DBA", "Alejandro"),
-    ("E8", "Historial con la columna Pruebas exportado a HTML", "Alejandro"),
-    ("E9", "Informe de retención y puntos de recuperación", "Juan"),
-    ("E10", "Afinamiento de redo y archivado: situación final", "Alejandro"),
+ESPERADAS: tuple[tuple[str, str], ...] = (
+    ("E1", "Explorador con la base en NOARCHIVELOG y la observación ARCH_001"),
+    ("E2", "Script generado, hash y aprobación; rechazo por script alterado"),
+    ("E3", "Ejecución exitosa con piezas en disco y evidencia.json"),
+    ("E4", "Ejecución fallida real, clasificada correctamente"),
+    ("E5", "Recomendación ARCH_002 aplicada: script v1 frente a v2"),
+    ("E6", "Ejecuciones automáticas del agente"),
+    ("E7", "Ocurrencia NO_EJECUTADA, alerta y correo al DBA"),
+    ("E8", "Historial con la columna Pruebas exportado a HTML"),
+    ("E9", "Informe de retención y puntos de recuperación"),
+    ("E10", "Afinamiento de redo y archivado: situación final"),
 )
 
 
@@ -48,7 +48,7 @@ def _archivos_de(entrada: Path) -> list[Path]:
 
 def catalogo(carpeta: Path | None = None) -> CatalogoEvidencias:
     base = carpeta or carpeta_evidencias()
-    por_id: dict[str, list[str]] = {identificador: [] for identificador, _, _ in ESPERADAS}
+    por_id: dict[str, list[str]] = {identificador: [] for identificador, _ in ESPERADAS}
     if base is not None:
         for entrada in sorted(base.iterdir()):
             for identificador in _identificadores(entrada.name):
@@ -57,7 +57,7 @@ def catalogo(carpeta: Path | None = None) -> CatalogoEvidencias:
                         p.relative_to(base).as_posix() for p in _archivos_de(entrada)
                     )
     evidencias = [
-        EvidenciaEsperada(id=i, titulo=t, responsable=r, archivos=sorted(set(por_id[i]))) for i, t, r in ESPERADAS
+        EvidenciaEsperada(id=i, titulo=t, archivos=sorted(set(por_id[i]))) for i, t in ESPERADAS
     ]
     return CatalogoEvidencias(carpeta=str(base) if base is not None else None, evidencias=evidencias)
 

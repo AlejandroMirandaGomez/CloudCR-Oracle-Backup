@@ -6,7 +6,7 @@ descripcion: Reproduce la fila "EST003 · 18 y 02 · T4 · Parcial" de la clase,
 prioridad: BAJA
 estado: INACTIVA
 version: 1
-creada_por: luis
+creada_por: equipo
 alcance:
 - tipo: TABLESPACE
   identificador: XEPDB1:RRHH

@@ -21,12 +21,11 @@ def evidencias(
     tabla = Table(title="Evidencias del proyecto", show_lines=True)
     tabla.add_column("Id", no_wrap=True)
     tabla.add_column("Evidencia")
-    tabla.add_column("Responsable", no_wrap=True)
     tabla.add_column("Estado", no_wrap=True)
     tabla.add_column("Archivos", justify="right")
     for evidencia in catalogo.evidencias:
         estado = "[green]● Capturada[/]" if evidencia.disponible else "[yellow]○ Pendiente[/]"
-        tabla.add_row(evidencia.id, evidencia.titulo, evidencia.responsable, estado, str(len(evidencia.archivos)))
+        tabla.add_row(evidencia.id, evidencia.titulo, estado, str(len(evidencia.archivos)))
     salida = consola()
     salida.print(tabla)
     salida.print(f"{catalogo.disponibles} de {len(catalogo.evidencias)} capturadas en {catalogo.carpeta or '—'}.")

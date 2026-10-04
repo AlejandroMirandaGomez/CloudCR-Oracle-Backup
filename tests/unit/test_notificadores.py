@@ -161,13 +161,15 @@ def test_canales() -> None:
     assert canales({"notificacion.canales": "consola,email"}) == ["consola", "email"]
 
 
-def test_construir_notificadores_reporta_correo_incompleto_sin_fallar() -> None:
+def test_construir_notificadores_reporta_correo_incompleto_sin_fallar(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLOUDCR_SMTP_CLAVE", "x")
     notificadores, problemas = construir_notificadores({"notificacion.canales": '["consola", "email", "sms"]'})
     assert [n.nombre for n in notificadores] == ["consola"]
     assert len(problemas) == 2
 
 
-def test_construir_notificadores_con_correo_completo() -> None:
+def test_construir_notificadores_con_correo_completo(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLOUDCR_SMTP_CLAVE", "x")
     parametros = {**PARAMETROS_CORREO, "notificacion.canales": '["email"]'}
     notificadores, problemas = construir_notificadores(parametros)
     assert [n.nombre for n in notificadores] == ["email"]
@@ -207,3 +209,13 @@ def test_enviar_prueba_manda_un_correo_de_prueba_a_los_destinatarios() -> None:
     assert len(_SmtpFalso.enviados) == 1
     assert _SmtpFalso.enviados[0]["Subject"] == "[CloudCR] Correo de prueba"
     assert "dba@example.com" in _SmtpFalso.enviados[0]["To"]
+
+
+def test_canal_de_correo_sin_clave_avisa_del_problema(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CLOUDCR_SMTP_CLAVE", raising=False)
+    parametros = {**PARAMETROS_CORREO, "notificacion.canales": '["email"]'}
+    notificadores, problemas = construir_notificadores(parametros)
+    assert len(notificadores) == 1
+    assert any("CLOUDCR_SMTP_CLAVE" in p for p in problemas)
+    monkeypatch.setenv("CLOUDCR_SMTP_CLAVE", "x")
+    assert construir_notificadores(parametros)[1] == []

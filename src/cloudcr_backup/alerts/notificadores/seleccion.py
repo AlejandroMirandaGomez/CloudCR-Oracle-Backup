@@ -1,9 +1,11 @@
 import json
+import os
 from collections.abc import Callable
 
 from cloudcr_backup.alerts.motor import Notificador
 from cloudcr_backup.alerts.notificadores.consola import NotificadorConsola
 from cloudcr_backup.alerts.notificadores.email import (
+    VARIABLE_CLAVE_SMTP,
     ConfiguracionCorreoIncompleta,
     NotificadorEmail,
     configuracion_desde_parametros,
@@ -35,6 +37,12 @@ def construir_notificadores(
         if canal == "consola":
             notificadores.append(NotificadorConsola(escribir))
         elif canal in ("email", "correo"):
+            if not os.environ.get(VARIABLE_CLAVE_SMTP):
+                problemas.append(
+                    f"El canal de correo está activo pero {VARIABLE_CLAVE_SMTP} no está definida en este proceso: "
+                    "los servidores que exigen autenticación (como Gmail) rechazarán el envío. "
+                    "Defínala en .env y reinicie."
+                )
             try:
                 notificadores.append(NotificadorEmail(configuracion_desde_parametros(parametros)))
             except ConfiguracionCorreoIncompleta as error:

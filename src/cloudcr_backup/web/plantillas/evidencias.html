@@ -12,14 +12,13 @@
     <div class="tabla-desplazable">
       <table class="tabla compacta">
         <thead>
-          <tr><th scope="col">Id</th><th scope="col">Evidencia</th><th scope="col">Responsable</th><th scope="col">Estado</th><th scope="col">Archivos</th></tr>
+          <tr><th scope="col">Id</th><th scope="col">Evidencia</th><th scope="col">Estado</th><th scope="col">Archivos</th></tr>
         </thead>
         <tbody>
           {% for e in catalogo.evidencias %}
           <tr>
             <td><strong>{{ e.id }}</strong></td>
             <td class="envolver">{{ e.titulo }}</td>
-            <td>{{ e.responsable }}</td>
             <td>{% if e.disponible %}<span class="tono-exito">● Capturada</span>{% else %}<span class="tono-advertencia">○ Pendiente</span>{% endif %}</td>
             <td class="envolver">
               {% if e.archivos %}

@@ -469,7 +469,7 @@ scripts quedan en `recuperacion\<BD>\`.
 |---|---|
 | `GET /api/scripts/{bd}/{estrategia}` y `/{tarea}` | Versiones y detalle de los scripts |
 | `POST /api/scripts/{bd}/{estrategia}/generar?tarea=T1` | Genera borradores |
-| `POST /api/scripts/{bd}/{estrategia}/{tarea}/aprobar` | `{"acepto_caida": true, "aprobado_por": "juan"}` |
+| `POST /api/scripts/{bd}/{estrategia}/{tarea}/aprobar` | `{"acepto_caida": true, "aprobado_por": "admin"}` |
 | `POST /api/scripts/{bd}/{estrategia}/{tarea}/rechazar` | `{"motivo": "…"}` |
 | `GET /api/ejecuciones/simular/{bd}/{estrategia}/{tarea}` | Preflight sin ejecutar |
 | `POST /api/ejecuciones` | `{"bd": "XE", "estrategia": "EST001", "tarea": "T1"}` → 202 y corre en segundo plano |
