@@ -2,6 +2,8 @@
 
 Guía paso a paso para cualquier equipo Windows con PowerShell (5.1 o 7) y Oracle Database 12.2 o superior.
 
+Todo lo que hace la herramienta se puede usar **desde la terminal (`cloudcr`) y desde la web (`cloudcr web`)**: ambas llaman a la misma lógica. Para recorrer el circuito completo de un respaldo, ver la sección «El circuito de un respaldo».
+
 En los comandos, lo que aparece entre `< >` se reemplaza por el valor de tu equipo:
 
 | Marcador | Qué es | Cómo averiguarlo |
@@ -182,6 +184,39 @@ cloudcr explorar --help
 cloudcr --version
 ```
 
+## El circuito de un respaldo
+
+Es la secuencia que pide el enunciado: **estrategia → programación → script RMAN → ejecución → resultado → evidencia**. Cada paso existe en la terminal y en la web. Reemplazá `XE` por el SID de tu instancia.
+
+| # | Paso | Terminal | Web |
+|---|---|---|---|
+| 1 | Comprobar el entorno | `cloudcr doctor` | Sistema → Diagnóstico del entorno |
+| 2 | Instalar el repositorio | `cloudcr repo instalar` · `cloudcr repo estado` | Sistema → Repositorio BKPCAT |
+| 3 | Registrar la base y guardar su perfil | `cloudcr db agregar XE` · `cloudcr db inspeccionar XE` | Sistema → Bases de datos |
+| 4 | Definir la estrategia (qué, cómo, cuándo, destino, retención) | `cloudcr estrategia crear` (asistente) o `cloudcr estrategia importar config\estrategias\est001.yaml --bd XE` | Instancias → «Crear estrategia de respaldo», o Estrategias → Importar |
+| 5 | Validar | `cloudcr estrategia validar --bd XE --codigo EST001` | Detalle de la estrategia → Validar |
+| 6 | Generar el script RMAN | `cloudcr script generar EST001 --bd XE` · `cloudcr script ver EST001 T1 --bd XE` | Pantalla «Script RMAN» de la tarea |
+| 7 | Aprobar el script (hash SHA-256) | `cloudcr script aprobar EST001 T1 --bd XE` (un respaldo `CONSISTENTE` exige `--acepto-caida`) | «Aprobar» en la misma pantalla |
+| 8 | Activar la estrategia | `cloudcr estrategia activar EST001 --bd XE` | Detalle de la estrategia → Activar |
+| 9 | Probar sin ejecutar | `cloudcr ejecutar EST001 T1 --bd XE --simular` | «Simular la ejecución» |
+| 10 | Ejecutar ahora | `cloudcr ejecutar EST001 T1 --bd XE --ahora` | «Ejecutar ahora» |
+| 11 | Dejar que el agente ejecute por horario | `cloudcr agente ejecutar` | Sistema → Agente → Iniciar |
+| 12 | Ver el resultado y la evidencia | `cloudcr historial --bd XE` · `cloudcr historial mostrar <ID>` | Historial → detalle de la ejecución |
+| 13 | Recomendaciones del validador | `cloudcr estrategia aplicar-recomendacion EST001 ARCH_002 --bd XE` | Detalle de la estrategia → aplicar recomendación |
+| 14 | Retención (informa; borrar es decisión del administrador) | `cloudcr retencion informe XE` | Retención |
+| 15 | Recuperación (genera el procedimiento, nunca lo ejecuta) | `cloudcr recuperacion puntos XE` · `cloudcr recuperacion plan XE tablespace` | Recuperación |
+
+Otras pantallas y comandos de consulta:
+
+| Qué | Terminal | Web |
+|---|---|---|
+| Criterios de prioridad, esquemas y vocabulario del curso frente a RMAN | (mostrados en `cloudcr estrategia mostrar`) | Criterios |
+| Evidencias E1 a E10 y cuáles están capturadas | `cloudcr evidencias` | Evidencias |
+| Observaciones de redo logs y archivado de cada base | `cloudcr estado` | Estado → «Redo logs y archivado» |
+| Correo de prueba para las alertas | `cloudcr alertas probar-correo` | Sistema → Notificaciones por correo |
+
+El paso a ARCHIVELOG **no lo ejecuta la herramienta**: Sistema → Modo de archivado muestra el procedimiento (`sql\archivelog\activar_archivelog.sql`) para que lo corra el administrador, con un respaldo antes y otro después.
+
 ## Agente, historial, alertas y estado
 
 Guía completa en `docs/manual_usuario.md`. Resumen:
@@ -236,15 +271,17 @@ cloudcr alertas evaluar
 cloudcr tarea proximas EST001 T1 --bd XE -n 10
 ```
 
-**Agente** (sin el pipeline de RMAN instalado, solo corre con `--simulado`, y cada ejecución queda rotulada SIMULACION)
+**Agente** (reclama las ejecuciones vencidas y las despacha al pipeline real de RMAN; `--simulado` ensaya sin ejecutar RMAN y rotula cada ejecución como SIMULACION)
 
 ```powershell
-cloudcr agente ejecutar --simulado
+cloudcr agente ejecutar
 ```
 
 ```powershell
-cloudcr agente ejecutar --simulado --una-vez
+cloudcr agente ejecutar --una-vez
 ```
+
+El servidor web (`cloudcr web`) arranca su propio agente. No corras además `cloudcr agente ejecutar` salvo que sepas lo que haces: no se duplican ejecuciones, pero habría dos agentes vivos. Se desactiva con `.\iniciar.cmd -SinAgente` o en Sistema → Agente.
 
 ```powershell
 cloudcr agente estado
@@ -324,7 +361,7 @@ Por seguridad, la web solo acepta un `ORACLE_HOME` detectado en el equipo. Para 
 
 ### Estado, estrategias, historial y alertas
 
-La barra superior de la interfaz tiene **Estado · Estrategias · Historial · Alertas · Instancias**:
+La barra superior de la interfaz tiene **Estado · Estrategias · Historial · Alertas · Retención · Recuperación · Criterios · Evidencias · Instancias · Sistema**:
 
 | Pantalla | Qué muestra | API JSON equivalente |
 |---|---|---|
@@ -332,6 +369,9 @@ La barra superior de la interfaz tiene **Estado · Estrategias · Historial · A
 | `/estrategias` y `/estrategias/<BD>/<CÓDIGO>` | Estrategias registradas; detalle con próximas ejecuciones por tarea, retención y vocabulario de clase; botones Activar/Desactivar | `GET /api/estrategias`, `GET /api/estrategias/<BD>/<CÓDIGO>`, `GET …/tareas/<TAREA>/proximas?n=`, `POST …/activar`, `POST …/desactivar` |
 | `/historial` y `/historial/<ID>` | Historial con filtros, paginación y exportación (CSV, MD, HTML); detalle de una ejecución | `GET /api/historial`, `GET /api/historial/<ID>`, `GET /historial/exportar/<formato>` |
 | `/alertas` | Alertas con filtros por estado y severidad; Reconocer, Resolver, Evaluar ahora | `GET /api/alertas`, `POST /api/alertas/<ID>/reconocer`, `POST /api/alertas/<ID>/resolver`, `POST /api/alertas/evaluar` |
+| `/criterios` | Prioridades (RPO, RTO, recencia), esquemas predefinidos y vocabulario del curso frente a RMAN | — |
+| `/evidencias` | Las 10 evidencias del proyecto, su estado y descarga de cada archivo | `GET /api/evidencias` |
+| `/sistema` | Diagnóstico, repositorio, bases, parámetros, agente, modo de archivado y correo de prueba | — |
 
 Si el repositorio no está configurado o no responde, las pantallas muestran un panel con la sugerencia y la API responde `503` con el mismo mensaje.
 
@@ -375,17 +415,22 @@ sqlplus / as sysdba @sql\setup\05_usuario_monitor.sql
 
 Copiar `.env.example` a `.env` (o exportar las variables en la sesión de PowerShell) y completar al menos `CLOUDCR_REPO_CLAVE` con la clave del usuario del repositorio. Esta clave **nunca** va en `cloudcr.yaml` ni en el código.
 
+> **Atención:** en este repositorio el archivo `.env` está versionado en git (se compartió como configuración de desarrollo del equipo), así que `.gitignore` no lo protege. **No escribas en él contraseñas personales**, como la de la cuenta de correo (`CLOUDCR_SMTP_CLAVE`), sin antes dejar de rastrearlo (`git rm --cached .env`) o sin exportarlas solo en la sesión de PowerShell.
+
 ## Pruebas
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-Incluyendo la prueba contra la instancia Oracle local del equipo:
+Corre las pruebas que no necesitan Oracle (la gran mayoría). Además:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest -m "oracle or not oracle"
+.\.venv\Scripts\python.exe -m ruff check src tests
+.\.venv\Scripts\python.exe -m mypy src
 ```
+
+> **Cuidado con las pruebas marcadas `oracle`** (`pytest -m oracle`). Instalan el esquema en el repositorio y lo **desinstalan al terminar**: si se corren contra el repositorio real, se pierden estrategias, ejecuciones y evidencias. Solo se deben correr contra un repositorio de pruebas.
 
 ## Problemas comunes
 

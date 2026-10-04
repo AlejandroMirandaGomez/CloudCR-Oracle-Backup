@@ -2,7 +2,7 @@
 
 Herramienta para definir, programar, ejecutar y vigilar estrategias de respaldo de bases de datos Oracle con RMAN. Este manual explica cómo instalarla en una máquina limpia, cómo configurarla y cómo usarla desde la **interfaz web** (la interfaz principal) y desde la **terminal** (`cloudcr`).
 
-> Convenciones: los comandos son para **PowerShell** en Windows. `cloudcr` equivale a `.\.venv\Scripts\cloudcr.exe` si no activó el entorno virtual. Los marcadores `[PENDIENTE: …]` indican capturas o pasos que todavía no se pudieron producir con una ejecución real; no se reemplazan con imágenes inventadas.
+> Convenciones: los comandos son para **PowerShell** en Windows. `cloudcr` equivale a `.\.venv\Scripts\cloudcr.exe` si no activó el entorno virtual.
 
 ---
 
@@ -41,7 +41,7 @@ $env:PYTHONUTF8 = "1"
 .\.venv\Scripts\cloudcr.exe --version
 ```
 
-Luego instale el repositorio de la herramienta (PDB `BKPCAT`, usuario `BKP_ADMIN`, 12 tablas y parámetros iniciales) siguiendo `docs/guia_prueba_completa.md` §3, o con `cloudcr repo instalar` si la PDB y el usuario ya existen.
+Luego instale el repositorio de la herramienta (PDB `BKPCAT`, usuario `BKP_ADMIN`, 12 tablas y parámetros iniciales) siguiendo la sección «Instalar el repositorio» de `COMO_EJECUTAR.md`, o con `cloudcr repo instalar` si la PDB y el usuario ya existen.
 
 Verifique todo con:
 
@@ -119,8 +119,6 @@ Se abre el navegador en `http://127.0.0.1:8765/`. La barra superior tiene **Esta
 1. **Instancias** → elija la instancia → se abre el explorador con las observaciones de la base.
 2. **Crear estrategia de respaldo** → asistente de cinco pasos (general, qué, cómo y cuándo, destino y retención, revisar y guardar). Un ERROR del validador impide guardar; una tarea en modo consistente exige aceptar la caída del servicio.
 
-`[PENDIENTE: captura real del explorador y del asistente sobre la XE]`
-
 ### 4.2 Estrategias
 
 `/estrategias` lista las estrategias del repositorio con su semáforo, si están activas, cuántas tareas tienen script aprobado y la próxima ejecución. El detalle de una estrategia muestra:
@@ -136,8 +134,6 @@ Se abre el navegador en `http://127.0.0.1:8765/`. La barra superior tiene **Esta
 - **Agregar tarea**: abre el mismo editor con una tarea de ejemplo ya agregada (código siguiente libre, completo, diario a las 02:00, destino por defecto) para que la ajuste y guarde.
 - **Eliminar tarea** (en cada tarea, pide confirmación): crea una versión nueva sin ella. No se permite eliminar la única tarea ni una tarea que ya tiene ejecuciones registradas, porque esas ejecuciones son la evidencia de lo que se respaldó.
 - Al editar, el script de una tarea queda **obsoleto** solo si cambió lo que se respalda (el alcance) o cómo se respalda (la tarea o su destino): hay que generar y aprobar uno nuevo. Cambiar solo los horarios no afecta el script aprobado.
-
-`[PENDIENTE: captura real de /estrategias y del detalle de EST001]`
 
 ### 4.2.1 Script RMAN de una tarea
 
@@ -162,13 +158,9 @@ Desde «Script RMAN» de cada tarea (`/estrategias/{bd}/{codigo}/scripts/{tarea}
 - Alertas vigentes.
 - Agente: equipo, último tick, si está vivo y si corre en modo **SIMULACIÓN**.
 
-`[PENDIENTE: captura real de /estado con el agente corriendo]`
-
 ### 4.4 Historial
 
 `/historial` tiene filtros por base, estrategia, resultado y rango de fechas (se aplican sin recargar y quedan en la dirección del navegador), paginación y exportación a **CSV, Markdown y HTML** con los mismos filtros. El número de la columna *Id* abre el detalle de la ejecución: script y versión, quién lo aprobó, log de RMAN (primeras y últimas líneas), piezas, verificaciones y la evidencia del pipeline cuando existe. Desde el detalle se puede **verificar de nuevo** el respaldo y **descargar la evidencia** de esa ejecución en HTML o Markdown (equivale a `cloudcr reporte evidencia`).
-
-`[PENDIENTE: captura real de /historial con ejecuciones del agente]`
 
 ### 4.5 Alertas
 
@@ -177,8 +169,6 @@ Desde «Script RMAN» de cada tarea (`/estrategias/{bd}/{codigo}/scripts/{tarea}
 - **Reconocer**: «ya lo vi»; la alerta sigue vigente hasta que la condición desaparezca.
 - **Resolver**: la cierra a mano; si la condición sigue, se vuelve a abrir en la próxima evaluación.
 - **Evaluar ahora**: corre todas las reglas en el momento.
-
-`[PENDIENTE: captura real de /alertas]`
 
 ### 4.6 Retención y recuperación
 
@@ -323,8 +313,6 @@ cloudcr param set notificacion.canales '["consola","email"]'
 Si falta algún parámetro o el servidor rechaza las credenciales, ambos explican qué revisar.
 
 El asunto incluye el alcance de la tarea, por ejemplo: `[CloudCR][ALERTA] EJECUCION_FALLIDA XE EST001/T1 · VENTAS, FINANZAS, CONTROLFILE`.
-
-`[PENDIENTE: E7 — correo real recibido; requiere la cuenta SMTP del usuario]`
 
 ---
 
