@@ -1,0 +1,9 @@
+CROSSCHECK BACKUP;
+{% if purgar %}
+DELETE NOPROMPT OBSOLETE {{ politica }};
+{% if archived_logs_dias %}
+DELETE NOPROMPT ARCHIVELOG ALL BACKED UP 1 TIMES TO DISK COMPLETED BEFORE 'SYSDATE-{{ archived_logs_dias }}';
+{% endif %}
+{% else %}
+REPORT OBSOLETE {{ politica }};
+{% endif %}
