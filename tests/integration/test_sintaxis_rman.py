@@ -44,7 +44,8 @@ def _scripts() -> dict[str, str]:
                         generado = construir(SolicitudScript(estrategia=estrategia, tarea=variante, log_mode=log_mode))
                     except ValueError:
                         continue
-                    scripts[f"{estrategia.codigo}_{tarea.codigo}_{log_mode.value}_{compresion.value}"] = generado.contenido
+                    clave = f"{estrategia.codigo}_{tarea.codigo}_{log_mode.value}_{compresion.value}"
+                    scripts[clave] = generado.contenido
     scripts["retencion_informe"] = politica.script(Retencion(ventana_dias=30))
     scripts["retencion_purga"] = politica.script(
         Retencion(ventana_dias=30, archived_logs_dias=7, purga_automatica=True), purgar=True
