@@ -244,12 +244,49 @@ def test_guarda_y_activa_en_el_repositorio(
     assert conexion.cerrada
 
 
-def test_si_la_base_no_esta_registrada_se_informa(
+def test_si_la_base_no_esta_registrada_se_registra_sola_y_se_guarda_la_estrategia(
     perfil_archivelog: PerfilBD, ajustes: Ajustes, destino: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     conexion, llamadas = _repositorio_falso(monkeypatch, None)
+
+    def registrar(_: Any, nombre: str, oracle_home: str, ambiente: Any) -> Any:
+        llamadas.append(f"registrar:{nombre}:{oracle_home}:{ambiente.value}")
+        return SimpleNamespace(id=9, nombre=nombre)
+
+    monkeypatch.setattr(almacen_estrategias.repositorio_bases_datos, "registrar", registrar)
     resultado = creacion_estrategia.guardar(
         solicitud(destino, guardar_en_repositorio=True), perfil_archivelog, ajustes, "XE"
+    )
+    assert resultado.repositorio.estado == "guardada"
+    assert "se registró automáticamente" in resultado.repositorio.mensaje
+    assert llamadas == [f"registrar:XE:{perfil_archivelog.oracle_home}:DESARROLLO", "crear:EST010:9:INACTIVA"]
+    assert conexion.cerrada
+
+
+def test_si_la_base_esta_registrada_no_se_vuelve_a_registrar(
+    perfil_archivelog: PerfilBD, ajustes: Ajustes, destino: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, llamadas = _repositorio_falso(monkeypatch, SimpleNamespace(id=7, nombre="XE"))
+    monkeypatch.setattr(
+        almacen_estrategias.repositorio_bases_datos,
+        "registrar",
+        lambda *_: pytest.fail("no debe registrar una base que ya existe"),
+    )
+    resultado = creacion_estrategia.guardar(
+        solicitud(destino, guardar_en_repositorio=True), perfil_archivelog, ajustes, "XE"
+    )
+    assert resultado.repositorio.estado == "guardada"
+    assert "automáticamente" not in resultado.repositorio.mensaje
+    assert llamadas == ["crear:EST010:7:INACTIVA"]
+
+
+def test_sin_oracle_home_no_se_puede_registrar_la_base(
+    perfil_archivelog: PerfilBD, ajustes: Ajustes, destino: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    conexion, llamadas = _repositorio_falso(monkeypatch, None)
+    perfil_sin_home = perfil_archivelog.model_copy(update={"oracle_home": None})
+    resultado = creacion_estrategia.guardar(
+        solicitud(destino, guardar_en_repositorio=True), perfil_sin_home, ajustes, "XE"
     )
     assert resultado.repositorio.estado == "no_registrada"
     assert llamadas == []

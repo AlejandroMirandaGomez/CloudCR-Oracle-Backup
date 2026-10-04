@@ -91,7 +91,7 @@ def guardar(solicitud: SolicitudEstrategia, perfil: PerfilBD, ajustes: Ajustes, 
     except almacen_estrategias.EstrategiaYaGuardada as error:
         raise ErrorCreacion(str(error), "duplicada", resultado.hallazgos) from error
     repositorio = (
-        almacen_estrategias.guardar_en_repositorio(ajustes, perfil.nombre, estrategia)
+        almacen_estrategias.guardar_en_repositorio(ajustes, perfil, estrategia)
         if solicitud.guardar_en_repositorio
         else REPOSITORIO_OMITIDO
     )

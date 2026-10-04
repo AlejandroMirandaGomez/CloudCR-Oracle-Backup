@@ -2,9 +2,12 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+import oracledb
+
 from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.enums import EstadoEstrategia
 from cloudcr_backup.domain.estrategia import Estrategia
+from cloudcr_backup.domain.perfil_bd import PerfilBD
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository import conexion as repositorio_conexion
 from cloudcr_backup.strategy import servicio
@@ -79,7 +82,19 @@ def guardar_archivo(ajustes: Ajustes, sid: str, estrategia: Estrategia) -> Path:
     return destino
 
 
-def guardar_en_repositorio(ajustes: Ajustes, nombre_bd: str, estrategia: Estrategia) -> ResultadoRepositorio:
+def _obtener_o_registrar(
+    conexion: oracledb.Connection, perfil: PerfilBD
+) -> tuple[repositorio_bases_datos.BaseDatosRegistrada | None, bool]:
+    bd = repositorio_bases_datos.obtener(conexion, perfil.nombre)
+    if bd is not None or perfil.oracle_home is None:
+        return bd, False
+    registrada = repositorio_bases_datos.registrar(
+        conexion, perfil.nombre, perfil.oracle_home, repositorio_bases_datos.Ambiente.DESARROLLO
+    )
+    return registrada, True
+
+
+def guardar_en_repositorio(ajustes: Ajustes, perfil: PerfilBD, estrategia: Estrategia) -> ResultadoRepositorio:
     try:
         conexion = repositorio_conexion.abrir_repositorio(ajustes)
     except NotImplementedError:
@@ -89,18 +104,20 @@ def guardar_en_repositorio(ajustes: Ajustes, nombre_bd: str, estrategia: Estrate
     except Exception as error:
         return ResultadoRepositorio("error", f"No se pudo conectar con el repositorio: {error}")
     try:
-        bd = repositorio_bases_datos.obtener(conexion, nombre_bd)
+        bd, recien_registrada = _obtener_o_registrar(conexion, perfil)
         if bd is None:
             return ResultadoRepositorio(
                 "no_registrada",
-                f"La base {nombre_bd} no está registrada en el repositorio (use 'cloudcr db agregar').",
+                f"La base {perfil.nombre} no está registrada en el repositorio y no se detectó su ORACLE_HOME "
+                "(use 'cloudcr db agregar').",
             )
         creada = servicio.crear(
             conexion, estrategia.model_copy(update={"bd_id": bd.id, "estado": EstadoEstrategia.INACTIVA})
         )
         if estrategia.estado is EstadoEstrategia.ACTIVA:
             servicio.activar(conexion, bd.id, creada.codigo)
-        return ResultadoRepositorio("guardada", f"Guardada en el repositorio como {creada.codigo}.")
+        sufijo = f" La base {bd.nombre} se registró automáticamente." if recien_registrada else ""
+        return ResultadoRepositorio("guardada", f"Guardada en el repositorio como {creada.codigo}.{sufijo}")
     except Exception as error:
         return ResultadoRepositorio("error", f"No se pudo guardar en el repositorio: {error}")
     finally:
