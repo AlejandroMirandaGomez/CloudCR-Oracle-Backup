@@ -13,3 +13,4 @@ exportaciones/
 .impeccable/
 .claude/
 !tests/fixtures/rman_logs/*.log
+!docs/evidencias/**/*.log

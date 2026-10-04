@@ -1,0 +1,42 @@
+{
+  "version_formato": 1,
+  "ejecucion_id": 1002,
+  "bd": "XE",
+  "bd_id": 1,
+  "estrategia": "EST002",
+  "estrategia_nombre": "Consistente NOARCHIVELOG",
+  "tarea": "T1",
+  "tarea_id": 21,
+  "tipo_respaldo": "INCREMENTAL_N0",
+  "modo_respaldo": "CONSISTENTE",
+  "programada_para": "2026-10-04T16:13:03",
+  "inicio": "2026-10-04T16:13:03.936843Z",
+  "fin": "2026-10-04T16:13:03.936843Z",
+  "duracion_segundos": 0,
+  "estado": "BLOQUEADA",
+  "estado_prueba": "NO_APLICA",
+  "motivos": [
+    "SCRIPT_ALTERADO: El archivo del script aprobado fue modificado después de aprobarse: su SHA-256 ya no coincide."
+  ],
+  "mensaje_rman": "Bloqueada por el preflight: El archivo del script aprobado fue modificado después de aprobarse: su SHA-256 ya no coincide.",
+  "errores": [
+    "SCRIPT_ALTERADO: El archivo del script aprobado fue modificado después de aprobarse: su SHA-256 ya no coincide."
+  ],
+  "advertencias": [],
+  "script_id": 1,
+  "script_version": 1,
+  "script_hash": "eacc9e386584a72b0dacebdbe833f65795e62a319f2cc3f8dbad96622355e303",
+  "script_ruta": null,
+  "log_rman": null,
+  "log_verificacion": null,
+  "tag": null,
+  "command_id": null,
+  "codigo_salida": null,
+  "agente": "local",
+  "ubicacion": "C:\\backups\\XE",
+  "piezas": [],
+  "estado_job_rman": null,
+  "reapertura_correcta": null,
+  "pruebas": [],
+  "generado_en": "2026-10-04T16:13:03.936843Z"
+}

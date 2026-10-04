@@ -1,0 +1,35 @@
+
+Recovery Manager: Release 21.0.0.0.0 - Production on Sun Oct 4 02:51:09 2026
+Version 21.3.0.0.0
+
+Copyright (c) 1982, 2021, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: XE (DBID=3114375768)
+
+RMAN> RUN {
+2>   SET COMMAND ID TO 'CLOUDCR_9001';
+3>   ALLOCATE CHANNEL c1 DEVICE TYPE DISK FORMAT 'C:\backups\XE\%d_EST001_T1_%T_%U.bkp';
+4>   SET CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO 'C:\backups\XE\%F';
+5>   BACKUP INCREMENTAL LEVEL 1 CUMULATIVE TABLESPACE XEPDB1:USERS TAG 'EST001_T1_2610040251';
+6>   BACKUP CURRENT CONTROLFILE TAG 'EST001_T1_2610040251';
+7>   BACKUP SPFILE TAG 'EST001_T1_2610040251';
+8>   RELEASE CHANNEL c1;
+9> }
+10> 
+executing command: SET COMMAND ID
+
+using target database control file instead of recovery catalog
+allocated channel: c1
+channel c1: SID=2301 device type=DISK
+
+executing command: SET CONTROLFILE AUTOBACKUP FORMAT
+
+Starting backup at 2026-10-04 02:51:12
+released channel: c1
+RMAN-00571: ===========================================================
+RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============
+RMAN-00571: ===========================================================
+RMAN-03002: failure of backup command at 10/04/2026 02:51:12
+RMAN-06817: Pluggable Database XEPDB1 cannot be backed up in NOARCHIVELOG mode.
+
+Recovery Manager complete.

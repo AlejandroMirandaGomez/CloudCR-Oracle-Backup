@@ -1,0 +1,19 @@
+{
+  "bd": "XE",
+  "escenario": "total-noarchivelog",
+  "posible": true,
+  "motivo": "Procedimiento generado; no se ejecuta automáticamente.",
+  "objetivo": null,
+  "pasos": [
+    "Identificar qué archivo falta o está dañado con V$RECOVER_FILE y V$DATAFILE ('cloudcr recuperacion diagnostico').",
+    "Apagar la base con SHUTDOWN IMMEDIATE y montarla.",
+    "Restaurar la base completa desde el último respaldo consistente (en frío).",
+    "RECOVER DATABASE NOREDO: en NOARCHIVELOG no hay redo que aplicar; se pierden los cambios posteriores al respaldo.",
+    "Abrir con RESETLOGS y hacer un respaldo nuevo.",
+    "Revisar el script generado y confirmar que existe un respaldo válido (columna Pruebas en OK).",
+    "Ejecutarlo manualmente con 'rman target /' y 'CMDFILE=' sobre una base de PRUEBAS: la herramienta genera el procedimiento pero nunca lo ejecuta."
+  ],
+  "script": "SHUTDOWN IMMEDIATE;\nSTARTUP MOUNT;\nRESTORE DATABASE;\nRECOVER DATABASE NOREDO;\nALTER DATABASE OPEN RESETLOGS;\n",
+  "archivo": null,
+  "avisos": []
+}

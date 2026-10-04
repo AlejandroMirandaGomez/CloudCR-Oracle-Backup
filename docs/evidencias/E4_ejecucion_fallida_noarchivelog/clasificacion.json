@@ -1,0 +1,16 @@
+{
+  "estado": "FALLIDA",
+  "motivos": [
+    "RMAN terminó con código de salida 1.",
+    "El log de RMAN contiene 2 error(es); el principal: RMAN-06817: Pluggable Database XEPDB1 cannot be backed up in NOARCHIVELOG mode.",
+    "V$RMAN_BACKUP_JOB_DETAILS informa el trabajo como FAILED.",
+    "No se generó ninguna pieza de respaldo."
+  ],
+  "errores": [
+    "RMAN-03002: failure of backup command at 10/04/2026 02:51:12",
+    "RMAN-06817: Pluggable Database XEPDB1 cannot be backed up in NOARCHIVELOG mode."
+  ],
+  "recovery_manager_complete": true,
+  "command_id": "CLOUDCR_9001",
+  "estado_job_v$rman_backup_job_details": "FAILED"
+}

@@ -1,0 +1,11 @@
+{
+  "bd": "XE",
+  "escenario": "datafile",
+  "posible": false,
+  "motivo": "El escenario datafile necesita la base en ARCHIVELOG para aplicar redo después de restaurar; XE está en NOARCHIVELOG. Con este modo solo se puede volver al último respaldo consistente (escenario total-noarchivelog), perdiendo los cambios posteriores.",
+  "objetivo": null,
+  "pasos": [],
+  "script": null,
+  "archivo": null,
+  "avisos": []
+}

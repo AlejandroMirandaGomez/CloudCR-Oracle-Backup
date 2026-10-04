@@ -1,0 +1,43 @@
+
+Recovery Manager: Release 21.0.0.0.0 - Production on Sun Oct 4 10:09:21 2026
+Version 21.3.0.0.0
+
+Copyright (c) 1982, 2021, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: XE (DBID=3114375768)
+
+RMAN> STARTUP MOUNT;
+2> 
+database is already started
+
+Recovery Manager complete.
+
+Recovery Manager: Release 21.0.0.0.0 - Production on Sun Oct 4 10:09:22 2026
+Version 21.3.0.0.0
+
+Copyright (c) 1982, 2021, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: XE (DBID=3114375768)
+
+RMAN> ALTER DATABASE OPEN;
+2> 
+RMAN-00571: ===========================================================
+RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============
+RMAN-00571: ===========================================================
+RMAN-03002: failure of sql statement command at 10/04/2026 10:09:23
+ORA-01531: a database already open by the instance
+
+Recovery Manager complete.
+
+Recovery Manager: Release 21.0.0.0.0 - Production on Sun Oct 4 10:09:23 2026
+Version 21.3.0.0.0
+
+Copyright (c) 1982, 2021, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: XE (DBID=3114375768)
+
+RMAN> ALTER PLUGGABLE DATABASE ALL OPEN;
+2> 
+Statement processed
+
+Recovery Manager complete.

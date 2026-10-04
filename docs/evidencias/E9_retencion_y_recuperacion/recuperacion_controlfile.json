@@ -1,0 +1,19 @@
+{
+  "bd": "XE",
+  "escenario": "controlfile",
+  "posible": true,
+  "motivo": "Procedimiento generado; no se ejecuta automáticamente.",
+  "objetivo": null,
+  "pasos": [
+    "Identificar qué archivo falta o está dañado con V$RECOVER_FILE y V$DATAFILE ('cloudcr recuperacion diagnostico').",
+    "Arrancar la instancia sin montar (NOMOUNT) e indicar el DBID de la base.",
+    "Restaurar el control file desde la pieza respaldada por la estrategia o desde el autobackup.",
+    "Montar la base y recuperarla con los archived y online redo logs disponibles.",
+    "Abrir con RESETLOGS: se inicia una nueva encarnación y hay que hacer un respaldo completo de inmediato.",
+    "Revisar el script generado y confirmar que existe un respaldo válido (columna Pruebas en OK).",
+    "Ejecutarlo manualmente con 'rman target /' y 'CMDFILE=' sobre una base de PRUEBAS: la herramienta genera el procedimiento pero nunca lo ejecuta."
+  ],
+  "script": "STARTUP NOMOUNT;\nSET DBID 3114375768;\nRUN {\n  SET CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO 'C:\\backups\\XE\\%F';\n  RESTORE CONTROLFILE FROM 'C:\\BACKUPS\\XE\\C-3114375768-20261004-00';\n}\nALTER DATABASE MOUNT;\nRECOVER DATABASE;\nALTER DATABASE OPEN RESETLOGS;\n",
+  "archivo": null,
+  "avisos": []
+}

@@ -1,0 +1,108 @@
+{
+  "version_formato": 1,
+  "ejecucion_id": 1001,
+  "bd": "XE",
+  "bd_id": 1,
+  "estrategia": "EST002",
+  "estrategia_nombre": "Consistente NOARCHIVELOG",
+  "tarea": "T1",
+  "tarea_id": 21,
+  "tipo_respaldo": "INCREMENTAL_N0",
+  "modo_respaldo": "CONSISTENTE",
+  "programada_para": "2026-10-04T16:08:45",
+  "inicio": "2026-10-04T16:08:45.697998Z",
+  "fin": "2026-10-04T16:09:25.451030Z",
+  "duracion_segundos": 39,
+  "estado": "EXITOSA",
+  "estado_prueba": "FALLIDA",
+  "motivos": [
+    "RMAN terminó sin errores, el trabajo figura como COMPLETED y todas las piezas existen en disco."
+  ],
+  "mensaje_rman": "RMAN terminó sin errores, el trabajo figura como COMPLETED y todas las piezas existen en disco.",
+  "errores": [],
+  "advertencias": [],
+  "script_id": 1,
+  "script_version": 1,
+  "script_hash": "eacc9e386584a72b0dacebdbe833f65795e62a319f2cc3f8dbad96622355e303",
+  "script_ruta": "C:\\Users\\juanp\\AppData\\Local\\cloudcr\\demo_real\\ejecuciones\\1001\\EST002.XE.RMAN",
+  "log_rman": "C:\\Users\\juanp\\AppData\\Local\\cloudcr\\demo_real\\ejecuciones\\1001\\EST002.XE.LOG",
+  "log_verificacion": "C:\\Users\\juanp\\AppData\\Local\\cloudcr\\demo_real\\ejecuciones\\1001\\verificacion.log",
+  "tag": "EST002_T1_2610041008",
+  "command_id": "CLOUDCR_1001",
+  "codigo_salida": 0,
+  "agente": "local",
+  "ubicacion": "C:\\backups\\XE",
+  "piezas": [
+    {
+      "ruta": "C:\\BACKUPS\\XE\\XE_EST002_T1_20261004_01541ADT_1_1_1.BKP",
+      "tamano_bytes": 1785200640,
+      "existe": true,
+      "tag": "EST002_T1_2610041008",
+      "conjunto": 1,
+      "vence_en": "2026-11-03T16:09:25.451030Z"
+    },
+    {
+      "ruta": "C:\\BACKUPS\\XE\\XE_EST002_T1_20261004_02541AE0_2_1_1.BKP",
+      "tamano_bytes": 653574144,
+      "existe": true,
+      "tag": "EST002_T1_2610041008",
+      "conjunto": 2,
+      "vence_en": "2026-11-03T16:09:25.451030Z"
+    },
+    {
+      "ruta": "C:\\BACKUPS\\XE\\XE_EST002_T1_20261004_03541AE3_3_1_1.BKP",
+      "tamano_bytes": 533790720,
+      "existe": true,
+      "tag": "EST002_T1_2610041008",
+      "conjunto": 3,
+      "vence_en": "2026-11-03T16:09:25.451030Z"
+    },
+    {
+      "ruta": "C:\\BACKUPS\\XE\\XE_EST002_T1_20261004_04541AE5_4_1_1.BKP",
+      "tamano_bytes": 18808832,
+      "existe": true,
+      "tag": "EST002_T1_2610041008",
+      "conjunto": 4,
+      "vence_en": "2026-11-03T16:09:25.451030Z"
+    },
+    {
+      "ruta": "C:\\BACKUPS\\XE\\XE_EST002_T1_20261004_05541AE7_5_1_1.BKP",
+      "tamano_bytes": 114688,
+      "existe": true,
+      "tag": "EST002_T1_2610041008",
+      "conjunto": 5,
+      "vence_en": "2026-11-03T16:09:25.451030Z"
+    },
+    {
+      "ruta": "C:\\BACKUPS\\XE\\C-3114375768-20261004-00",
+      "tamano_bytes": 18841600,
+      "existe": true,
+      "tag": null,
+      "conjunto": null,
+      "vence_en": "2026-11-03T16:09:25.451030Z"
+    }
+  ],
+  "estado_job_rman": "COMPLETED",
+  "reapertura_correcta": true,
+  "pruebas": [
+    {
+      "tipo": "EXISTENCIA",
+      "resultado": "FALLIDA",
+      "detalle": "Faltan o están vacías: C:\\BACKUPS\\XE\\XE_EST002_T1_20261004_05541AE7_5_1_1.BKP",
+      "ejecutada_en": "2026-10-04T16:10:33.354355Z"
+    },
+    {
+      "tipo": "CROSSCHECK",
+      "resultado": "FALLIDA",
+      "detalle": "CROSSCHECK las marcó EXPIRED o no disponibles: C:\\BACKUPS\\XE\\XE_EST002_T1_20261004_05541AE7_5_1_1.BKP",
+      "ejecutada_en": "2026-10-04T16:10:33.354355Z"
+    },
+    {
+      "tipo": "VALIDATE",
+      "resultado": "FALLIDA",
+      "detalle": "RMAN-03002: failure of validate command at 10/04/2026 10:10:34\nRMAN-06160: no backup pieces found for backup set key: 5",
+      "ejecutada_en": "2026-10-04T16:10:33.354355Z"
+    }
+  ],
+  "generado_en": "2026-10-04T16:10:34.906823Z"
+}
