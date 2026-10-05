@@ -155,6 +155,9 @@ def test_pagina_de_script_con_borrador_consistente(web: TestClient, monkeypatch:
     assert "ARCH_001" in html
     assert f'href="{RUTA_SCRIPT}?version=1"' in html
     assert "2026-10-04 12:00" in html
+    assert 'name="aprobado_por"' in html and "Obligatorio" in html
+    assert "Detalles técnicos" in html
+    assert "¿Qué hago aquí?" in html
 
 
 def test_pagina_de_script_sin_scripts_ofrece_generar(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -484,6 +487,10 @@ def test_recuperacion_puntos_diagnostico_y_plan(
     assert sin_en_linea(html)
     assert 'hx-get="/recuperacion/XE/diagnostico"' in html
     assert 'value="total-noarchivelog"' in html
+    assert "¿Qué hago aquí?" in html
+    assert 'data-sin-objetivo="si"' in html and 'data-sin-objetivo="no"' in html
+    assert "Tablespace dañado (PDB:TABLESPACE)" in html and "Objeto dañado" in html
+    assert 'id="diagnostico"' in html and 'href="#diagnostico"' in html
     monkeypatch.setattr(
         recuperacion,
         "diagnostico",
@@ -510,6 +517,22 @@ def test_recuperacion_puntos_diagnostico_y_plan(
     assert recibido == [("punto-en-tiempo", None, datetime(2026, 10, 4, 13, 30))]
     assert "SET UNTIL TIME" in respuesta.text
     assert "Recuperación a un punto en el tiempo" in respuesta.text
+
+
+def test_plan_imposible_habla_de_la_web_y_dice_que_hacer(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def plan(a: Any, bd: str, escenario: str, objetivo: str | None, hasta: datetime | None) -> Procedimiento:
+        return Procedimiento(
+            bd="XE",
+            escenario=Escenario.PDB,
+            posible=False,
+            motivo="El diagnóstico no encontró una PDB con archivos dañados; indique la PDB con --objetivo.",
+        )
+
+    monkeypatch.setattr(recuperacion, "plan", plan)
+    html = web.get("/recuperacion/XE/plan?escenario=pdb", headers=HTMX).text
+    assert "--objetivo" not in html
+    assert "en el campo Objetivo" in html
+    assert "Qué hacer ahora" in html and "Diagnosticar ahora" in html
 
 
 def test_plan_con_fecha_invalida(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -643,9 +666,7 @@ def test_editar_una_estrategia_inexistente_da_404(web: TestClient, monkeypatch: 
     assert web.get("/estrategias/XE/EST777/editar").status_code == 404
 
 
-def test_validar_borrador_no_ofrece_aplicar_recomendaciones(
-    web: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_validar_borrador_no_ofrece_aplicar_recomendaciones(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     resultado = ResultadoValidacion(
         bd="XE",
         estrategia="EST001",
@@ -764,9 +785,7 @@ def test_reiniciar_repositorio_borra_y_reinstala(web: TestClient, monkeypatch: p
         return EstadoRepositorio(instalado=True, esperadas=12)
 
     monkeypatch.setattr(administracion, "reiniciar_repositorio", reiniciar)
-    monkeypatch.setattr(
-        administracion, "estado_repositorio", lambda a: EstadoRepositorio(instalado=True, esperadas=12)
-    )
+    monkeypatch.setattr(administracion, "estado_repositorio", lambda a: EstadoRepositorio(instalado=True, esperadas=12))
     html = web.post(
         "/sistema/repositorio/reiniciar", content="confirmacion=BORRAR+TODO&reinstalar=on", headers=HTMX_FORMULARIO
     ).text
@@ -782,17 +801,13 @@ def test_no_se_reinicia_el_repositorio_con_el_agente_corriendo(
     llamadas: list[str] = []
     monkeypatch.setattr(administracion, "reiniciar_repositorio", lambda a, c, r: llamadas.append("reiniciar"))
     control.corriendo = True
-    respuesta = web.post(
-        "/sistema/repositorio/reiniciar", content="confirmacion=BORRAR+TODO", headers=HTMX_FORMULARIO
-    )
+    respuesta = web.post("/sistema/repositorio/reiniciar", content="confirmacion=BORRAR+TODO", headers=HTMX_FORMULARIO)
     assert "El agente de esta web está corriendo" in respuesta.text
     assert llamadas == []
 
 
 def test_el_repositorio_ofrece_la_zona_de_borrado(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        administracion, "estado_repositorio", lambda a: EstadoRepositorio(instalado=True, esperadas=12)
-    )
+    monkeypatch.setattr(administracion, "estado_repositorio", lambda a: EstadoRepositorio(instalado=True, esperadas=12))
     html = web.get("/sistema/repositorio", headers=HTMX).text
     assert 'action="/sistema/repositorio/reiniciar"' in html
     assert "BORRAR TODO" in html
@@ -800,7 +815,11 @@ def test_el_repositorio_ofrece_la_zona_de_borrado(web: TestClient, monkeypatch: 
 
 def test_archivado_muestra_el_modo_y_el_procedimiento(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     base = VistaBaseDatos(
-        nombre="XE", registrada=True, id=1, activa=True, log_mode=LogMode.NOARCHIVELOG,
+        nombre="XE",
+        registrada=True,
+        id=1,
+        activa=True,
+        log_mode=LogMode.NOARCHIVELOG,
         perfil_capturado_en=datetime(2026, 10, 4, 13),
     )
     monkeypatch.setattr(bases_datos, "listar", lambda a: [base])
@@ -813,9 +832,7 @@ def test_archivado_muestra_el_modo_y_el_procedimiento(web: TestClient, monkeypat
 def test_interruptor_del_inicio_automatico_del_agente(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     asignados: list[bool] = []
     monkeypatch.setattr(administracion, "autoinicio_agente", lambda a: True)
-    monkeypatch.setattr(
-        administracion, "asignar_autoinicio_agente", lambda a, activo: asignados.append(activo)
-    )
+    monkeypatch.setattr(administracion, "asignar_autoinicio_agente", lambda a, activo: asignados.append(activo))
     html = web.get("/sistema/agente", headers=HTMX).text
     assert 'action="/sistema/agente/autoinicio"' in html and "checked" in html
     web.post("/sistema/agente/autoinicio", content="activo=on", headers=HTMX_FORMULARIO)

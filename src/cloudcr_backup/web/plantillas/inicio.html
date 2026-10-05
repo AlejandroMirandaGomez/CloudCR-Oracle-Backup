@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block titulo %}Inicio · CloudCR Oracle Backup{% endblock %}
+{% block cabecera %}<link rel="stylesheet" href="/estaticos/inicio.css">{% endblock %}
+{% block contenido %}
+<div class="contenido pagina-inicio">
+
+  <section class="heroe">
+    <div class="heroe-texto">
+      <p class="heroe-etiqueta">Sistema de Gestión de Estrategias de Respaldo</p>
+      <h1>Proteja sus bases de datos Oracle y demuestre que los respaldos se hicieron.</h1>
+      <p class="heroe-lead">CloudCR le ayuda a decidir <strong>qué respaldar</strong>, <strong>cómo respaldarlo</strong> y <strong>cuándo ejecutarlo</strong>. RMAN hace el trabajo técnico y el sistema lo programa, lo ejecuta y guarda la evidencia de cada resultado.</p>
+      <div class="acciones">
+        {% if siguiente %}
+        <a class="boton primario grande" href="{{ siguiente.enlace }}">Continuar: {{ siguiente.titulo }} →</a>
+        {% else %}
+        <a class="boton primario grande" href="/estado">Ver el estado de los respaldos →</a>
+        {% endif %}
+        <a class="boton grande" href="#ruta">Ver cómo funciona</a>
+      </div>
+    </div>
+    <dl class="heroe-cifras" aria-label="Resumen actual">
+      <div><dt>Instancias Oracle</dt><dd>{{ instancias | length }}</dd></div>
+      <div><dt>Estrategias</dt><dd>{{ estrategias | length }}</dd></div>
+      <div><dt>Alertas abiertas</dt><dd class="{{ 'cifra-alerta' if alertas_abiertas else '' }}">{{ alertas_abiertas }}</dd></div>
+      <div><dt>Agente</dt><dd class="{{ 'cifra-ok' if agente_vivo else 'cifra-apagado' }}">{{ 'En marcha' if agente_vivo else 'Detenido' }}</dd></div>
+    </dl>
+  </section>
+
+  {% if not repositorio_disponible %}
+  <p class="aviso" role="alert"><strong>El repositorio no está disponible.</strong> Podrá explorar las instancias, pero no ver estrategias ni historial hasta conectarlo. Revise <a href="/sistema#entorno">Sistema → Diagnóstico del entorno</a>.</p>
+  {% endif %}
+
+  <section class="tres-preguntas" aria-label="Las tres decisiones de una estrategia">
+    <article class="pregunta">
+      <span class="pregunta-clave">Qué</span>
+      <h2>Qué respaldar</h2>
+      <p>La base completa, tablespaces, datafiles, control files, SPFILE y archived logs, cada uno con su prioridad <em>alta, media o baja</em>.</p>
+    </article>
+    <article class="pregunta">
+      <span class="pregunta-clave">Cómo</span>
+      <h2>Cómo respaldar</h2>
+      <p>Respaldo completo, o incremental nivel 0 y nivel 1 en modo diferencial o acumulativo, según tamaño, espacio y tiempo de recuperación.</p>
+    </article>
+    <article class="pregunta">
+      <span class="pregunta-clave">Cuándo</span>
+      <h2>Cuándo respaldar</h2>
+      <p>Frecuencia, días, horas y ventana de respaldo, para no afectar la operación normal del sistema.</p>
+    </article>
+  </section>
+
+  <section class="panel" id="ruta">
+    <div class="ruta-cabecera">
+      <div>
+        <h2>Su ruta de trabajo</h2>
+        <p class="nota">Siga los pasos en orden. Cada uno se marca solo cuando está hecho. Lleva {{ completados }} de {{ pasos | length }}.</p>
+      </div>
+      <div class="progreso" role="progressbar" aria-valuemin="0" aria-valuemax="{{ pasos | length }}" aria-valuenow="{{ completados }}" aria-label="Pasos completados">
+        <span style="width: {{ (completados * 100 / (pasos | length)) | round | int }}%"></span>
+      </div>
+    </div>
+    <ol class="ruta">
+      {% for paso in pasos %}
+      <li class="ruta-paso{{ ' hecho' if paso.hecho }}{{ ' actual' if siguiente and siguiente.numero == paso.numero }}{{ ' bloqueado' if paso.bloqueado }}">
+        <span class="ruta-numero" aria-hidden="true">{{ '✓' if paso.hecho else paso.numero }}</span>
+        <div class="ruta-cuerpo">
+          <h3>Paso {{ paso.numero }} · {{ paso.titulo }}</h3>
+          <p class="ruta-pregunta">{{ paso.pregunta }}</p>
+          <p class="nota">{{ paso.detalle }}</p>
+          <p class="ruta-estado">{{ paso.estado }}</p>
+        </div>
+        {% if paso.bloqueado %}
+        <span class="boton bloqueado" role="link" aria-disabled="true" title="Primero cree una estrategia (paso 2)">🔒 Cree una estrategia primero</span>
+        {% else %}
+        <a class="boton{{ ' primario' if siguiente and siguiente.numero == paso.numero }}" href="{{ paso.enlace }}">{{ paso.accion }}</a>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="panel">
+    <h2>Estrategia, ejecución y evidencia</h2>
+    <p class="nota">La estrategia define las decisiones y RMAN ejecuta lo técnico. Así puede cambiar una estrategia sin tocar scripts sueltos.</p>
+    <ol class="cadena" aria-label="Flujo de una estrategia">
+      <li>Estrategia</li><li>Programación</li><li>Script RMAN</li><li>Ejecución</li><li>Resultado</li><li>Evidencia</li>
+    </ol>
+  </section>
+
+  {% if estrategias %}
+  <section class="panel">
+    <div class="ruta-cabecera">
+      <h2>Estrategias registradas</h2>
+      <a class="boton" href="/estrategias">Ver todas</a>
+    </div>
+    <ul class="lista-estrategias">
+      {% for e in estrategias[:5] %}
+      <li>
+        <a href="/estrategias/{{ e.bd | urlencode }}/{{ e.codigo | urlencode }}"><strong>{{ e.codigo }}</strong> · {{ e.nombre }}</a>
+        <span class="nota">{{ e.bd }} · prioridad {{ e.prioridad.value | lower }} · {{ 'activa' if e.estado.value == 'ACTIVA' else 'inactiva' }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <section class="panel ayuda-rapida">
+    <h2>¿Dónde está cada cosa?</h2>
+    <dl class="mapa">
+      <div><dt><a href="/instancias">Bases de datos</a></dt><dd>Instancias detectadas y su estructura física.</dd></div>
+      <div><dt><a href="/estrategias">Estrategias</a></dt><dd>Crear, editar, activar y generar scripts RMAN.</dd></div>
+      <div><dt><a href="/estado">Estado</a></dt><dd>Semáforo de cada estrategia y respaldos en curso.</dd></div>
+      <div><dt><a href="/historial">Historial</a></dt><dd>Evidencia de cada ejecución, exportable.</dd></div>
+      <div><dt><a href="/alertas">Alertas</a></dt><dd>Respaldos omitidos, fallidos o atrasados.</dd></div>
+      <div><dt><a href="/retencion">Retención</a></dt><dd>Qué se conserva y qué se purga.</dd></div>
+      <div><dt><a href="/recuperacion">Recuperación</a></dt><dd>Diagnóstico y plan para restaurar.</dd></div>
+      <div><dt><a href="/sistema">Sistema</a></dt><dd>Agente, entorno y parámetros.</dd></div>
+    </dl>
+  </section>
+</div>
+{% endblock %}

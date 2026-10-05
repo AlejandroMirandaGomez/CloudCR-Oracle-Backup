@@ -17,17 +17,23 @@
   <dl class="ficha">
     <dt>Modo</dt>
     <dd>{{ vista.modo.value }}{% if vista.requiere_caida %} · <span class="tono-advertencia">apaga la base durante el respaldo (SHUTDOWN IMMEDIATE)</span>{% endif %}</dd>
-    <dt>SHA-256</dt><dd class="huella">{{ vista.hash_sha256 }}</dd>
+    <dt>Generado</dt><dd>{{ vista.creado_en | hora_servidor(zona) }}</dd>
+    {% if vista.aprobado_por %}<dt>Aprobado</dt><dd>{{ vista.aprobado_por }} · {{ vista.aprobado_en | local(zona) }}{% if vista.acepto_caida %} · aceptó la caída del servicio{% endif %}</dd>{% endif %}
+    {% if vista.motivo_rechazo %}<dt>Motivo del rechazo</dt><dd>{{ vista.motivo_rechazo }}</dd>{% endif %}
+  </dl>
+    {% if vista.archivo_intacto is false %}<p class="aviso tono-peligro" role="alert">El archivo del script fue MODIFICADO después de generarse: su huella no coincide y la ejecución quedará BLOQUEADA. Genere una versión nueva.</p>{% endif %}
+    <details>
+      <summary>Detalles técnicos (huella y archivo)</summary>
+      <dl class="ficha">
+<dt>SHA-256</dt><dd class="huella">{{ vista.hash_sha256 }}</dd>
     <dt>Archivo</dt>
     <dd><code>{{ vista.archivo }}</code> ·
       {% if vista.archivo_intacto is none %}<span class="tono-atenuado">todavía no está en disco</span>
       {% elif vista.archivo_intacto %}<span class="tono-exito">intacto: el hash coincide</span>
       {% else %}<span class="tono-peligro">MODIFICADO: el hash no coincide; la ejecución quedará BLOQUEADA</span>{% endif %}
     </dd>
-    <dt>Generado</dt><dd>{{ vista.creado_en | hora_servidor(zona) }}</dd>
-    {% if vista.aprobado_por %}<dt>Aprobado</dt><dd>{{ vista.aprobado_por }} · {{ vista.aprobado_en | local(zona) }}{% if vista.acepto_caida %} · aceptó la caída del servicio{% endif %}</dd>{% endif %}
-    {% if vista.motivo_rechazo %}<dt>Motivo del rechazo</dt><dd>{{ vista.motivo_rechazo }}</dd>{% endif %}
-  </dl>
+          </dl>
+    </details>
   {% for nota in vista.avisos %}<p class="aviso">{{ nota }}</p>{% endfor %}
 </section>
 
@@ -40,7 +46,8 @@
       <p>Solo se ejecuta un script aprobado y sin modificar. Revise el contenido de abajo antes de aprobarlo.</p>
       <form class="formulario-columna" method="post" action="{{ ruta }}/aprobar" hx-post="{{ ruta }}/aprobar" hx-target="#panel-script" hx-disabled-elt="find button"{% if vista.requiere_caida %} hx-confirm="Este respaldo es CONSISTENTE: apaga la base {{ vista.bd }} (y el repositorio, si vive en la misma CDB) mientras dura. ¿Aprobarlo?"{% endif %}>
         <input type="hidden" name="version" value="{{ vista.version }}">
-        <label>Aprobado por <input type="text" name="aprobado_por" maxlength="100" placeholder="Su nombre (opcional)" autocomplete="name"></label>
+        <label><strong>Aprobado por</strong> <span class="etiqueta-req">Obligatorio</span> <input type="text" name="aprobado_por" maxlength="100" placeholder="Su nombre completo" autocomplete="name" required></label>
+          <span class="nota">Su nombre queda registrado en el historial como responsable de esta aprobación.</span>
         {% if vista.requiere_caida %}<label class="casilla"><input type="checkbox" name="acepto_caida" value="on"> Acepto la caída del servicio durante el respaldo</label>{% endif %}
         <button class="boton primario" type="submit">Aprobar la versión {{ vista.version }}</button>
       </form>

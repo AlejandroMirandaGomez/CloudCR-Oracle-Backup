@@ -1,7 +1,7 @@
 {% if not bases %}
 <div class="vacio">No hay bases de datos registradas. Regístrela en <a href="/sistema#bases">Sistema → Bases de datos</a>.</div>
 {% elif informe is none %}
-<div class="vacio">Elija una base de datos para ver su informe de retención.</div>
+<div class="vacio vacio-guiado"><p><strong>Elija una base de datos y pulse «Generar informe».</strong></p><p>Verá cuánto tiempo se conserva cada respaldo según su estrategia y cuáles ya vencieron. El sistema solo informa: nunca borra por su cuenta.</p></div>
 {% else %}
 <section class="tarjetas" aria-label="Resumen de retención">
   <div class="tarjeta"><span class="numero">{{ informe.estrategias | length }}</span><span class="rotulo">Estrategias</span></div>

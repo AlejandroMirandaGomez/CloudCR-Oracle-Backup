@@ -73,6 +73,7 @@ def contexto_explorador(
         aviso_pdb = f"La instancia no tiene un contenedor llamado {opciones.pdb}; se muestran todos."
         opciones = OpcionesArbol(sin_seed=opciones.sin_seed, rutas_completas=opciones.rutas_completas)
     return {
+        "seccion": "instancias",
         "sid": sid.upper(),
         "instancias": instancias,
         "exploracion": exploracion,
@@ -91,7 +92,7 @@ def contexto_explorador(
 @router.get("/instancias", response_class=HTMLResponse)
 def listar(request: Request, servicio: Servicio, refrescar: Refrescar = False) -> HTMLResponse:
     instancias = servicio.descubrir(refrescar=refrescar)
-    contexto = {"instancias": instancias, "homes": homes_conocidos(instancias), "sid": None}
+    contexto = {"seccion": "instancias", "instancias": instancias, "homes": homes_conocidos(instancias), "sid": None}
     plantilla = "parciales/_tabla_instancias.html" if es_htmx(request) else "instancias.html"
     return renderizar(request, plantilla, contexto)
 

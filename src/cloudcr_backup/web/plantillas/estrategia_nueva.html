@@ -15,6 +15,10 @@
     <a class="boton" href="/instancias/{{ sid | urlencode }}{% if oracle_home %}?oracle_home={{ oracle_home | urlencode }}{% endif %}">Volver al explorador</a>
   </section>
 
+  <aside class="panel intro-asistente" aria-label="Cómo funciona el asistente">
+    <p><strong>Una estrategia responde tres preguntas:</strong> <em>qué</em> respaldar, <em>cómo</em> respaldarlo y <em>cuándo</em> hacerlo. El asistente las pregunta en orden, en 5 pasos. No se guarda nada hasta el último paso, y puede volver atrás cuando quiera con los botones de arriba.</p>
+  </aside>
+
   <noscript><p class="aviso" role="alert">Este formulario necesita JavaScript habilitado para funcionar.</p></noscript>
 
   <ol class="pasos" id="indicador-pasos" aria-label="Pasos de la estrategia">
@@ -30,6 +34,12 @@
   <form id="formulario-estrategia" class="formulario-estrategia" novalidate autocomplete="off">
     <section class="panel paso" data-paso="1" aria-labelledby="titulo-paso-1">
       <h2 id="titulo-paso-1">1. General</h2>
+      <details class="ayuda-paso" open>
+        <summary>¿Qué hago aquí? <span class="ayuda-resumen">Defina la identidad de la estrategia</span></summary>
+        <ul><li><strong>Código:</strong> una clave corta para encontrarla (ya viene sugerida).</li><li><strong>Nombre:</strong> algo que describa su uso, por ejemplo «Producción diaria».</li><li><strong>Prioridad:</strong> qué tan grave sería perder esta información. Define cuánto dato y cuánto tiempo se tolera perder (RPO) y cuánto tarda la recuperación (RTO).</li></ul>
+        <p class="ayuda-reco"><strong>Recomendación:</strong> Una base de producción suele ser <strong>Alta</strong>; una de pruebas, <strong>Baja</strong>.</p>
+        <p class="ayuda-req"><strong>Para continuar necesita:</strong> Código, nombre y responsable completos.</p>
+      </details>
       <div class="campos">
         <label class="campo">
           <span class="rotulo">Código</span>
@@ -71,6 +81,12 @@
 
     <section class="panel paso" data-paso="2" aria-labelledby="titulo-paso-2" hidden>
       <h2 id="titulo-paso-2">2. Qué respaldar</h2>
+      <details class="ayuda-paso" open>
+        <summary>¿Qué hago aquí? <span class="ayuda-resumen">Esta es la pregunta «qué»</span></summary>
+        <ul><li>Marque la <strong>base completa</strong> si no está seguro: incluye datafiles, control files y SPFILE.</li><li>Marque solo un tablespace o un datafile si esa parte tiene más prioridad o cambia más seguido.</li><li>Los <strong>archived logs</strong> se eligen aparte y permiten recuperar hasta un momento exacto.</li></ul>
+        <p class="ayuda-reco"><strong>Recomendación:</strong> Para empezar, marque «Toda la base de datos».</p>
+        <p class="ayuda-req"><strong>Para continuar necesita:</strong> Al menos un objeto seleccionado en el árbol.</p>
+      </details>
       <p class="nota">Marque en el árbol los objetos de la instancia <strong>{{ sid }}</strong> que forman parte de la estrategia. Al marcar un elemento quedan incluidos todos los que contiene. «Toda la base de datos» incluye también los control files y el SPFILE; los archived logs se eligen aparte.</p>
       <p class="nota">{{ catalogo.nota_parcial }} Ver <a href="/criterios#vocabulario" target="_blank" rel="noopener">el vocabulario del curso frente a RMAN</a>.</p>
       <span class="error-campo" data-error-de="alcance" hidden></span>
@@ -100,6 +116,12 @@
 
     <section class="panel paso" data-paso="3" aria-labelledby="titulo-paso-3" hidden>
       <h2 id="titulo-paso-3">3. Cómo y cuándo</h2>
+      <details class="ayuda-paso" open>
+        <summary>¿Qué hago aquí? <span class="ayuda-resumen">Estas son las preguntas «cómo» y «cuándo»</span></summary>
+        <ul><li><strong>Completo:</strong> copia entera cada vez. Simple, pero usa más espacio y tiempo.</li><li><strong>Incremental nivel 0 + nivel 1:</strong> un nivel 0 por semana y un nivel 1 al día, que guarda solo lo que cambió.</li><li><strong>Diferencial</strong> guarda lo cambiado desde el último incremental (más pequeño). <strong>Acumulativo</strong> guarda lo cambiado desde el nivel 0 (recuperación más simple).</li><li><strong>Ventana de respaldo:</strong> el horario en que se puede respaldar sin molestar a los usuarios.</li></ul>
+        <p class="ayuda-reco"><strong>Recomendación:</strong> Use un <strong>esquema predefinido</strong> y deje la hora de la madrugada (por ejemplo 02:00).</p>
+        <p class="ayuda-req"><strong>Para continuar necesita:</strong> Un esquema elegido (o al menos una tarea) con su hora.</p>
+      </details>
       <p class="aviso aviso-modo" id="aviso-noarchivelog" hidden>La base está en <strong>NOARCHIVELOG</strong>: los respaldos en modo automático se ejecutan como <strong>consistentes</strong> (apagan la base mientras duran) y los respaldos en línea no son posibles.</p>
       <fieldset class="grupo-opciones">
         <legend>Cómo definir las tareas</legend>
@@ -174,6 +196,12 @@
 
     <section class="panel paso" data-paso="4" aria-labelledby="titulo-paso-4" hidden>
       <h2 id="titulo-paso-4">4. Destino y retención</h2>
+      <details class="ayuda-paso" open>
+        <summary>¿Qué hago aquí? <span class="ayuda-resumen">¿Dónde se guardan y por cuánto tiempo?</span></summary>
+        <ul><li><strong>Destino:</strong> la carpeta donde RMAN deja los respaldos. Use el botón «Examinar…» para elegirla o crearla.</li><li><strong>Retención:</strong> cuánto tiempo se conservan. Pasado ese plazo, el respaldo se considera obsoleto y puede purgarse.</li></ul>
+        <p class="ayuda-reco"><strong>Recomendación:</strong> Una ventana de <strong>30 días</strong> es un punto de partida común. Evite «Sin definir».</p>
+        <p class="ayuda-req"><strong>Para continuar necesita:</strong> Una carpeta de destino válida y un valor de retención.</p>
+      </details>
       <div class="campos">
         <label class="campo campo-completo">
           <span class="rotulo">Carpeta de destino de los respaldos</span>
@@ -214,6 +242,12 @@
 
     <section class="panel paso" data-paso="5" aria-labelledby="titulo-paso-5" hidden>
       <h2 id="titulo-paso-5">5. Revisar y guardar</h2>
+      <details class="ayuda-paso" open>
+        <summary>¿Qué hago aquí? <span class="ayuda-resumen">Revise antes de guardar</span></summary>
+        <ul><li>El sistema <strong>valida la estrategia contra la instancia</strong> y muestra errores, advertencias y recomendaciones.</li><li>Los <strong>errores</strong> bloquean el guardado; las advertencias y recomendaciones no.</li><li>Puede <strong>activarla</strong> ahora o dejarla inactiva y activarla después de aprobar sus scripts.</li></ul>
+        <p class="ayuda-reco"><strong>Recomendación:</strong> Si no está seguro, guárdela <strong>sin activar</strong>: puede revisarla y activarla después.</p>
+        <p class="ayuda-req"><strong>Para continuar necesita:</strong> Ningún error bloqueante en la validación.</p>
+      </details>
       <div id="revision-estado" class="nota" aria-live="polite"></div>
       <div id="revision-contenido" hidden>
         <p class="criterio-prioridad" id="revision-criterio"></p>

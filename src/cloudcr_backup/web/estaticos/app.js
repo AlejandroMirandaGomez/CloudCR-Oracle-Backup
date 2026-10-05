@@ -142,7 +142,89 @@
     }
   });
 
+  function mostrarAyudaEscenario() {
+    const selector = document.querySelector('select[name="escenario"]');
+    const lugar = document.getElementById("ayuda-escenario");
+    if (!selector || !lugar) {
+      return;
+    }
+    const elegida = selector.options[selector.selectedIndex];
+    lugar.textContent = elegida ? elegida.getAttribute("data-ayuda") || "" : "";
+    const objetivo = document.querySelector('input[name="objetivo"]');
+    if (objetivo && elegida) {
+      const sinObjetivo = elegida.getAttribute("data-sin-objetivo") === "si";
+      objetivo.disabled = sinObjetivo;
+      if (sinObjetivo) {
+        objetivo.value = "";
+      }
+      const etiqueta = document.getElementById("etiqueta-objetivo");
+      if (etiqueta) {
+        etiqueta.textContent = sinObjetivo ? "Objeto dañado (no se necesita)" : elegida.getAttribute("data-etiqueta-objetivo") || "Objeto dañado";
+      }
+      const ejemplo = elegida.getAttribute("data-ejemplo-objetivo");
+      objetivo.placeholder = sinObjetivo
+        ? "No necesita objeto"
+        : (ejemplo ? "Ejemplo: " + ejemplo + ". " : "") + "Vacío = se deduce del diagnóstico";
+    }
+  }
+
+  document.addEventListener("change", function (evento) {
+    if (evento.target instanceof Element && evento.target.getAttribute("name") === "escenario") {
+      mostrarAyudaEscenario();
+      const anterior = document.getElementById("zona-procedimiento");
+      if (anterior) {
+        anterior.textContent = "";
+      }
+    }
+  });
+
+  function activarPestana(nombre) {
+    const contenedor = document.querySelector(".pagina-sistema");
+    if (!contenedor) {
+      return;
+    }
+    contenedor.classList.add("con-pestanas");
+    contenedor.querySelectorAll("[data-pestana]").forEach(function (grupo) {
+      grupo.classList.toggle("activa", grupo.getAttribute("data-pestana") === nombre);
+    });
+    contenedor.querySelectorAll("[data-ir-pestana]").forEach(function (boton) {
+      const activa = boton.getAttribute("data-ir-pestana") === nombre;
+      boton.classList.toggle("activa", activa);
+      boton.setAttribute("aria-selected", activa ? "true" : "false");
+    });
+  }
+
+  document.addEventListener("click", function (evento) {
+    const boton = evento.target instanceof Element ? evento.target.closest("[data-ir-pestana]") : null;
+    if (boton) {
+      activarPestana(boton.getAttribute("data-ir-pestana"));
+    }
+  });
+
+  function abrirAnclaOculta() {
+    if (document.querySelector(".pagina-sistema:not(.con-pestanas)")) {
+      activarPestana("empezar");
+    }
+    if (!window.location.hash) {
+      return;
+    }
+    const destino = document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+    if (destino) {
+      const grupo = destino.closest("[data-pestana]");
+      if (grupo) {
+        activarPestana(grupo.getAttribute("data-pestana"));
+      }
+      abrirAncestros(destino);
+      destino.scrollIntoView();
+    }
+  }
+
+  window.addEventListener("hashchange", abrirAnclaOculta);
+  window.addEventListener("DOMContentLoaded", abrirAnclaOculta);
+  window.addEventListener("DOMContentLoaded", mostrarAyudaEscenario);
+
   document.addEventListener("htmx:afterSettle", function () {
+    mostrarAyudaEscenario();
     aplicarBusqueda();
     aplicarFiltrosSeveridad();
   });

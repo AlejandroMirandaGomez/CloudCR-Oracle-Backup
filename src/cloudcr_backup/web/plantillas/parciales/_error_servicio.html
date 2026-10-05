@@ -2,7 +2,17 @@
   <h2>{{ titulo }}</h2>
   <p>{{ mensaje }}</p>
   {% if sugerencia %}<p class="sugerencia"><strong>Sugerencia:</strong> {{ sugerencia }}</p>{% endif %}
+  <p class="que-hacer"><strong>Qué puede hacer ahora:</strong>
+    {% if estado == 503 %}Compruebe que el repositorio esté instalado y accesible. Se revisa en <a href="/sistema#repositorio">Sistema → Repositorio</a> y en <a href="/sistema#entorno">Diagnóstico del entorno</a>.
+    {% elif estado == 404 %}Verifique el código o el nombre en la lista de <a href="/estrategias">Estrategias</a>; es posible que se haya escrito mal o que ya no exista.
+    {% elif estado == 409 %}La acción no es posible en el estado actual. Lea el mensaje, corrija lo indicado y vuelva a intentarlo.
+    {% elif estado == 422 %}Alguno de los valores indicados no es válido. Corríjalo o quite el filtro y vuelva a intentarlo.
+    {% else %}Reintente. Si el problema continúa, revise el <a href="/sistema#entorno">Diagnóstico del entorno</a>.{% endif %}
+  </p>
   <p class="grupo-botones">
+    {% if estado == 503 %}<a class="boton primario" href="/sistema#repositorio">Abrir Sistema</a>
+    {% elif estado == 404 %}<a class="boton primario" href="/estrategias">Ver estrategias</a>
+    {% else %}<a class="boton primario" href="/">Ir al inicio</a>{% endif %}
     <a class="boton" href="/estado">Ir al estado</a>
     <a class="boton" href="/instancias">Ver instancias</a>
   </p>

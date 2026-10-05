@@ -1,0 +1,207 @@
+.guia {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 1.5rem;
+  background: var(--acento-suave);
+  border-bottom: 1px solid var(--borde);
+  font-size: 0.88rem;
+}
+
+.guia-paso {
+  font-weight: 700;
+  color: var(--acento);
+  white-space: nowrap;
+}
+
+.guia-texto {
+  flex: 1 1 28rem;
+  color: var(--texto);
+}
+
+.guia-sig {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.guia-bloqueada {
+  color: var(--advertencia);
+  cursor: not-allowed;
+}
+
+.guia-pendiente {
+  color: var(--advertencia);
+}
+
+.guia-glosario {
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.ayuda-paso {
+  margin: 0.5rem 0 1rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--acento);
+  border-radius: var(--radio);
+  background: var(--acento-suave);
+  font-size: 0.9rem;
+}
+
+.ayuda-paso summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ayuda-resumen {
+  margin-left: 0.5rem;
+  font-weight: 500;
+  color: var(--texto-suave);
+}
+
+.ayuda-paso ul {
+  margin: 0.5rem 0;
+  padding-left: 1.2rem;
+}
+
+.ayuda-paso li {
+  margin-bottom: 0.25rem;
+}
+
+.ayuda-reco,
+.ayuda-req {
+  margin: 0.35rem 0 0;
+}
+
+.ayuda-req {
+  color: var(--texto-suave);
+}
+
+.lista-control {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.lista-control li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--superficie);
+}
+
+.lista-control li.siguiente {
+  border-color: var(--acento);
+  box-shadow: 0 0 0 3px var(--acento-suave);
+}
+
+.lista-control .marca-control {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  border: 1px solid var(--borde);
+  background: var(--superficie-2);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.lista-control li.hecho .marca-control {
+  background: var(--exito);
+  border-color: var(--exito);
+  color: #fff;
+}
+
+.lista-control li.siguiente .marca-control {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: #fff;
+}
+
+.lista-control p {
+  margin: 0;
+}
+
+.boton.destacado {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: #fff;
+  box-shadow: 0 0 0 3px var(--acento-suave);
+}
+
+.etiqueta-req {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  background: var(--acento-suave);
+  color: var(--acento);
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.bloque-avanzado > summary {
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0.6rem 0;
+}
+
+.vacio-guiado {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.lista-semaforo {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.4rem 1rem;
+  font-size: 0.85rem;
+}
+
+.aviso-exito {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radio);
+  background: var(--acento-suave);
+  color: var(--exito);
+  font-weight: 600;
+}
+
+.boton.atenuado {
+  opacity: 0.6;
+}
+
+.boton.atenuado:hover,
+.boton.atenuado:focus-visible {
+  opacity: 1;
+}
+
+.ayuda-escenario {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.8rem;
+  border-left: 4px solid var(--acento);
+  background: var(--acento-suave);
+  border-radius: var(--radio);
+  font-size: 0.9rem;
+}
+
+.ayuda-escenario:empty {
+  display: none;
+}
+
+.que-hacer {
+  margin: 0.5rem 0;
+}

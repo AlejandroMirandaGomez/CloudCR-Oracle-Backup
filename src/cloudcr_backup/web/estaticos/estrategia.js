@@ -881,7 +881,12 @@
     contenedor.appendChild(filaResultado("Repositorio", resultado.repositorio.mensaje));
     contenedor.appendChild(
       crear("div", { clase: "acciones-resultado" }, [
-        crear("a", { clase: "boton primario", href: otra, texto: "Crear otra estrategia" }),
+        crear("a", {
+          clase: "boton primario",
+          href: "/estrategias/" + encodeURIComponent(resultado.bd) + "/" + encodeURIComponent(resultado.codigo),
+          texto: "Siguiente: generar y aprobar scripts",
+        }),
+        crear("a", { clase: "boton", href: otra, texto: "Crear otra estrategia" }),
         crear("a", { clase: "boton", href: volver, texto: "Volver al explorador" }),
       ])
     );

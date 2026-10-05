@@ -5,13 +5,23 @@
   <section class="encabezado-seccion">
     <div>
       <h1>Script RMAN · {{ resumen.codigo }} / {{ tarea.codigo }}</h1>
-      <p class="subtitulo">{{ resumen.bd }} · {{ tarea.etiqueta_tipo }} (término de clase: «{{ tarea.termino_clase }}») · modo {{ tarea.modo_respaldo.value }} · {{ tarea.descripcion_programacion }}</p>
+      <p class="subtitulo">{{ resumen.bd }} · {{ tarea.etiqueta_tipo }} · modo {{ tarea.modo_respaldo.value }} · {{ tarea.descripcion_programacion }}</p>
     </div>
     <div class="acciones">
       <a class="boton" href="{{ ruta_estrategia }}">Volver a la estrategia</a>
       <a class="boton" href="/historial?bd={{ resumen.bd | urlencode }}&amp;estrategia={{ resumen.codigo | urlencode }}">Ver historial</a>
     </div>
   </section>
+  <details class="ayuda-paso" open>
+    <summary>¿Qué hago aquí? <span class="ayuda-resumen">Un script solo se ejecuta si usted lo aprobó</span></summary>
+    <ol>
+      <li><strong>Genere</strong> el script si todavía no existe: el sistema lo arma con lo que definió en la estrategia.</li>
+      <li><strong>Léalo</strong> en la parte de abajo. Es el comando RMAN exacto que se va a correr.</li>
+      <li><strong>Apruébelo</strong> (o recházelo con un motivo y corrija la estrategia). Queda registrado quién lo aprobó.</li>
+      <li><strong>Ejecútelo</strong> a mano una vez para probar. El resultado aparece en el historial.</li>
+    </ol>
+    <p class="ayuda-req">Si el archivo del script se modifica después de aprobarlo, el sistema detecta el cambio y bloquea la ejecución.</p>
+  </details>
   <div id="panel-script" class="contenido">{% include "parciales/_script.html" %}</div>
 </div>
 {% endblock %}

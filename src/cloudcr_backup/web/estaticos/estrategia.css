@@ -674,3 +674,7 @@
     flex-direction: column;
   }
 }
+
+.intro-asistente p {
+  margin: 0;
+}

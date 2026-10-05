@@ -4,15 +4,19 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
+from cloudcr_backup.domain.errores import ErrorServicio
 from cloudcr_backup.domain.monitoreo import DetalleEstrategia
 from cloudcr_backup.presentacion.estado import ETIQUETA_COLOR, SIMBOLO_COLOR, TONO_COLOR
-from cloudcr_backup.web.monitoreo import ProveedorMonitoreo, obtener_monitoreo
+from cloudcr_backup.services import scripts as servicio_scripts
+from cloudcr_backup.web.dependencias import ProveedorExploracion, obtener_servicio
+from cloudcr_backup.web.monitoreo import ProveedorMonitoreo, ajustes_de_la_app, obtener_monitoreo
 from cloudcr_backup.web.rutas.comun import es_htmx, renderizar
 from cloudcr_backup.web.seguridad import exigir_origen_confiable
 
 router = APIRouter()
 
 Monitoreo = Annotated[ProveedorMonitoreo, Depends(obtener_monitoreo)]
+Servicio = Annotated[ProveedorExploracion, Depends(obtener_servicio)]
 Cantidad = Annotated[int, Query(ge=1, le=100)]
 
 
@@ -20,7 +24,19 @@ def ruta_detalle(bd: str, codigo: str) -> str:
     return f"/estrategias/{quote(bd, safe='')}/{quote(codigo, safe='')}"
 
 
-def contexto_detalle(detalle: DetalleEstrategia, zona: str, aviso: str | None = None) -> dict[str, Any]:
+def tareas_con_borrador(request: Request, detalle: DetalleEstrategia) -> int | None:
+    """Tareas que ya tienen algún script generado (aprobado o no); None si no se puede saber."""
+    resumen = detalle.resumen
+    try:
+        vistas = servicio_scripts.listar(ajustes_de_la_app(request.app)(), resumen.bd, resumen.codigo)
+    except (ErrorServicio, NotImplementedError, OSError):
+        return None
+    return len({v.tarea for v in vistas})
+
+
+def contexto_detalle(
+    detalle: DetalleEstrategia, zona: str, aviso: str | None = None, generados: int | None = None
+) -> dict[str, Any]:
     color = detalle.resumen.color
     return {
         "seccion": "estrategias",
@@ -30,11 +46,12 @@ def contexto_detalle(detalle: DetalleEstrategia, zona: str, aviso: str | None = 
         "color": {"etiqueta": ETIQUETA_COLOR[color], "simbolo": SIMBOLO_COLOR[color], "tono": TONO_COLOR[color].value},
         "ruta": ruta_detalle(detalle.resumen.bd, detalle.resumen.codigo),
         "aviso": aviso,
+        "generados": generados,
     }
 
 
 @router.get("/estrategias", response_class=HTMLResponse)
-def pagina_estrategias(request: Request, monitoreo: Monitoreo) -> HTMLResponse:
+def pagina_estrategias(request: Request, monitoreo: Monitoreo, servicio: Servicio) -> HTMLResponse:
     resumenes = monitoreo.estrategias()
     filas = [
         {
@@ -47,7 +64,16 @@ def pagina_estrategias(request: Request, monitoreo: Monitoreo) -> HTMLResponse:
         for r in resumenes
     ]
     bases = sorted({r.bd for r in resumenes})
-    contexto = {"seccion": "estrategias", "filas": filas, "bases": bases, "zona": monitoreo.zona_horaria}
+    instancias = [i for i in servicio.descubrir() if i.en_ejecucion]
+    sids = {i.sid.upper() for i in instancias}
+    contexto = {
+        "seccion": "estrategias",
+        "filas": filas,
+        "bases": [b for b in bases if b.upper() not in sids],
+        "instancias": instancias,
+        "zona": monitoreo.zona_horaria,
+    }
+
     return renderizar(request, "estrategias.html", contexto)
 
 
@@ -61,7 +87,8 @@ def pagina_estrategia(
     aviso: Annotated[str | None, Query(max_length=600)] = None,
 ) -> HTMLResponse:
     detalle = monitoreo.estrategia(bd, codigo, n)
-    return renderizar(request, "estrategia_detalle.html", contexto_detalle(detalle, monitoreo.zona_horaria, aviso))
+    contexto = contexto_detalle(detalle, monitoreo.zona_horaria, aviso, tareas_con_borrador(request, detalle))
+    return renderizar(request, "estrategia_detalle.html", contexto)
 
 
 def _cambiar(request: Request, bd: str, codigo: str, monitoreo: ProveedorMonitoreo, activa: bool) -> Response:
@@ -70,13 +97,11 @@ def _cambiar(request: Request, bd: str, codigo: str, monitoreo: ProveedorMonitor
         return RedirectResponse(ruta_detalle(resumen.bd, resumen.codigo), status_code=303)
     detalle = monitoreo.estrategia(bd, codigo, 5)
     aviso = f"Estrategia {resumen.codigo} {'activada' if activa else 'desactivada'}."
-    contexto = contexto_detalle(detalle, monitoreo.zona_horaria, aviso)
+    contexto = contexto_detalle(detalle, monitoreo.zona_horaria, aviso, tareas_con_borrador(request, detalle))
     return renderizar(request, "parciales/_estrategia_detalle.html", contexto)
 
 
-@router.post(
-    "/estrategias/{bd}/{codigo}/activar", response_model=None, dependencies=[Depends(exigir_origen_confiable)]
-)
+@router.post("/estrategias/{bd}/{codigo}/activar", response_model=None, dependencies=[Depends(exigir_origen_confiable)])
 def activar(request: Request, bd: str, codigo: str, monitoreo: Monitoreo) -> Response:
     return _cambiar(request, bd, codigo, monitoreo, True)
 

@@ -3,7 +3,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from cloudcr_backup.web.app import crear_app
+from cloudcr_backup.web.config import ConfigWeb
 from tests.web.conftest import ServicioFalso
+from tests.web.monitoreo_falso import MonitoreoFalso
 
 
 def test_salud(cliente: TestClient) -> None:
@@ -12,16 +15,19 @@ def test_salud(cliente: TestClient) -> None:
     assert respuesta.json()["estado"] == "ok"
 
 
-def test_inicio_redirige_a_la_unica_instancia_en_ejecucion(cliente: TestClient) -> None:
-    respuesta = cliente.get("/", follow_redirects=False)
-    assert respuesta.status_code == 303
-    assert respuesta.headers["location"] == "/instancias/XE"
+def test_inicio_muestra_la_ruta_de_trabajo(cliente: TestClient) -> None:
+    respuesta = cliente.get("/")
+    assert respuesta.status_code == 200
+    assert "Su ruta de trabajo" in respuesta.text
+    assert "Qué respaldar" in respuesta.text
+    assert 'aria-current="page">Inicio' in respuesta.text
 
 
-def test_inicio_sin_instancias_redirige_a_la_lista(cliente: TestClient, servicio: ServicioFalso) -> None:
+def test_inicio_sin_instancias_sigue_disponible(cliente: TestClient, servicio: ServicioFalso) -> None:
     servicio.instancias = []
-    respuesta = cliente.get("/", follow_redirects=False)
-    assert respuesta.headers["location"] == "/instancias"
+    respuesta = cliente.get("/")
+    assert respuesta.status_code == 200
+    assert "Sin instancias detectadas" in respuesta.text
 
 
 def test_lista_de_instancias(cliente: TestClient) -> None:
@@ -106,3 +112,80 @@ def test_evidencias_lista_las_diez_y_descarga_como_adjunto(
     assert descarga.headers["content-disposition"].startswith("attachment")
     assert cliente.get("/evidencias/archivo/../x").status_code in (404, 400)
     assert len(cliente.get("/api/evidencias").json()["evidencias"]) == 10
+
+
+class MonitoreoSinEstrategias(MonitoreoFalso):
+    def estrategias(self) -> list:  # type: ignore[type-arg, override]
+        return []
+
+
+def _web(config_pruebas: ConfigWeb, servicio: ServicioFalso, monitoreo: MonitoreoFalso) -> TestClient:
+    return TestClient(crear_app(config_pruebas, servicio=servicio, monitoreo_servicio=monitoreo))
+
+
+def test_sin_estrategias_el_inicio_bloquea_los_pasos_siguientes(
+    config_pruebas: ConfigWeb, servicio: ServicioFalso
+) -> None:
+    texto = _web(config_pruebas, servicio, MonitoreoSinEstrategias()).get("/").text
+    assert "Cree una estrategia primero" in texto
+    assert 'href="/estado"' in texto  # el menú sigue disponible
+
+
+def test_sin_estrategias_la_franja_no_deja_avanzar(config_pruebas: ConfigWeb, servicio: ServicioFalso) -> None:
+    texto = _web(config_pruebas, servicio, MonitoreoSinEstrategias()).get("/estrategias").text
+    assert "Cree al menos una estrategia para continuar" in texto
+    assert "Siguiente: automatizar con el agente" not in texto
+
+
+def test_con_estrategias_la_franja_permite_avanzar(config_pruebas: ConfigWeb, servicio: ServicioFalso) -> None:
+    texto = _web(config_pruebas, servicio, MonitoreoFalso()).get("/estrategias").text
+    assert "Siguiente: automatizar con el agente" in texto
+    assert "Cree una estrategia primero" not in _web(config_pruebas, servicio, MonitoreoFalso()).get("/").text
+
+
+class MonitoreoSinScripts(MonitoreoFalso):
+    def _resumen(self):  # type: ignore[no-untyped-def]
+        return super()._resumen().model_copy(update={"tareas_con_script": 0})
+
+
+def test_la_franja_manda_a_preparar_la_estrategia_pendiente(config_pruebas: ConfigWeb, servicio: ServicioFalso) -> None:
+    texto = _web(config_pruebas, servicio, MonitoreoSinScripts()).get("/estrategias").text
+    assert "Antes de seguir: prepare EST001" in texto
+    assert 'href="/estrategias/XE/EST001"' in texto
+
+
+def test_con_la_estrategia_lista_la_franja_deja_continuar(config_pruebas: ConfigWeb, servicio: ServicioFalso) -> None:
+    texto = _web(config_pruebas, servicio, MonitoreoFalso()).get("/estrategias").text
+    assert "Antes de seguir" not in texto
+
+
+def test_el_detalle_de_la_estrategia_muestra_la_lista_de_pasos(
+    config_pruebas: ConfigWeb, servicio: ServicioFalso
+) -> None:
+    texto = _web(config_pruebas, servicio, MonitoreoFalso()).get("/estrategias/XE/EST001").text
+    assert "Para dejar esta estrategia funcionando" in texto
+    assert "Leer y aprobar cada script" in texto
+    assert "Hacer un respaldo de prueba ahora (T1)" in texto
+    assert "Generar los scripts RMAN" in texto  # el botón original sigue disponible
+
+
+def test_sistema_separa_lo_imprescindible_de_lo_avanzado(config_pruebas: ConfigWeb, servicio: ServicioFalso) -> None:
+    texto = _web(config_pruebas, servicio, MonitoreoFalso()).get("/sistema").text
+    assert "Imprescindible" in texto
+    assert 'id="avanzado"' in texto
+    assert 'id="correo"' in texto and 'id="parametros"' in texto
+    for pestana in ("empezar", "entorno", "avanzado"):
+        assert f'data-ir-pestana="{pestana}"' in texto
+    for zona in ("repositorio", "bases", "agente", "entorno", "archivado", "correo", "parametros"):
+        assert f'id="zona-{zona}"' in texto
+
+
+def test_un_error_del_repositorio_dice_que_hacer(config_pruebas: ConfigWeb, servicio: ServicioFalso) -> None:
+    from cloudcr_backup.domain.errores import RepositorioNoDisponible
+
+    monitoreo = MonitoreoFalso()
+    monitoreo.error = RepositorioNoDisponible("sin repositorio")
+    respuesta = _web(config_pruebas, servicio, monitoreo).get("/historial")
+    assert respuesta.status_code == 503
+    assert "Qué puede hacer ahora" in respuesta.text
+    assert "/sistema#repositorio" in respuesta.text

@@ -1,7 +1,10 @@
 {% if not bases %}
 <div class="vacio">No hay bases de datos registradas. Regístrela en <a href="/sistema#bases">Sistema → Bases de datos</a>.</div>
 {% elif puntos is none %}
-<div class="vacio">Elija una base de datos.</div>
+<div class="vacio vacio-guiado">
+<p><strong>Elija una base de datos para empezar.</strong></p>
+<p>Después podrá: 1) ver desde qué respaldos se puede recuperar, 2) diagnosticar qué archivo falta o está dañado y 3) generar el procedimiento para su caso, por ejemplo «se perdió un datafile», «se dañó el control file» o «hay que volver a una hora exacta».</p>
+</div>
 {% else %}
 <section class="panel">
   <div class="encabezado-seccion">
@@ -35,11 +38,11 @@
     </table>
   </div>
   {% else %}
-  <p class="nota">Todavía no hay respaldos exitosos registrados para esta base: ejecute uno desde la pantalla del script de una tarea.</p>
+  <p class="nota">Todavía no hay respaldos exitosos registrados para esta base. Sin respaldos no hay de dónde recuperar: abra una <a href="/estrategias">estrategia</a>, entre al script de una tarea y ejecútelo.</p>
   {% endif %}
 </section>
 
-<section class="panel">
+<section class="panel" id="diagnostico">
   <div class="encabezado-seccion">
     <h2>Diagnóstico</h2>
     <button class="boton" type="button" hx-get="/recuperacion/{{ puntos.bd | urlencode }}/diagnostico" hx-target="#zona-diagnostico" hx-disabled-elt="this" hx-indicator="#diagnosticando">Diagnosticar ahora</button>
@@ -51,21 +54,36 @@
 
 <section class="panel">
   <h2>Generar un procedimiento</h2>
+<details class="ayuda-paso" open>
+<summary>¿Qué hago aquí? <span class="ayuda-resumen">Le dice qué comandos usar para recuperar; no recupera nada por sí solo</span></summary>
+<ol>
+<li><strong>Diagnostique</strong> primero: suba al panel <a href="#diagnostico">«Diagnóstico»</a> (arriba de este) y pulse «Diagnosticar ahora». Así el sistema detecta qué archivo está dañado.</li>
+<li>Elija <strong>qué pasó</strong> en el primer campo.</li>
+<li>En <strong>«Objeto dañado»</strong> escriba qué se dañó (una PDB, un tablespace o un archivo). Si lo deja vacío, el sistema lo deduce del diagnóstico.</li>
+<li>Pulse <strong>Generar procedimiento</strong> y revise los pasos y el script. Un DBA los aplica.</li>
+</ol>
+<p class="ayuda-req">Si la base está sana, el sistema responderá «No es posible» porque no hay nada que recuperar: es normal.</p>
+</details>
   <form class="formulario-columna" action="/recuperacion/{{ puntos.bd | urlencode }}/plan" method="get"
         hx-get="/recuperacion/{{ puntos.bd | urlencode }}/plan" hx-target="#zona-procedimiento" hx-disabled-elt="find button" hx-indicator="#generando-plan">
     <div class="formulario-accion">
-      <label>Escenario
+      <label>¿Qué pasó? (escenario)
         <select name="escenario" required>
-          {% for valor, etiqueta, ayuda in escenarios %}<option value="{{ valor }}">{{ etiqueta }}</option>{% endfor %}
+          {% for valor, etiqueta, ayuda in escenarios %}<option value="{{ valor }}" data-ayuda="{{ ayuda }}" data-sin-objetivo="{{ 'si' if ayuda.startswith('No necesita') else 'no' }}" data-etiqueta-objetivo="{{ {'pdb': 'Nombre de la PDB dañada', 'tablespace': 'Tablespace dañado (PDB:TABLESPACE)', 'datafile': 'Número del datafile dañado'}.get(valor, 'Objeto dañado') }}" data-ejemplo-objetivo="{{ {'pdb': 'XEPDB1', 'tablespace': 'XEPDB1:USERS', 'datafile': '7'}.get(valor, '') }}">{{ etiqueta }}</option>{% endfor %}
         </select>
       </label>
-      <label>Objetivo <input type="text" name="objetivo" maxlength="130" placeholder="XEPDB1, XEPDB1:USERS o file#" class="campo-ancho" autocomplete="off" spellcheck="false"></label>
+      <label><span id="etiqueta-objetivo">Objeto dañado</span> <span class="opcional">(opcional)</span> <input type="text" name="objetivo" maxlength="130" placeholder="Déjelo vacío para deducirlo del diagnóstico" class="campo-ancho" autocomplete="off" spellcheck="false"></label>
       <label>Hasta (punto en el tiempo) <input type="datetime-local" name="hasta"></label>
       <button class="boton primario" type="submit">Generar procedimiento</button>
     </div>
-    <ul class="nota">
-      {% for valor, etiqueta, ayuda in escenarios %}<li><strong>{{ etiqueta }}:</strong> {{ ayuda }}</li>{% endfor %}
-    </ul>
+    <p class="ayuda-escenario" id="ayuda-escenario" aria-live="polite"></p>
+    <p class="nota">«Objeto dañado» cambia según la falla que elija: nombre de la PDB, tablespace o número de archivo. En «control file» y «recuperación total» no se necesita. «Hasta» solo sirve para volver a una hora exacta.</p>
+    <details>
+      <summary>Ver todos los escenarios</summary>
+      <ul class="nota">
+        {% for valor, etiqueta, ayuda in escenarios %}<li><strong>{{ etiqueta }}:</strong> {{ ayuda }}</li>{% endfor %}
+      </ul>
+    </details>
   </form>
   <p id="generando-plan" class="htmx-indicator">Generando…</p>
   <div id="zona-procedimiento" aria-live="polite"></div>

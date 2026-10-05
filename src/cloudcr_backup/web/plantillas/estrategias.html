@@ -5,12 +5,19 @@
   <section class="encabezado-seccion">
     <div>
       <h1>Estrategias de respaldo</h1>
-      <p class="subtitulo">Registradas en el repositorio. Las nuevas se crean desde la instancia.</p>
+      <p class="subtitulo">Cada estrategia define qué, cómo y cuándo respaldar una base de datos.</p>
     </div>
     <div class="acciones">
-      {% for bd in bases %}<a class="boton primario" href="/instancias/{{ bd | urlencode }}/estrategias/nueva">Crear estrategia en {{ bd }}</a>{% endfor %}
-      <a class="boton" href="/instancias">Elegir instancia</a>
       <a class="boton" href="/estrategias/importar">Importar YAML</a>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Nueva estrategia: ¿para qué base de datos?</h2>
+    <p class="nota">El asistente le guía en 5 pasos: datos generales, qué respaldar, cómo y cuándo, destino y retención, y revisión.</p>
+    <div class="acciones">
+      {% for i in instancias %}<a class="boton primario" href="/instancias/{{ i.sid | urlencode }}/estrategias/nueva">Crear para {{ i.sid }}</a>{% endfor %}
+      {% for bd in bases %}<a class="boton" href="/instancias/{{ bd | urlencode }}/estrategias/nueva">Crear para {{ bd }}</a>{% endfor %}
+      {% if not instancias and not bases %}<a class="boton" href="/instancias">Buscar instancias</a>{% endif %}
     </div>
   </section>
   <section class="panel">

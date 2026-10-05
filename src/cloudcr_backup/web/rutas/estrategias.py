@@ -95,6 +95,7 @@ def pagina_nueva(
     perfil = exploracion.perfil
     existentes = almacen_estrategias.codigos_existentes(ajustes, sid, perfil.nombre)
     contexto = {
+        "seccion": "estrategias",
         "sid": sid.upper(),
         "perfil": perfil,
         "oracle_home": oracle_home or "",
@@ -145,6 +146,7 @@ def crear(
             extra={"hallazgos": [_hallazgo_a_json(h) for h in error.hallazgos]},
         ) from error
     return {
+        "bd": perfil.nombre,
         "codigo": resultado.estrategia.codigo,
         "nombre": resultado.estrategia.nombre,
         "estado": resultado.estrategia.estado.value,

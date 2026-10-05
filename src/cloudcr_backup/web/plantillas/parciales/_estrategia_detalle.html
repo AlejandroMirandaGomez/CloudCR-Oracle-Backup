@@ -1,4 +1,14 @@
 {% set estrategia = detalle.estrategia %}
+{% set total_tareas = detalle.tareas | length %}
+{% set con_script = detalle.tareas | selectattr('script') | list | length %}
+{% set n_generados = generados if generados is not none and generados >= con_script else con_script %}
+{% set scripts_generados = total_tareas > 0 and n_generados >= total_tareas %}
+{% set scripts_listos = total_tareas > 0 and con_script >= total_tareas %}
+{% set esta_activa = resumen.estado.value == 'ACTIVA' %}
+{% set ya_ejecutada = resumen.color.value != 'SIN_DATOS' %}
+{% set toca = 'generar' if not scripts_generados else ('aprobar' if not scripts_listos else ('activar' if not esta_activa else ('probar' if not ya_ejecutada else 'listo'))) %}
+{% set atenuar = ' atenuado' if toca != 'listo' else '' %}
+{% set tarea_prueba = detalle.tareas | selectattr('script') | first %}
 {% if aviso %}<p class="mensaje-estado" role="status">{{ aviso }}</p>{% endif %}
 <section class="encabezado-seccion">
   <div>
@@ -15,13 +25,64 @@
     {% else %}
     <form method="post" action="{{ ruta }}/activar" hx-post="{{ ruta }}/activar" hx-target="#detalle-estrategia"
           hx-confirm="¿Activar {{ resumen.codigo }}? El agente empezará a ejecutar las tareas que tengan script aprobado.">
-      <button class="boton primario" type="submit">Activar</button>
+      <button class="boton primario{{ ' destacado' if toca == 'activar' }}" type="submit">Activar</button>
     </form>
     {% endif %}
-    <a class="boton" href="{{ ruta }}/editar">Editar estrategia</a>
-    <a class="boton" href="{{ ruta }}/editar?agregar_tarea=true">Agregar tarea</a>
+    <a class="boton{{ atenuar }}" href="{{ ruta }}/editar">Editar estrategia</a>
+    <a class="boton{{ atenuar }}" href="{{ ruta }}/editar?agregar_tarea=true">Agregar tarea</a>
     <a class="boton" href="/historial?bd={{ resumen.bd | urlencode }}&amp;estrategia={{ resumen.codigo | urlencode }}">Ver historial</a>
   </div>
+</section>
+<section class="panel" aria-label="Pasos para dejar la estrategia funcionando">
+  <h2>Para dejar esta estrategia funcionando</h2>
+  <p class="nota">Siga los pasos en orden. Se marcan solos; el resaltado indica lo que toca ahora.</p>
+  <ol class="lista-control">
+    <li>
+      <span class="marca-control" aria-hidden="true">·</span>
+      <div>
+        <p><strong>Validar contra la base real</strong> <span class="etiqueta-req">Opcional</span></p>
+        <p class="nota">Comprueba el modo de archivado, los objetos, el destino y el espacio antes de generar nada. Úselo con el botón «Validar contra la base real» de abajo; el sistema no guarda que ya lo hizo.</p>
+      </div>
+    </li>
+    <li class="{{ 'hecho' if scripts_generados }}{{ ' siguiente' if toca == 'generar' }}">
+      <span class="marca-control" aria-hidden="true">{{ '✓' if scripts_generados else '1' }}</span>
+      <div>
+        <p><strong>Generar los scripts RMAN</strong> · {{ n_generados }} de {{ total_tareas }} tareas con script</p>
+        <p class="nota">Pulse «Generar los scripts RMAN». Quedan como borrador hasta que usted los apruebe.</p>
+      </div>
+    </li>
+    <li class="{{ 'hecho' if scripts_listos }}{{ ' siguiente' if toca == 'aprobar' }}">
+      <span class="marca-control" aria-hidden="true">{{ '✓' if scripts_listos else '2' }}</span>
+      <div>
+        <p><strong>Leer y aprobar cada script</strong> · {{ con_script }} de {{ total_tareas }} aprobados</p>
+        <p class="nota">Abra cada tarea («Script RMAN: ver, aprobar y ejecutar»), lea el comando y apruébelo. Sin aprobación el agente no ejecuta la tarea.</p>
+      </div>
+    </li>
+    <li class="{{ 'hecho' if esta_activa }}{{ ' siguiente' if toca == 'activar' }}">
+      <span class="marca-control" aria-hidden="true">{{ '✓' if esta_activa else '3' }}</span>
+      <div>
+        <p><strong>Activar la estrategia</strong> · {{ 'Activa' if esta_activa else 'Inactiva' }}</p>
+        <p class="nota">Solo una estrategia activa se ejecuta sola, a la hora programada.</p>
+      </div>
+    </li>
+    <li class="{{ 'hecho' if ya_ejecutada }}{{ ' siguiente' if toca == 'probar' }}">
+      <span class="marca-control" aria-hidden="true">{{ '✓' if ya_ejecutada else '4' }}</span>
+      <div>
+        <p><strong>Hacer un respaldo de prueba</strong> · {{ 'Ya tiene ejecuciones' if ya_ejecutada else 'Todavía sin ejecuciones' }}</p>
+        <p class="nota">Ejecuta una vez la tarea y deja el resultado como evidencia en el <a href="/historial?bd={{ resumen.bd | urlencode }}&amp;estrategia={{ resumen.codigo | urlencode }}">historial</a>.</p>
+        {% if tarea_prueba %}
+        <form class="formulario-accion" method="post" action="{{ ruta }}/scripts/{{ tarea_prueba.codigo | urlencode }}/ejecutar" hx-post="{{ ruta }}/scripts/{{ tarea_prueba.codigo | urlencode }}/ejecutar" hx-target="#resultado-prueba" hx-disabled-elt="find button"
+              hx-confirm="Se ejecutará un respaldo REAL con RMAN de {{ resumen.codigo }}/{{ tarea_prueba.codigo }} (modo {{ tarea_prueba.modo_respaldo.value }}). Si la base está en NOARCHIVELOG o el modo es CONSISTENTE, la base se apaga mientras dura. ¿Continuar?">
+          <button class="boton{{ ' primario destacado' if toca == 'probar' }}" type="submit">Hacer un respaldo de prueba ahora ({{ tarea_prueba.codigo }})</button>
+        </form>
+        {% else %}
+        <p class="nota tono-advertencia">Disponible cuando una tarea tenga su script aprobado.</p>
+        {% endif %}
+        <div id="resultado-prueba" aria-live="polite"></div>
+      </div>
+    </li>
+  </ol>
+  {% if toca == 'listo' %}<p class="aviso-exito">Todo listo: la estrategia está activa y ya tiene ejecuciones. Vigílela en <a href="/estado">Estado</a>.</p>{% endif %}
 </section>
 
 <section class="panel">
@@ -30,9 +91,9 @@
     <div class="acciones">
       <button class="boton" type="button" hx-get="{{ ruta }}/validar" hx-target="#resultado-estrategia" hx-disabled-elt="this" hx-indicator="#trabajando-estrategia">Validar contra la base real</button>
       <form method="post" action="{{ ruta }}/generar-scripts" hx-post="{{ ruta }}/generar-scripts" hx-target="#resultado-estrategia" hx-disabled-elt="find button" hx-indicator="#trabajando-estrategia">
-        <button class="boton primario" type="submit">Generar los scripts RMAN</button>
+        <button class="boton primario{{ ' destacado' if toca == 'generar' }}" type="submit">Generar los scripts RMAN</button>
       </form>
-      <a class="boton" href="{{ ruta }}/exportar">Exportar YAML</a>
+      <a class="boton{{ atenuar }}" href="{{ ruta }}/exportar">Exportar YAML</a>
     </div>
   </div>
   <p class="nota">La validación inspecciona la base en vivo (modo de archivado, objetos, destino y espacio). Los scripts se generan como borrador: cada uno se revisa y se aprueba en la pantalla de su tarea.</p>
@@ -59,7 +120,7 @@
     <div class="encabezado-seccion">
       <h3>{{ tarea.codigo }} · {{ tarea.etiqueta_tipo }}</h3>
       <div class="acciones">
-        <a class="boton chico" href="{{ ruta }}/scripts/{{ tarea.codigo | urlencode }}">Script RMAN: ver, aprobar y ejecutar</a>
+        <a class="boton chico{{ ' destacado' if (toca == 'aprobar' and not tarea.script) or (toca == 'probar' and loop.first) }}" href="{{ ruta }}/scripts/{{ tarea.codigo | urlencode }}">Script RMAN: ver, aprobar y ejecutar</a>
         <a class="boton chico" href="{{ ruta }}/editar">Editar</a>
         <form method="post" action="{{ ruta }}/tareas/{{ tarea.codigo | urlencode }}/eliminar" hx-post="{{ ruta }}/tareas/{{ tarea.codigo | urlencode }}/eliminar" hx-target="#detalle-estrategia" hx-disabled-elt="find button"
               hx-confirm="¿Eliminar la tarea {{ tarea.codigo }}? Se crea una versión nueva de la estrategia. Si la tarea ya tiene ejecuciones registradas no se podrá eliminar.">

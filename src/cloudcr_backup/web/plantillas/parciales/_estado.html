@@ -13,6 +13,12 @@
 
 <section class="panel">
   <h2>Estrategias</h2>
+  <ul class="lista-semaforo" aria-label="Qué significa cada color">
+    <li><span class="tono-exito">● Verde</span>: al día, sin problemas.</li>
+    <li><span class="tono-advertencia">▲ Amarillo</span>: requiere atención (advertencias).</li>
+    <li><span class="tono-peligro">✕ Rojo</span>: falló o hay una alerta grave.</li>
+    <li><span class="tono-atenuado">○ Sin datos</span>: inactiva o sin scripts aprobados.</li>
+  </ul>
   {% if semaforos %}
   <div class="tabla-desplazable">
     <table class="tabla compacta">
@@ -37,7 +43,7 @@
   </div>
   <p class="leyenda">{{ regla }}</p>
   {% else %}
-  <div class="vacio">No hay estrategias registradas{% if bd %} para {{ bd }}{% endif %}. <a href="/instancias">Crear una desde una instancia</a>.</div>
+  <div class="vacio vacio-guiado"><p><strong>Todavía no hay estrategias{% if bd %} para {{ bd }}{% endif %}.</strong></p><p>Aquí verá un semáforo por estrategia cuando exista al menos una y se haya ejecutado.</p><p><a class="boton primario" href="/estrategias">Crear la primera estrategia</a></p></div>
   {% endif %}
 </section>
 
@@ -47,7 +53,7 @@
   {% set tabla = en_curso %}
   {% include "parciales/_tabla_historial.html" %}
   {% else %}
-  <p class="nota">No hay ejecuciones en curso.</p>
+  <p class="nota">No hay ejecuciones en curso. Las ejecuciones aparecen aquí mientras corren o cuando están por iniciar.</p>
   {% endif %}
 </section>
 

@@ -3,8 +3,15 @@
     <h3>{{ etiqueta }}</h3>
     <span class="semaforo tono-{{ 'exito' if procedimiento.posible else 'peligro' }}">{{ 'Posible' if procedimiento.posible else 'No es posible' }}</span>
   </div>
-  <p>{{ procedimiento.motivo }}</p>
+  <p>{{ procedimiento.motivo | replace('con --objetivo (PDB:TS)', 'en el campo Objetivo (PDB:TABLESPACE)') | replace('con --objetivo', 'en el campo Objetivo') }}</p>
   {% if procedimiento.objetivo %}<p class="nota">Objetivo: <code>{{ procedimiento.objetivo }}</code></p>{% endif %}
+  <div class="ayuda-escenario que-hacer-ahora">
+    {% if procedimiento.posible %}
+    <strong>Qué hacer ahora:</strong> revise los pasos y el script de abajo. Esta herramienta no ejecuta nada: el DBA es quien los aplica, después de confirmar que es el procedimiento correcto.
+    {% else %}
+    <strong>Qué hacer ahora:</strong> este procedimiento no se pudo armar con lo que se indicó. Si hay una falla real, pulse primero «Diagnosticar ahora» (panel <a href="#diagnostico">Diagnóstico</a>, arriba) para que el sistema detecte el archivo dañado, y vuelva a generar. Si solo está probando, escriba el objeto a mano en el campo Objetivo (por ejemplo <code>XEPDB1</code>) y genere de nuevo.
+    {% endif %}
+  </div>
   {% for nota in procedimiento.avisos %}<p class="aviso">{{ nota }}</p>{% endfor %}
   {% if procedimiento.pasos %}
   <h4>Pasos</h4>

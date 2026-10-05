@@ -1,1 +1,1 @@
-{% if error %}<p class="mensaje-error" role="alert">{{ error.mensaje }}{% if error.sugerencia %}<span class="sugerencia">Sugerencia: {{ error.sugerencia }}</span>{% endif %}</p>{% endif %}
+{% if error %}<p class="mensaje-error" role="alert">{{ error.mensaje }}<span class="sugerencia">{% if error.sugerencia %}Sugerencia: {{ error.sugerencia }}{% else %}Qué hacer: corrija lo indicado y vuelva a intentarlo; si continúa, revise el <a href="/sistema#entorno">Diagnóstico del entorno</a>.{% endif %}</span></p>{% endif %}

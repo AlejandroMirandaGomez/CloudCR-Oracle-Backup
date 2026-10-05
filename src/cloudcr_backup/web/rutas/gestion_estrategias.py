@@ -21,7 +21,7 @@ from cloudcr_backup.services import gestion_estrategias as servicio_gestion
 from cloudcr_backup.web.formularios import Formulario, marcado, texto
 from cloudcr_backup.web.monitoreo import ProveedorMonitoreo, ajustes_de_la_app, obtener_monitoreo
 from cloudcr_backup.web.rutas.comun import es_htmx, renderizar
-from cloudcr_backup.web.rutas.estrategias_registradas import contexto_detalle, ruta_detalle
+from cloudcr_backup.web.rutas.estrategias_registradas import contexto_detalle, ruta_detalle, tareas_con_borrador
 from cloudcr_backup.web.seguridad import exigir_origen_confiable
 
 router = APIRouter()
@@ -110,7 +110,9 @@ def aplicar_recomendacion(request: Request, bd: str, codigo: str, recomendacion:
     if not es_htmx(request):
         return RedirectResponse(ruta_detalle(resultado.bd, resultado.estrategia), status_code=303)
     detalle = monitoreo.estrategia(resultado.bd, resultado.estrategia, 5)
-    contexto = contexto_detalle(detalle, monitoreo.zona_horaria, resultado.mensaje)
+    contexto = contexto_detalle(
+        detalle, monitoreo.zona_horaria, resultado.mensaje, tareas_con_borrador(request, detalle)
+    )
     return renderizar(request, "parciales/_estrategia_detalle.html", contexto)
 
 
@@ -140,9 +142,7 @@ def pagina_editar(request: Request, bd: str, codigo: str, agregar_tarea: Agregar
     return renderizar(request, "estrategia_editar.html", contexto)
 
 
-@router.post(
-    "/estrategias/{bd}/{codigo}/editar/validar", response_class=HTMLResponse, dependencies=OrigenConfiable
-)
+@router.post("/estrategias/{bd}/{codigo}/editar/validar", response_class=HTMLResponse, dependencies=OrigenConfiable)
 def validar_borrador(request: Request, bd: str, codigo: str, campos: Formulario) -> HTMLResponse:
     resultado = servicio_gestion.validar_borrador(_ajustes(request), bd, codigo, campos.get("contenido", ""))
     contexto: dict[str, Any] = {
@@ -169,5 +169,5 @@ def eliminar_tarea(request: Request, bd: str, codigo: str, tarea: str, monitoreo
     if not es_htmx(request):
         return RedirectResponse(_destino_con_aviso(editada.bd, editada.codigo, editada.mensaje), status_code=303)
     detalle = monitoreo.estrategia(editada.bd, editada.codigo, 5)
-    contexto = contexto_detalle(detalle, monitoreo.zona_horaria, editada.mensaje)
+    contexto = contexto_detalle(detalle, monitoreo.zona_horaria, editada.mensaje, tareas_con_borrador(request, detalle))
     return renderizar(request, "parciales/_estrategia_detalle.html", contexto)

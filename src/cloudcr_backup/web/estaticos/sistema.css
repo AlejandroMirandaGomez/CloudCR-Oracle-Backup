@@ -1,0 +1,91 @@
+.pestanas {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.pestana {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  align-items: flex-start;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--superficie);
+  color: var(--texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pestana:hover {
+  background: var(--superficie-2);
+}
+
+.pestana:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+.pestana.activa {
+  border-color: var(--acento);
+  background: var(--acento-suave);
+  box-shadow: 0 0 0 3px var(--acento-suave);
+}
+
+.pestana-titulo {
+  font-weight: 700;
+}
+
+.pestana-detalle {
+  font-size: 0.82rem;
+  color: var(--texto-suave);
+}
+
+.grupo-pestana {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.con-pestanas .grupo-pestana:not(.activa) {
+  display: none;
+}
+
+.bloque-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--borde);
+}
+
+.bloque-cabecera > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.bloque-cabecera h2 {
+  margin: 0 0 0.2rem;
+}
+
+.bloque-numero {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--acento);
+  color: #fff;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .pestanas {
+    grid-template-columns: 1fr;
+  }
+}

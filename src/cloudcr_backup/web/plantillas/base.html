@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/estaticos/app.css">
   <link rel="stylesheet" href="/estaticos/monitoreo.css">
   <link rel="stylesheet" href="/estaticos/operaciones.css">
+  <link rel="stylesheet" href="/estaticos/guia.css">
   <script src="/estaticos/htmx.min.js" defer></script>
   <script src="/estaticos/app.js" defer></script>
   {% block cabecera %}{% endblock %}
@@ -17,18 +18,42 @@
   <header class="cabecera">
     <a class="marca" href="/"><span class="marca-nombre">CloudCR</span> <span class="marca-producto">Oracle Backup</span></a>
     <nav class="navegacion" aria-label="Secciones">
-      <a href="/estado"{% if seccion == 'estado' %} aria-current="page"{% endif %}>Estado</a>
+      <a href="/"{% if seccion == 'inicio' %} aria-current="page"{% endif %}>Inicio</a>
+      <a href="/instancias"{% if seccion == 'instancias' %} aria-current="page"{% endif %}>Bases de datos</a>
       <a href="/estrategias"{% if seccion == 'estrategias' %} aria-current="page"{% endif %}>Estrategias</a>
+      <a href="/estado"{% if seccion == 'estado' %} aria-current="page"{% endif %}>Estado</a>
       <a href="/historial"{% if seccion == 'historial' %} aria-current="page"{% endif %}>Historial</a>
       <a href="/alertas"{% if seccion == 'alertas' %} aria-current="page"{% endif %}>Alertas</a>
       <a href="/retencion"{% if seccion == 'retencion' %} aria-current="page"{% endif %}>Retención</a>
       <a href="/recuperacion"{% if seccion == 'recuperacion' %} aria-current="page"{% endif %}>Recuperación</a>
-      <a href="/criterios"{% if seccion == 'criterios' %} aria-current="page"{% endif %}>Criterios</a>
-      <a href="/evidencias"{% if seccion == 'evidencias' %} aria-current="page"{% endif %}>Evidencias</a>
-      <a href="/instancias"{% if seccion == 'instancias' %} aria-current="page"{% endif %}>Instancias</a>
       <a href="/sistema"{% if seccion == 'sistema' %} aria-current="page"{% endif %}>Sistema</a>
     </nav>
   </header>
+  {% set guias = {
+    'instancias': (1, 'Conocer el entorno', 'Aquí ve las bases Oracle del equipo y su estructura. Elija una para explorarla o para crear su estrategia de respaldo.', '/estrategias', 'Siguiente: definir la estrategia'),
+    'estrategias': (2, 'Definir y preparar la estrategia', 'Cree una estrategia (qué, cómo y cuándo), entre a su detalle, genere los scripts RMAN, apruébelos y actívela.', '/sistema#agente', 'Siguiente: automatizar con el agente'),
+    'sistema': (4, 'Automatizar la ejecución', 'Aquí se enciende el agente que ejecuta los respaldos a su hora, y se revisan el entorno y los parámetros.', '/estado', 'Siguiente: comprobar la evidencia'),
+    'estado': (5, 'Comprobar la evidencia', 'El semáforo resume si cada estrategia está al día. Rojo y amarillo piden atención; entre al detalle para ver el motivo.', '/historial', 'Siguiente: ver el historial'),
+    'historial': (5, 'Comprobar la evidencia', 'Cada ejecución queda registrada con su resultado, duración, tamaño y mensajes de RMAN. Se puede exportar como evidencia.', '/alertas', 'Siguiente: revisar las alertas'),
+    'alertas': (5, 'Comprobar la evidencia', 'Las alertas avisan de respaldos fallidos, omitidos o atrasados. Reconózcalas al atenderlas y resuélvalas al corregir la causa.', '/retencion', 'Siguiente: retención'),
+    'retencion': (6, 'Conservar y recuperar', 'La retención indica cuánto tiempo se conserva cada respaldo. El sistema informa; usted decide qué purgar.', '/recuperacion', 'Siguiente: recuperación'),
+    'recuperacion': (6, 'Conservar y recuperar', 'Elija la base y el escenario de falla para ver qué respaldos sirven y el plan de recuperación paso a paso.', '/', 'Volver al inicio'),
+  } %}
+  {% if seccion in guias %}
+  {% set g = guias[seccion] %}
+  <aside class="guia" aria-label="Dónde está en el flujo">
+    <span class="guia-paso">Paso {{ g[0] }} de 6 · {{ g[1] }}</span>
+    <span class="guia-texto">{{ g[2] }}</span>
+    {% if g[0] >= 2 and n_estrategias is defined and n_estrategias == 0 %}
+    <span class="guia-sig guia-bloqueada" aria-disabled="true">🔒 Cree al menos una estrategia para continuar</span>
+    {% elif seccion == 'estrategias' and n_listas is defined and n_listas == 0 and pendiente %}
+    <a class="guia-sig guia-pendiente" href="{{ pendiente.ruta }}">Antes de seguir: prepare {{ pendiente.codigo }} (scripts aprobados y activa) →</a>
+    {% else %}
+    <a class="guia-sig" href="{{ g[3] }}">{{ g[4] }} →</a>
+    {% endif %}
+    <a class="guia-glosario" href="/criterios#vocabulario">Glosario</a>
+  </aside>
+  {% endif %}
   <main id="principal">{% block contenido %}{% endblock %}</main>
   <footer class="pie">CloudCR Oracle Backup {{ version }}</footer>
 </body>
