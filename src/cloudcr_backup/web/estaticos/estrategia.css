@@ -273,11 +273,41 @@
 }
 
 .tarjetas-esquema {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin-top: 1rem;
   margin-bottom: 0.4rem;
 }
 
+.tarjetas-esquema .tarjeta {
+  align-content: start;
+}
+
+.tarjetas-esquema .tarjeta > input {
+  grid-row: 1 / span 2;
+}
+
+.tarjeta-detalle {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+}
+
+.tarjeta-parte {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--texto-suave);
+}
+
+.tarjeta-parte-rotulo {
+  font-weight: 700;
+  color: var(--texto);
+}
+
 .insignia-recomendado {
-  justify-self: start;
+  position: absolute;
+  top: 0;
+  right: 0.85rem;
+  transform: translateY(-50%);
   padding: 0.1rem 0.55rem;
   border-radius: 999px;
   background: var(--exito);

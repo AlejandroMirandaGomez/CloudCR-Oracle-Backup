@@ -104,7 +104,7 @@ class SolicitudEstrategia(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     codigo: str = Field(max_length=20)
-    nombre: str = Field(min_length=1, max_length=200)
+    nombre: str = Field(default="", max_length=200)
     descripcion: str | None = Field(default=None, max_length=1000)
     prioridad: Prioridad
     creada_por: str = Field(min_length=1, max_length=100)
@@ -140,9 +140,15 @@ class SolicitudEstrategia(BaseModel):
         return normalizar_ruta(ruta)
 
     @model_validator(mode="after")
+    def _nombre_por_omision_es_el_codigo(self) -> Self:
+        if not self.nombre:
+            self.nombre = self.codigo
+        return self
+
+    @model_validator(mode="after")
     def _esquema_o_tareas(self) -> Self:
         if self.esquema is not None and self.tareas:
-            raise ValueError("Elija un esquema predefinido o defina las tareas a mano, no ambos.")
+            raise ValueError("Elija un esquema predefinido o defina el tipo de respaldo manualmente, no ambos.")
         return self
 
 

@@ -7,7 +7,7 @@
   <section class="heroe">
     <div class="heroe-texto">
       <p class="heroe-etiqueta">Sistema de Gestión de Estrategias de Respaldo</p>
-      <h1>Proteja sus bases de datos Oracle y demuestre que los respaldos se hicieron.</h1>
+      <h1>Proteja sus bases de datos Oracle.</h1>
       <p class="heroe-lead">CloudCR le ayuda a decidir <strong>qué respaldar</strong>, <strong>cómo respaldarlo</strong> y <strong>cuándo ejecutarlo</strong>. RMAN hace el trabajo técnico y el sistema lo programa, lo ejecuta y guarda la evidencia de cada resultado.</p>
       <div class="acciones">
         {% if siguiente %}
@@ -18,12 +18,6 @@
         <a class="boton grande" href="#ruta">Ver cómo funciona</a>
       </div>
     </div>
-    <dl class="heroe-cifras" aria-label="Resumen actual">
-      <div><dt>Instancias Oracle</dt><dd>{{ instancias | length }}</dd></div>
-      <div><dt>Estrategias</dt><dd>{{ estrategias | length }}</dd></div>
-      <div><dt>Alertas abiertas</dt><dd class="{{ 'cifra-alerta' if alertas_abiertas else '' }}">{{ alertas_abiertas }}</dd></div>
-      <div><dt>Agente</dt><dd class="{{ 'cifra-ok' if agente_vivo else 'cifra-apagado' }}">{{ 'En marcha' if agente_vivo else 'Detenido' }}</dd></div>
-    </dl>
   </section>
 
   {% if not repositorio_disponible %}

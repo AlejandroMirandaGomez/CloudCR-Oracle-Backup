@@ -39,11 +39,26 @@ def test_descripcion_vacia_queda_en_nulo() -> None:
     assert solicitud(DESTINO, descripcion="   ").descripcion is None
 
 
-def test_nombre_y_responsable_son_obligatorios() -> None:
-    with pytest.raises(ValidationError):
-        solicitud(DESTINO, nombre="  ")
+def test_responsable_es_obligatorio() -> None:
     with pytest.raises(ValidationError):
         solicitud(DESTINO, creada_por="")
+
+
+@pytest.mark.parametrize("nombre", ["", "   "])
+def test_nombre_vacio_usa_el_codigo(nombre: str) -> None:
+    pedida = solicitud(DESTINO, nombre=nombre)
+    assert pedida.nombre == "EST010"
+    assert construir_estrategia(pedida).nombre == "EST010"
+
+
+def test_nombre_ausente_usa_el_codigo() -> None:
+    datos = datos_solicitud(DESTINO)
+    del datos["nombre"]
+    assert SolicitudEstrategia.model_validate(datos).nombre == "EST010"
+
+
+def test_nombre_escrito_se_conserva() -> None:
+    assert solicitud(DESTINO, nombre="  Producción diaria ").nombre == "Producción diaria"
 
 
 def test_destino_relativo_o_vacio_se_rechaza() -> None:

@@ -48,8 +48,9 @@
           <span class="error-campo" data-error-de="codigo" hidden></span>
         </label>
         <label class="campo campo-ancho">
-          <span class="rotulo">Nombre</span>
-          <input type="text" id="campo-nombre" maxlength="200" placeholder="Por ejemplo: Producción diaria" required>
+          <span class="rotulo">Nombre <span class="opcional">(opcional)</span></span>
+          <input type="text" id="campo-nombre" maxlength="200" placeholder="Por ejemplo: Producción diaria">
+          <span class="ayuda">Si lo deja vacío se usa el código.</span>
           <span class="error-campo" data-error-de="nombre" hidden></span>
         </label>
         <label class="campo campo-completo">
@@ -120,14 +121,14 @@
         <summary>¿Qué hago aquí? <span class="ayuda-resumen">Estas son las preguntas «cómo» y «cuándo»</span></summary>
         <ul><li><strong>Completo:</strong> copia entera cada vez. Simple, pero usa más espacio y tiempo.</li><li><strong>Incremental nivel 0 + nivel 1:</strong> un nivel 0 por semana y un nivel 1 al día, que guarda solo lo que cambió.</li><li><strong>Diferencial</strong> guarda lo cambiado desde el último incremental (más pequeño). <strong>Acumulativo</strong> guarda lo cambiado desde el nivel 0 (recuperación más simple).</li><li><strong>Ventana de respaldo:</strong> el horario en que se puede respaldar sin molestar a los usuarios.</li></ul>
         <p class="ayuda-reco"><strong>Recomendación:</strong> Use un <strong>esquema predefinido</strong> y deje la hora de la madrugada (por ejemplo 02:00).</p>
-        <p class="ayuda-req"><strong>Para continuar necesita:</strong> Un esquema elegido (o al menos una tarea) con su hora.</p>
+        <p class="ayuda-req"><strong>Para continuar necesita:</strong> Un esquema elegido (o al menos un tipo de respaldo) con su hora.</p>
       </details>
       <p class="aviso aviso-modo" id="aviso-noarchivelog" hidden>La base está en <strong>NOARCHIVELOG</strong>: los respaldos en modo automático se ejecutan como <strong>consistentes</strong> (apagan la base mientras duran) y los respaldos en línea no son posibles.</p>
       <fieldset class="grupo-opciones">
-        <legend>Cómo definir las tareas</legend>
+        <legend>Cómo definir el tipo de respaldo</legend>
         <div class="opciones-en-linea">
           <label class="casilla"><input type="radio" name="modo-tareas" value="esquema" checked> Usar un esquema predefinido</label>
-          <label class="casilla"><input type="radio" name="modo-tareas" value="personalizado"> Definir las tareas a mano</label>
+          <label class="casilla"><input type="radio" name="modo-tareas" value="personalizado"> Definir el tipo de respaldo manualmente</label>
         </div>
       </fieldset>
 
@@ -135,27 +136,31 @@
         <div class="tarjetas tarjetas-esquema" role="radiogroup" aria-label="Esquema predefinido">
           {% for e in catalogo.esquemas %}
           <label class="tarjeta">
-            <input type="radio" name="esquema" value="{{ e.valor }}" data-usa-n1="{{ 'si' if e.usa_n1 else 'no' }}" data-usa-archivelog="{{ 'si' if e.usa_archivelog else 'no' }}"{% if loop.first %} checked{% endif %}>
+            <input type="radio" name="esquema" value="{{ e.valor }}" data-usa-n1="{{ 'si' if e.usa_n1 else 'no' }}" data-usa-archivelog="{{ 'si' if e.usa_archivelog else 'no' }}" data-rotulo-dia="{{ e.rotulo_dia }}" data-rotulo-hora-principal="{{ e.rotulo_hora_principal }}" data-rotulo-hora-n1="{{ e.rotulo_hora_n1 }}"{% if loop.first %} checked{% endif %}>
             <span class="tarjeta-titulo">{{ e.nombre }}</span>
+            <span class="tarjeta-detalle">
+              <span class="tarjeta-parte"><strong class="tarjeta-parte-rotulo">Qué hace:</strong> {{ e.que_hace }}</span>
+              <span class="tarjeta-parte"><strong class="tarjeta-parte-rotulo">Ideal para:</strong> {{ e.ideal_para }}</span>
+              <span class="tarjeta-parte"><strong class="tarjeta-parte-rotulo">Nota:</strong> {{ e.nota }}</span>
+            </span>
             <span class="insignia-recomendado" data-recomendado-de="{{ e.valor }}" hidden>Sugerido</span>
-            <span class="ayuda">{{ e.descripcion }}</span>
           </label>
           {% endfor %}
         </div>
         <div class="campos">
           <label class="campo">
-            <span class="rotulo">Día del nivel 0 / respaldo principal</span>
+            <span class="rotulo" id="rotulo-esq-dia-n0">{{ catalogo.esquemas[0].rotulo_dia }}</span>
             <select id="esq-dia-n0">
               {% for d in catalogo.dias_semana %}<option value="{{ d.valor }}"{% if d.valor == 'DOM' %} selected{% endif %}>{{ d.etiqueta }}</option>{% endfor %}
             </select>
           </label>
           <label class="campo">
-            <span class="rotulo">Hora del nivel 0 / respaldo principal</span>
+            <span class="rotulo" id="rotulo-esq-hora-n0">{{ catalogo.esquemas[0].rotulo_hora_principal }}</span>
             <input type="time" id="esq-hora-n0" value="02:00">
             <span class="error-campo" data-error-de="esquema.hora_n0" hidden></span>
           </label>
           <label class="campo" data-solo-n1>
-            <span class="rotulo">Hora del nivel 1 (diario)</span>
+            <span class="rotulo" id="rotulo-esq-hora-n1">Hora del nivel 1 (diario)</span>
             <input type="time" id="esq-hora-n1" value="15:00">
             <span class="error-campo" data-error-de="esquema.hora_n1" hidden></span>
           </label>
@@ -190,7 +195,7 @@
       <div id="bloque-personalizado" hidden>
         <span class="error-campo" data-error-de="tareas" hidden></span>
         <div id="lista-tareas" class="lista-tareas"></div>
-        <button type="button" class="boton" id="agregar-tarea">Agregar tarea</button>
+        <button type="button" class="boton" id="agregar-tarea">Agregar tipo de respaldo</button>
       </div>
     </section>
 
@@ -262,7 +267,7 @@
           <legend>Guardado</legend>
           <label class="casilla bloque-caida" id="bloque-caida" hidden>
             <input type="checkbox" id="aceptar-caida">
-            <span>Acepto la caída del servicio: una o más tareas se ejecutarán en modo <strong>consistente</strong> y apagarán la base de datos mientras dure el respaldo.</span>
+            <span>Acepto la caída del servicio: alguno de los tipos de respaldo se ejecutará en modo <strong>consistente</strong> y apagará la base de datos mientras dure el respaldo.</span>
           </label>
           <label class="casilla"><input type="checkbox" id="opcion-activar"> Activar la estrategia al guardarla</label>
           <label class="casilla"><input type="checkbox" id="opcion-repositorio" checked> Guardar también en el repositorio (si está disponible)</label>
@@ -309,8 +314,8 @@
 <template id="plantilla-tarea">
   <article class="tarea" data-tarea>
     <header class="tarea-cabecera">
-      <h3 data-titulo-tarea>Tarea</h3>
-      <button type="button" class="boton" data-quitar-tarea>Quitar tarea</button>
+      <h3 data-titulo-tarea>Tipo de respaldo</h3>
+      <button type="button" class="boton" data-quitar-tarea>Quitar tipo de respaldo</button>
     </header>
     <div class="campos">
       <label class="campo">

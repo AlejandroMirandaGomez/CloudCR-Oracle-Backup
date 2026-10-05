@@ -24,6 +24,11 @@
     destino_ruta: 4,
     retencion: 4,
   };
+  const ROTULOS_DEL_ESQUEMA = [
+    { id: "rotulo-esq-dia-n0", atributo: "rotuloDia" },
+    { id: "rotulo-esq-hora-n0", atributo: "rotuloHoraPrincipal" },
+    { id: "rotulo-esq-hora-n1", atributo: "rotuloHoraN1" },
+  ];
   const HORA_POR_DEFECTO = "02:00";
   const PATRON_CODIGO = /^[A-Z0-9_-]{1,20}$/;
   const PATRON_RUTA_ABSOLUTA = /^([A-Za-z]:[\\/]|\\\\|\/)/;
@@ -295,10 +300,22 @@
       });
   }
 
+  function actualizarRotulosDelEsquema(elegido) {
+    ROTULOS_DEL_ESQUEMA.forEach(function (rotulo) {
+      const texto = elegido.dataset[rotulo.atributo];
+      if (texto) {
+        porId(rotulo.id).textContent = texto;
+      }
+    });
+  }
+
   function actualizarEsquema() {
     const elegido = document.querySelector('input[name="esquema"]:checked');
     const usaN1 = elegido && elegido.dataset.usaN1 === "si";
     const usaArchivelog = elegido && elegido.dataset.usaArchivelog === "si";
+    if (elegido) {
+      actualizarRotulosDelEsquema(elegido);
+    }
     todos("[data-solo-n1]").forEach(function (campo) {
       campo.hidden = !usaN1;
     });
@@ -375,7 +392,7 @@
 
   function renumerarTareas() {
     todos("#lista-tareas [data-tarea]").forEach(function (tarea, indice) {
-      tarea.querySelector("[data-titulo-tarea]").textContent = "Tarea T" + (indice + 1);
+      tarea.querySelector("[data-titulo-tarea]").textContent = "Tipo de respaldo T" + (indice + 1);
     });
   }
 
@@ -562,9 +579,6 @@
     } else if (catalogo.codigos_existentes.indexOf(codigo) !== -1) {
       errores.push(["codigo", "Ya existe una estrategia con el código " + codigo + "."]);
     }
-    if (!valorDe("campo-nombre")) {
-      errores.push(["nombre", "Escriba el nombre de la estrategia."]);
-    }
     if (!valorDe("campo-responsable")) {
       errores.push(["creada_por", "Escriba el nombre del responsable."]);
     }
@@ -602,12 +616,12 @@
     }
     const tareas = todos("#lista-tareas [data-tarea]");
     if (tareas.length === 0) {
-      errores.push(["tareas", "Agregue al menos una tarea."]);
+      errores.push(["tareas", "Agregue al menos un tipo de respaldo."]);
     }
     tareas.forEach(function (tarea, indice) {
       const mensaje = mensajeDeTarea(tarea);
       if (mensaje) {
-        errores.push(["tarea:" + indice, "Tarea T" + (indice + 1) + ": " + mensaje]);
+        errores.push(["tarea:" + indice, "Tipo de respaldo T" + (indice + 1) + ": " + mensaje]);
       }
     });
     return errores;

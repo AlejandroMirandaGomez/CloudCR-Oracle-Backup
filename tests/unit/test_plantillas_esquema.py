@@ -72,6 +72,62 @@ def test_todos_los_esquemas_devuelve_los_cinco() -> None:
     assert {e.esquema for e in todos_los_esquemas()} == set(EsquemaPredefinido)
 
 
+def test_cada_esquema_explica_que_hace_para_quien_es_y_que_tener_en_cuenta() -> None:
+    for descripcion in todos_los_esquemas():
+        assert descripcion.que_hace, descripcion.nombre
+        assert descripcion.ideal_para, descripcion.nombre
+        assert descripcion.nota, descripcion.nombre
+
+
+def test_los_textos_de_los_esquemas_hablan_de_tipos_de_respaldo_y_no_de_tareas() -> None:
+    for descripcion in todos_los_esquemas():
+        textos = " ".join((descripcion.que_hace, descripcion.ideal_para, descripcion.nota)).lower()
+        assert "tarea" not in textos, descripcion.nombre
+        assert any(frase in descripcion.que_hace for frase in ("tipo de respaldo", "tipos de respaldo")), (
+            descripcion.nombre
+        )
+
+
+def test_la_descripcion_corta_de_un_esquema_es_lo_que_hace() -> None:
+    for descripcion in todos_los_esquemas():
+        assert descripcion.descripcion == descripcion.que_hace
+
+
+def test_los_rotulos_de_dia_y_hora_dependen_del_esquema() -> None:
+    rotulos = {e.esquema: (e.rotulo_dia, e.rotulo_hora_principal, e.rotulo_hora_n1) for e in todos_los_esquemas()}
+    assert rotulos == {
+        EsquemaPredefinido.COMPLETO_SEMANAL: ("Día del respaldo completo", "Hora del respaldo completo", ""),
+        EsquemaPredefinido.N0_SEMANAL_N1_DIFERENCIAL_DIARIO: (
+            "Día del nivel 0",
+            "Hora del nivel 0",
+            "Hora del nivel 1 diferencial (diario)",
+        ),
+        EsquemaPredefinido.N0_SEMANAL_N1_ACUMULATIVO_DIARIO: (
+            "Día del nivel 0",
+            "Hora del nivel 0",
+            "Hora del nivel 1 acumulativo (diario)",
+        ),
+        EsquemaPredefinido.N0_N1_ACUMULATIVO_CON_ARCHIVELOGS: (
+            "Día del nivel 0",
+            "Hora del nivel 0",
+            "Hora del nivel 1 acumulativo (diario)",
+        ),
+        EsquemaPredefinido.CONSISTENTE_NOARCHIVELOG: (
+            "Día del respaldo consistente",
+            "Hora del respaldo consistente",
+            "",
+        ),
+    }
+
+
+def test_solo_los_esquemas_con_nivel_1_tienen_rotulo_para_su_hora() -> None:
+    tipos_nivel_1 = {TipoRespaldo.INCREMENTAL_N1_DIFERENCIAL, TipoRespaldo.INCREMENTAL_N1_ACUMULATIVO}
+    for descripcion in todos_los_esquemas():
+        tareas = tareas_de(descripcion.esquema, _parametros())
+        usa_nivel_1 = any(tarea.como.tipo_respaldo in tipos_nivel_1 for tarea in tareas)
+        assert bool(descripcion.rotulo_hora_n1) is usa_nivel_1, descripcion.nombre
+
+
 def _perfil_archivelog() -> PerfilBD:
     return PerfilBD(
         nombre="XE",

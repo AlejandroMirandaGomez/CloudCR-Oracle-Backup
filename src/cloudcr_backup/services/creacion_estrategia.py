@@ -83,7 +83,7 @@ def guardar(solicitud: SolicitudEstrategia, perfil: PerfilBD, ajustes: Ajustes, 
         )
     if resultado.requiere_aceptar_caida and not solicitud.aceptar_caida:
         raise ErrorCreacion(
-            "Una o más tareas se ejecutarán en modo consistente y apagarán la base de datos. "
+            "Alguno de los tipos de respaldo se ejecutará en modo consistente y apagará la base de datos. "
             "Debe aceptar la caída del servicio para continuar.",
             "caida_no_aceptada",
             resultado.hallazgos,

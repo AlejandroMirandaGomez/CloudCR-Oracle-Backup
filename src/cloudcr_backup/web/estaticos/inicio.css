@@ -1,9 +1,6 @@
 .heroe {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(16rem, 1fr);
-  gap: 2.5rem;
-  align-items: center;
-  padding: 2.5rem;
+  padding: clamp(2rem, 5vw, 4rem) 2.5rem;
+  text-align: center;
   border-radius: 12px;
   background: var(--tinta);
   color: var(--tinta-fuerte);
@@ -24,8 +21,7 @@
   }
 }
 
-.heroe-texto > *,
-.heroe-cifras {
+.heroe-texto > * {
   animation: entrada-suave 400ms ease-out both;
 }
 
@@ -41,10 +37,6 @@
   animation-delay: 300ms;
 }
 
-.heroe-cifras {
-  animation-delay: 200ms;
-}
-
 .heroe-etiqueta {
   margin: 0 0 0.75rem;
   font-size: 0.92rem;
@@ -53,18 +45,24 @@
 }
 
 .heroe h1 {
-  max-width: 20ch;
-  margin-bottom: 1rem;
-  font-size: clamp(1.9rem, 3.4vw, 2.8rem);
-  line-height: 1.08;
+  max-width: 24ch;
+  margin: 0 auto 1.25rem;
+  font-size: clamp(2.2rem, 5.4vw, 4rem);
+  line-height: 1.04;
+  text-wrap: balance;
   color: var(--tinta-fuerte);
 }
 
 .heroe-lead {
-  margin: 0 0 1.5rem;
-  max-width: 58ch;
+  margin: 0 auto 2rem;
+  max-width: 62ch;
   color: #b3c2d4;
-  font-size: 1.04rem;
+  font-size: 1.1rem;
+  text-wrap: pretty;
+}
+
+.heroe .acciones {
+  justify-content: center;
 }
 
 .boton.grande {
@@ -88,61 +86,6 @@
   box-shadow: none;
   color: #04202a;
   font-weight: 650;
-}
-
-.heroe-cifras {
-  display: grid;
-  grid-template-columns: 1fr;
-  margin: 0;
-  border-top: 1px solid rgb(255 255 255 / 14%);
-}
-
-.heroe-cifras div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 0;
-  border-bottom: 1px solid rgb(255 255 255 / 14%);
-}
-
-.heroe-cifras dt {
-  font-size: 0.95rem;
-  color: var(--tinta-texto);
-}
-
-.heroe-cifras dd {
-  margin: 0;
-  font-family: var(--titulo);
-  font-size: 2rem;
-  font-weight: 600;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--tinta-fuerte);
-}
-
-.cifra-ok {
-  color: var(--exito);
-}
-
-.cifra-alerta {
-  color: var(--peligro);
-}
-
-.cifra-apagado {
-  color: var(--texto-suave);
-}
-
-.heroe .cifra-ok {
-  color: #63e3a5;
-}
-
-.heroe .cifra-alerta {
-  color: #ff8f87;
-}
-
-.heroe .cifra-apagado {
-  color: #8ea0b6;
 }
 
 .tres-preguntas {
@@ -336,7 +279,6 @@
 }
 
 @media (max-width: 900px) {
-  .heroe,
   .tres-preguntas {
     grid-template-columns: 1fr;
   }
@@ -392,8 +334,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .heroe-texto > *,
-  .heroe-cifras {
+  .heroe-texto > * {
     animation: none;
   }
 }

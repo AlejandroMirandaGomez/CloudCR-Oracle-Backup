@@ -1,3 +1,6 @@
+import os
+import subprocess
+import sys
 import threading
 import time
 from collections.abc import Iterator
@@ -15,7 +18,7 @@ from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.alertas import Condicion, VistaAlerta
 from cloudcr_backup.domain.enums import EstadoEjecucion, ModoRespaldo
 from cloudcr_backup.domain.errores import PipelineNoDisponible, RepositorioNoDisponible
-from cloudcr_backup.domain.monitoreo import EstadoLatido
+from cloudcr_backup.domain.monitoreo import EstadoLatido, Latido
 from cloudcr_backup.domain.planificacion import EjecucionEnCurso
 from cloudcr_backup.scheduling.reloj import RelojFijo
 from cloudcr_backup.services import agente as servicio_agente
@@ -284,6 +287,57 @@ def test_latido_viejo_se_considera_detenido(tmp_path: Path) -> None:
     assert not latido.esta_vivo(registro, INICIO + timedelta(seconds=91), 30)
     estado = latido.estado_de(registro, INICIO + timedelta(seconds=91), 30)
     assert estado.segundos_desde_tick == 91 and not estado.vivo
+
+
+def _registro_de(hostname: str, pid: int) -> Latido:
+    return Latido(
+        hostname=hostname, pid=pid, iniciado_en=INICIO, ultimo_tick=INICIO, estado=EstadoLatido.ACTIVO, version="0.1.0"
+    )
+
+
+def _pid_de_un_proceso_terminado() -> int:
+    proceso = subprocess.Popen([sys.executable, "-c", "pass"])
+    proceso.wait()
+    return proceso.pid
+
+
+def test_proceso_existe_distingue_un_proceso_activo_de_uno_terminado() -> None:
+    assert latido.proceso_existe(os.getpid())
+    assert not latido.proceso_existe(_pid_de_un_proceso_terminado())
+    assert not latido.proceso_existe(0)
+    assert not latido.proceso_existe(-1)
+
+
+def test_latido_reciente_de_un_proceso_que_ya_no_existe_se_considera_detenido() -> None:
+    registro = _registro_de("SERVIDOR", _pid_de_un_proceso_terminado())
+    ahora = INICIO + timedelta(seconds=7)
+    assert not latido.esta_vivo(registro, ahora, 30, "SERVIDOR")
+    estado = latido.estado_de(registro, ahora, 30, "servidor")
+    assert not estado.vivo and estado.segundos_desde_tick == 7
+
+
+def test_latido_reciente_de_un_proceso_existente_se_considera_vivo() -> None:
+    registro = _registro_de("SERVIDOR", os.getpid())
+    assert latido.esta_vivo(registro, INICIO + timedelta(seconds=7), 30, "SERVIDOR")
+
+
+def test_el_latido_de_otra_maquina_no_se_verifica_contra_los_procesos_locales() -> None:
+    registro = _registro_de("OTRO-EQUIPO", _pid_de_un_proceso_terminado())
+    ahora = INICIO + timedelta(seconds=7)
+    assert latido.esta_vivo(registro, ahora, 30, "SERVIDOR")
+    assert latido.esta_vivo(registro, ahora, 30)
+
+
+def test_estado_agentes_descarta_el_latido_de_un_proceso_local_terminado(tmp_path: Path) -> None:
+    ajustes = Ajustes(work_dir=tmp_path)
+    anfitrion = servicio_agente.nombre_agente()
+    ahora = INICIO + timedelta(seconds=7)
+    latido.escribir(ajustes.rutas.agente, _registro_de(anfitrion, _pid_de_un_proceso_terminado()))
+    [muerto] = servicio_agente.estado_agentes(ajustes, ahora, tick=30)
+    assert not muerto.vivo
+    latido.escribir(ajustes.rutas.agente, _registro_de(anfitrion, os.getpid()))
+    [vivo] = servicio_agente.estado_agentes(ajustes, ahora, tick=30)
+    assert vivo.vivo
 
 
 def test_latidos_ilegibles_se_ignoran(tmp_path: Path) -> None:

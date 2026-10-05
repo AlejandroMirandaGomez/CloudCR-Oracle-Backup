@@ -201,7 +201,10 @@ def web(
         salida.print(f"Interfaz web disponible en [bold]{url}[/]", markup=True)
         salida.print("Presione Ctrl+C para detenerla.", style="dim")
 
+    def informar(texto: str) -> None:
+        salida.print(texto, style="dim")
+
     try:
-        iniciar_servidor(config, abrir_navegador=not no_abrir, avisar=avisar)
+        iniciar_servidor(config, abrir_navegador=not no_abrir, avisar=avisar, informar=informar)
     except PuertoNoDisponible as error:
         terminar_con_error(str(error), "Indique otro puerto con --puerto.")

@@ -20,6 +20,7 @@ from cloudcr_backup.domain.perfil_bd import PerfilBD
 from cloudcr_backup.oracle.capacidades import capacidades_de
 from cloudcr_backup.strategy.codigos import siguiente_codigo_sugerido
 from cloudcr_backup.strategy.plantillas_esquema import (
+    DescripcionEsquema,
     EsquemaPredefinido,
     ParametrosEsquema,
     tareas_de,
@@ -94,16 +95,21 @@ def responsable_sugerido() -> str:
         return ""
 
 
-def _descripcion_de_esquema(esquema: EsquemaPredefinido, nombre: str, descripcion: str) -> dict[str, Any]:
+def _descripcion_de_esquema(descripcion: DescripcionEsquema) -> dict[str, Any]:
     parametros = ParametrosEsquema(
         destino=Destino(ruta="x"), dia_n0=DiaSemana.DOMINGO, hora_n0=HORA_REFERENCIA, hora_n1=HORA_REFERENCIA
     )
-    tareas = tareas_de(esquema, parametros)
+    tareas = tareas_de(descripcion.esquema, parametros)
     tipos = {tarea.como.tipo_respaldo for tarea in tareas}
     return {
-        "valor": esquema.value,
-        "nombre": nombre,
-        "descripcion": descripcion,
+        "valor": descripcion.esquema.value,
+        "nombre": descripcion.nombre,
+        "que_hace": descripcion.que_hace,
+        "ideal_para": descripcion.ideal_para,
+        "nota": descripcion.nota,
+        "rotulo_dia": descripcion.rotulo_dia,
+        "rotulo_hora_principal": descripcion.rotulo_hora_principal,
+        "rotulo_hora_n1": descripcion.rotulo_hora_n1,
         "usa_n1": bool(tipos & {TipoRespaldo.INCREMENTAL_N1_DIFERENCIAL, TipoRespaldo.INCREMENTAL_N1_ACUMULATIVO}),
         "usa_archivelog": TipoRespaldo.ARCHIVELOG in tipos,
         "consistente": any(tarea.como.modo_respaldo is ModoRespaldo.CONSISTENTE for tarea in tareas),
@@ -138,10 +144,7 @@ def construir_catalogo(perfil: PerfilBD, codigos_existentes: list[str], ajustes:
             }
             for criterio in todos_los_criterios()
         ],
-        "esquemas": [
-            _descripcion_de_esquema(descripcion.esquema, descripcion.nombre, descripcion.descripcion)
-            for descripcion in todos_los_esquemas()
-        ],
+        "esquemas": [_descripcion_de_esquema(descripcion) for descripcion in todos_los_esquemas()],
         "nota_parcial": NOTA_PARCIAL,
         "tipos_respaldo": [
             {

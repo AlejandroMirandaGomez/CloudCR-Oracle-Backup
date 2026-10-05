@@ -185,4 +185,6 @@ def tick_segundos(ajustes: Ajustes) -> int:
 def estado_agentes(ajustes: Ajustes, ahora: datetime | None = None, tick: int | None = None) -> list[EstadoAgente]:
     momento = ahora or RelojSistema().ahora()
     segundos = tick if tick is not None else tick_segundos(ajustes)
-    return [latido.estado_de(registro, momento, segundos) for registro in latido.leer_todos(ajustes.rutas.agente)]
+    anfitrion = nombre_agente()
+    registros = latido.leer_todos(ajustes.rutas.agente)
+    return [latido.estado_de(registro, momento, segundos, anfitrion) for registro in registros]

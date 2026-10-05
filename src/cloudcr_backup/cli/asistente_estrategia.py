@@ -116,7 +116,7 @@ def _paso_general(bd_nombre: str, codigos_existentes: list[str]) -> tuple[str, s
     codigo = _preguntar_texto("Código de la estrategia", sugerido)
     if codigo in codigos_existentes:
         terminar_con_error(f"Ya existe una estrategia con el código {codigo} en {bd_nombre}.")
-    nombre = _preguntar_texto("Nombre de la estrategia")
+    nombre = _preguntar_texto("Nombre de la estrategia (opcional, Enter para usar el código)") or codigo
     descripcion = _preguntar_texto("Descripción (opcional, Enter para omitir)") or None
     prioridad = Prioridad(_preguntar_seleccion("Prioridad", [p.value for p in Prioridad]))
     creada_por = _preguntar_texto("Responsable (su nombre)")

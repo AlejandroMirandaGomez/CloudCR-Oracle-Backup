@@ -160,6 +160,63 @@ def test_los_datos_embebidos_incluyen_el_catalogo(cliente_estrategias: TestClien
     assert len(catalogo["esquemas"]) == 5
 
 
+def test_cada_esquema_del_catalogo_trae_sus_tres_textos_y_sus_rotulos(cliente_estrategias: TestClient) -> None:
+    catalogo = _datos_json(cliente_estrategias.get("/instancias/XE/estrategias/nueva").text)["catalogo"]
+    for esquema in catalogo["esquemas"]:
+        for campo in ("que_hace", "ideal_para", "nota", "rotulo_dia", "rotulo_hora_principal"):
+            assert esquema[campo], (esquema["valor"], campo)
+        assert bool(esquema["rotulo_hora_n1"]) is esquema["usa_n1"], esquema["valor"]
+
+
+def _tarjetas_de_esquema(html: str) -> list[str]:
+    bloque = html.split('aria-label="Esquema predefinido"', 1)[1]
+    return re.findall(r'<label class="tarjeta">(.*?)</label>', bloque, re.S)
+
+
+def test_las_tarjetas_de_esquema_muestran_que_hace_ideal_para_y_nota(cliente_estrategias: TestClient) -> None:
+    html = cliente_estrategias.get("/instancias/XE/estrategias/nueva").text
+    tarjetas = _tarjetas_de_esquema(html)[:5]
+    assert len(tarjetas) == 5
+    for tarjeta in tarjetas:
+        assert tarjeta.index("Qué hace:") < tarjeta.index("Ideal para:") < tarjeta.index("Nota:")
+
+
+def test_cada_tarjeta_de_esquema_lleva_su_propio_chip_sugerido_oculto(cliente_estrategias: TestClient) -> None:
+    html = cliente_estrategias.get("/instancias/XE/estrategias/nueva").text
+    for tarjeta in _tarjetas_de_esquema(html)[:5]:
+        valor = re.search(r'name="esquema" value="([^"]+)"', tarjeta)
+        chip = re.search(
+            r'<span class="insignia-recomendado" data-recomendado-de="([^"]+)" hidden>Sugerido</span>', tarjeta
+        )
+        assert valor is not None
+        assert chip is not None
+        assert chip.group(1) == valor.group(1)
+
+
+def test_el_formulario_habla_de_tipo_de_respaldo_en_lugar_de_tareas(cliente_estrategias: TestClient) -> None:
+    html = cliente_estrategias.get("/instancias/XE/estrategias/nueva").text
+    for esperado in (
+        "Cómo definir el tipo de respaldo",
+        "Definir el tipo de respaldo manualmente",
+        "Agregar tipo de respaldo",
+        "Quitar tipo de respaldo",
+    ):
+        assert esperado in html
+    for retirado in ("Definir las tareas a mano", "Cómo definir las tareas", "Agregar tarea", "Quitar tarea"):
+        assert retirado not in html
+
+
+def test_cada_esquema_declara_los_rotulos_que_muestra_el_formulario(cliente_estrategias: TestClient) -> None:
+    html = cliente_estrategias.get("/instancias/XE/estrategias/nueva").text
+    completo = next(t for t in _tarjetas_de_esquema(html) if 'value="COMPLETO_SEMANAL"' in t)
+    assert 'data-rotulo-dia="Día del respaldo completo"' in completo
+    assert 'data-rotulo-hora-principal="Hora del respaldo completo"' in completo
+    diferencial = next(t for t in _tarjetas_de_esquema(html) if 'value="N0_SEMANAL_N1_DIFERENCIAL_DIARIO"' in t)
+    assert 'data-rotulo-dia="Día del nivel 0"' in diferencial
+    assert 'data-rotulo-hora-n1="Hora del nivel 1 diferencial (diario)"' in diferencial
+    assert "respaldo principal" not in html
+
+
 def test_el_codigo_sugerido_continua_la_numeracion_de_lo_guardado(
     cliente_estrategias: TestClient, ajustes: Ajustes
 ) -> None:
@@ -250,13 +307,21 @@ def test_validar_con_destino_inexistente_es_bloqueante(
 
 
 def test_validar_con_campos_invalidos_da_422_con_los_campos(cliente_estrategias: TestClient, destino: str) -> None:
-    datos = datos_solicitud(destino, nombre="", codigo="no valido!", prioridad="URGENTE")
+    datos = datos_solicitud(destino, creada_por="", codigo="no valido!", prioridad="URGENTE")
     respuesta = cliente_estrategias.post(RUTA_VALIDAR, json=datos)
     assert respuesta.status_code == 422
     errores = {e["campo"]: e["mensaje"] for e in respuesta.json()["errores"]}
-    assert set(errores) >= {"nombre", "codigo", "prioridad"}
-    assert errores["nombre"] == "Este campo es obligatorio."
+    assert set(errores) >= {"creada_por", "codigo", "prioridad"}
+    assert errores["creada_por"] == "Este campo es obligatorio."
     assert "letras" in errores["codigo"]
+
+
+def test_validar_sin_nombre_es_valido_y_usa_el_codigo(
+    cliente_estrategias: TestClient, servicio_archivelog: ServicioFalso, destino: str
+) -> None:
+    respuesta = cliente_estrategias.post(RUTA_VALIDAR, json=datos_solicitud(destino, nombre=""))
+    assert respuesta.status_code == 200
+    assert respuesta.json()["estrategia"]["nombre"] == "EST010"
 
 
 def test_validar_con_hora_invalida_da_un_mensaje_en_espanol(cliente_estrategias: TestClient, destino: str) -> None:

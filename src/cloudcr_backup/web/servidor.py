@@ -54,12 +54,17 @@ def _abrir_cuando_responda(config: ConfigWeb) -> None:
             time.sleep(0.3)
 
 
-def iniciar_servidor(config: ConfigWeb, abrir_navegador: bool, avisar: Callable[[str], None]) -> None:
+def iniciar_servidor(
+    config: ConfigWeb,
+    abrir_navegador: bool,
+    avisar: Callable[[str], None],
+    informar: Callable[[str], None],
+) -> None:
     puerto = puerto_libre(config.host, config.puerto)
     config_final = replace(config, puerto=puerto)
     home = preparar_cliente_oracle()
     if home is not None:
-        avisar(f"Cliente Oracle iniciado desde {home} (antes de abrir el repositorio).")
+        informar(f"Cliente Oracle iniciado desde {home} (antes de abrir el repositorio).")
     avisar(url_acceso(config_final))
     if abrir_navegador:
         threading.Thread(target=_abrir_cuando_responda, args=(config_final,), daemon=True).start()
