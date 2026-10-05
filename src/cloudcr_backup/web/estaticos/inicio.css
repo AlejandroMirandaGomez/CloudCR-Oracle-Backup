@@ -1,14 +1,12 @@
 .heroe {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  gap: 2rem;
+  grid-template-columns: minmax(0, 1.5fr) minmax(16rem, 1fr);
+  gap: 2.5rem;
   align-items: center;
-  padding: 2rem;
-  border: 0;
-  border-radius: calc(var(--radio) * 2);
-  background:
-    radial-gradient(520px 260px at 100% 0%, color-mix(in srgb, var(--acento) 16%, transparent), transparent 70%),
-    linear-gradient(135deg, var(--acento-suave), var(--superficie) 70%);
+  padding: 2.5rem;
+  border-radius: 12px;
+  background: var(--tinta);
+  color: var(--tinta-fuerte);
   box-shadow: var(--sombra-borde);
 }
 
@@ -48,27 +46,25 @@
 }
 
 .heroe-etiqueta {
-  margin: 0 0 0.5rem;
-  font-size: 0.78rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.92rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--acento);
+  color: var(--hielo);
 }
 
 .heroe h1 {
-  font-size: clamp(1.6rem, 2.8vw, 2.3rem);
-  font-weight: 750;
-  letter-spacing: -0.025em;
-  line-height: 1.15;
-  margin-bottom: 0.75rem;
+  max-width: 20ch;
+  margin-bottom: 1rem;
+  font-size: clamp(1.9rem, 3.4vw, 2.8rem);
+  line-height: 1.08;
+  color: var(--tinta-fuerte);
 }
 
 .heroe-lead {
-  margin: 0 0 1.25rem;
-  max-width: 62ch;
-  color: var(--texto-suave);
-  font-size: 1.02rem;
+  margin: 0 0 1.5rem;
+  max-width: 58ch;
+  color: #b3c2d4;
+  font-size: 1.04rem;
 }
 
 .boton.grande {
@@ -76,30 +72,53 @@
   font-size: 0.98rem;
 }
 
+.heroe .boton:not(.primario) {
+  background: transparent;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 28%);
+  color: var(--tinta-fuerte);
+}
+
+.heroe .boton:not(.primario):hover {
+  background: rgb(255 255 255 / 8%);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 45%);
+}
+
+.heroe .boton.primario {
+  background: var(--hielo);
+  box-shadow: none;
+  color: #04202a;
+  font-weight: 650;
+}
+
 .heroe-cifras {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
+  grid-template-columns: 1fr;
   margin: 0;
+  border-top: 1px solid rgb(255 255 255 / 14%);
 }
 
 .heroe-cifras div {
-  padding: 0.9rem 1rem;
-  border: 0;
-  border-radius: var(--radio);
-  background: var(--superficie);
-  box-shadow: var(--sombra-borde);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid rgb(255 255 255 / 14%);
 }
 
 .heroe-cifras dt {
-  font-size: 0.78rem;
-  color: var(--texto-suave);
+  font-size: 0.95rem;
+  color: var(--tinta-texto);
 }
 
 .heroe-cifras dd {
-  margin: 0.15rem 0 0;
-  font-size: 1.5rem;
-  font-weight: 700;
+  margin: 0;
+  font-family: var(--titulo);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--tinta-fuerte);
 }
 
 .cifra-ok {
@@ -114,18 +133,28 @@
   color: var(--texto-suave);
 }
 
+.heroe .cifra-ok {
+  color: #63e3a5;
+}
+
+.heroe .cifra-alerta {
+  color: #ff8f87;
+}
+
+.heroe .cifra-apagado {
+  color: #8ea0b6;
+}
+
 .tres-preguntas {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-.pregunta {
-  padding: 1.25rem 1.4rem;
-  border: 0;
   border-radius: var(--radio-grande);
   background: var(--superficie);
   box-shadow: var(--sombra-borde);
+}
+
+.pregunta {
+  padding: 1.25rem 1.5rem;
 }
 
 .pregunta h2 {
@@ -138,16 +167,13 @@
 }
 
 .pregunta-clave {
-  display: inline-block;
-  margin-bottom: 0.5rem;
-  padding: 0.1rem 0.6rem;
-  border-radius: 999px;
-  background: var(--acento-suave);
+  display: block;
+  margin-bottom: 0.6rem;
+  font-family: var(--titulo);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
   color: var(--acento);
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .ruta-cabecera {
@@ -175,15 +201,7 @@
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--exito) 70%, var(--acento)), var(--exito));
-  transform-origin: left;
-  animation: llenar 700ms cubic-bezier(0.2, 0, 0, 1) 250ms backwards;
-}
-
-@keyframes llenar {
-  from {
-    transform: scaleX(0);
-  }
+  background: var(--exito);
 }
 
 .ruta {
@@ -192,7 +210,6 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
 }
 
 .ruta-paso {
@@ -200,19 +217,13 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 1rem;
   align-items: center;
-  padding: 0.9rem 1rem;
-  border: 1px solid var(--borde);
-  border-radius: var(--radio);
-  background: var(--superficie);
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--borde);
 }
 
 .ruta-paso.actual {
-  border-color: var(--acento);
-  box-shadow: 0 0 0 3px var(--acento-suave);
-}
-
-.ruta-paso.hecho {
-  background: var(--superficie-2);
+  box-shadow: inset 3px 0 0 var(--acento);
+  padding-left: 0.9rem;
 }
 
 .ruta-numero {
@@ -221,7 +232,6 @@
   width: 2.1rem;
   height: 2.1rem;
   border-radius: 50%;
-  background: var(--superficie-2);
   border: 1px solid var(--borde);
   font-weight: 700;
 }
@@ -347,40 +357,31 @@
 
 .creditos {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 1.5rem 1.25rem;
-  border-radius: var(--radio-grande);
-  background: linear-gradient(135deg, var(--acento-suave), color-mix(in srgb, var(--grupo) 10%, var(--superficie)));
-  box-shadow: var(--sombra-borde);
-  text-align: center;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 1.25rem;
+  padding: 1.1rem 0 0;
+  border-top: 1px solid var(--borde);
 }
 
 .creditos-etiqueta {
   margin: 0;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--acento);
+  font-size: 0.9rem;
+  color: var(--texto-suave);
 }
 
 .creditos-lista {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5rem;
+  gap: 0.25rem 1.5rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .creditos-lista li {
-  padding: 0.35rem 0.9rem;
-  border-radius: 999px;
-  background: var(--superficie);
-  box-shadow: var(--sombra-borde);
+  font-family: var(--titulo);
+  font-size: 1.05rem;
   font-weight: 600;
 }
 
@@ -392,8 +393,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .heroe-texto > *,
-  .heroe-cifras,
-  .progreso span {
+  .heroe-cifras {
     animation: none;
   }
+}
+
+.pregunta + .pregunta {
+  border-left: 1px solid var(--borde);
 }

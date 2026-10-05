@@ -6,6 +6,7 @@
   <meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowEval": false, "historyCacheSize": 0, "refreshOnHistoryMiss": true, "responseHandling": [{"code": "204", "swap": false}, {"code": "[23]..", "swap": true}, {"code": "[45]..", "swap": true, "error": true}]}'>
   <link rel="icon" href="data:,">
   <title>{% block titulo %}CloudCR Oracle Backup{% endblock %}</title>
+  <script src="/estaticos/tema.js"></script>
   <link rel="stylesheet" href="/estaticos/app.css">
   <link rel="stylesheet" href="/estaticos/monitoreo.css">
   <link rel="stylesheet" href="/estaticos/operaciones.css">
@@ -26,8 +27,10 @@
       <a href="/alertas"{% if seccion == 'alertas' %} aria-current="page"{% endif %}>Alertas</a>
       <a href="/retencion"{% if seccion == 'retencion' %} aria-current="page"{% endif %}>Retención</a>
       <a href="/recuperacion"{% if seccion == 'recuperacion' %} aria-current="page"{% endif %}>Recuperación</a>
+      <a href="/evidencias"{% if seccion == 'evidencias' %} aria-current="page"{% endif %}>Evidencias</a>
       <a href="/sistema"{% if seccion == 'sistema' %} aria-current="page"{% endif %}>Sistema</a>
     </nav>
+    <button type="button" class="alternar-tema" data-alternar-tema aria-label="Cambiar entre tema claro y oscuro" title="Cambiar entre tema claro y oscuro"><span class="alternar-tema-texto">Cambiar tema</span></button>
   </header>
   {% set guias = {
     'instancias': (1, 'Conocer el entorno', 'Aquí ve las bases Oracle del equipo y su estructura. Elija una para explorarla o para crear su estrategia de respaldo.', '/estrategias', 'Siguiente: definir la estrategia'),

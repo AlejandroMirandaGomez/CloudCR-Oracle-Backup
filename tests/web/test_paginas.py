@@ -73,6 +73,14 @@ def test_estaticos_disponibles(cliente: TestClient) -> None:
     assert cliente.get("/estaticos/htmx.min.js").status_code == 200
     assert cliente.get("/estaticos/app.css").status_code == 200
     assert cliente.get("/estaticos/app.js").status_code == 200
+    assert cliente.get("/estaticos/tema.js").status_code == 200
+
+
+def test_las_paginas_ofrecen_cambiar_de_tema(cliente: TestClient) -> None:
+    html = cliente.get("/").text
+    assert 'src="/estaticos/tema.js"' in html
+    assert 'data-alternar-tema' in html and 'class="alternar-tema"' in html
+    assert html.index("/estaticos/tema.js") < html.index("/estaticos/app.css")
 
 
 def test_texto_con_html_se_escapa(cliente: TestClient, servicio: ServicioFalso) -> None:

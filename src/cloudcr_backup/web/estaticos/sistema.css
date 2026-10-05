@@ -1,7 +1,7 @@
 .pestanas {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem;
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--borde);
 }
 
 .pestana {
@@ -9,15 +9,16 @@
   flex-direction: column;
   gap: 0.1rem;
   align-items: flex-start;
-  padding: 0.7rem 1rem;
-  border: 1px solid var(--borde);
-  border-radius: var(--radio);
-  background: var(--superficie);
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--radio) var(--radio) 0 0;
+  background: transparent;
   color: var(--texto);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition-property: scale, background-color, border-color, box-shadow;
+  transition-property: background-color, border-color;
   transition-duration: 150ms;
   transition-timing-function: ease-out;
 }
@@ -26,19 +27,14 @@
   background: var(--superficie-2);
 }
 
-.pestana:active {
-  scale: 0.96;
-}
-
 .pestana:focus-visible {
   outline: 2px solid var(--acento);
   outline-offset: 2px;
 }
 
 .pestana.activa {
-  border-color: var(--acento);
+  border-bottom-color: var(--acento);
   background: var(--acento-suave);
-  box-shadow: 0 0 0 3px var(--acento-suave);
 }
 
 .pestana-titulo {
@@ -66,8 +62,6 @@
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 0.75rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--borde);
 }
 
 .bloque-cabecera > div {
@@ -83,11 +77,11 @@
   display: grid;
   place-items: center;
   flex: none;
-  width: 2rem;
-  height: 2rem;
+  width: 1.8rem;
+  height: 1.8rem;
   border-radius: 50%;
-  background: var(--acento);
-  color: var(--sobre-color);
+  border: 1.5px solid var(--acento);
+  color: var(--acento);
   font-weight: 700;
 }
 

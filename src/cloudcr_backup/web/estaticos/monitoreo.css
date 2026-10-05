@@ -1,18 +1,14 @@
-.navegacion {
-  display: flex;
-  gap: 0.15rem;
-  flex-wrap: wrap;
-}
-
-.navegacion a[aria-current="page"] {
-  color: var(--acento);
-  background: var(--acento-suave);
-  text-decoration: none;
-}
-
 .contenido > *,
 .panel {
   min-width: 0;
+}
+
+#zona-estado,
+#zona-alertas,
+#zona-historial {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .tabla-desplazable {
@@ -69,7 +65,6 @@
   border-radius: 999px;
   font-weight: 700;
   font-size: 0.82rem;
-  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
   white-space: nowrap;
 }
 
@@ -105,35 +100,36 @@
 
 .tarjeta .numero {
   display: block;
-  font-size: 1.9rem;
-  font-weight: 700;
-  line-height: 1.15;
+  font-family: var(--titulo);
+  font-size: 2.2rem;
+  font-weight: 600;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 
 .tarjeta .rotulo {
   color: var(--texto-suave);
-  font-size: 0.85rem;
+  font-size: 0.88rem;
 }
 
 .tarjetas > .tarjeta:has(> .numero) {
-  padding: 0.9rem 1.1rem;
+  padding: 0.9rem 1.1rem 0.9rem 1.3rem;
   border: 0;
   border-radius: var(--radio-grande);
-  box-shadow: var(--sombra-borde);
-  background: linear-gradient(160deg, var(--tinte, transparent), transparent 65%), var(--superficie);
+  background: var(--superficie);
+  box-shadow: var(--sombra-borde), inset 4px 0 0 var(--tono, transparent);
 }
 
 .tarjetas > .tarjeta:has(> .numero.tono-exito) {
-  --tinte: color-mix(in srgb, var(--exito) 11%, transparent);
+  --tono: var(--exito);
 }
 
 .tarjetas > .tarjeta:has(> .numero.tono-advertencia) {
-  --tinte: color-mix(in srgb, var(--advertencia) 12%, transparent);
+  --tono: var(--advertencia);
 }
 
 .tarjetas > .tarjeta:has(> .numero.tono-peligro) {
-  --tinte: color-mix(in srgb, var(--peligro) 11%, transparent);
+  --tono: var(--peligro);
 }
 
 .lista-motivos {
@@ -251,7 +247,6 @@
   color: var(--acento);
   padding: 0.6rem 0.9rem;
   border-radius: var(--radio);
-  box-shadow: inset 3px 0 0 currentColor;
   margin: 0;
   animation: mensaje-entra 200ms ease-out backwards;
 }
@@ -293,7 +288,7 @@ input[type="text"] {
   font-size: 0.9rem;
   padding: 0.35rem 0.55rem;
   border: 1px solid var(--borde);
-  border-radius: 8px;
+  border-radius: var(--radio);
   background: var(--superficie);
   color: var(--texto);
   transition-property: border-color, box-shadow;
@@ -331,28 +326,18 @@ input[type="text"]:focus-visible {
 input[type="date"]:focus-visible,
 input[type="number"]:focus-visible,
 input[type="text"]:focus-visible,
-.navegacion a:focus-visible,
 .tabla a:focus-visible {
   outline: 2px solid var(--acento);
   outline-offset: 2px;
 }
 
 .subtitulo {
+  max-width: 70ch;
   color: var(--texto-suave);
-  margin: 0.2rem 0 0;
+  margin: 0.3rem 0 0;
 }
 
 @media (max-width: 600px) {
-  .navegacion {
-    gap: 0.6rem;
-    font-size: 0.9rem;
-  }
-
-  .cabecera {
-    flex-wrap: wrap;
-    gap: 0.5rem 1rem;
-  }
-
   .ficha {
     grid-template-columns: 1fr;
   }
@@ -376,17 +361,116 @@ input[type="text"]:focus-visible,
   }
 }
 
+/* Impresión: papel claro siempre (aunque el sistema use tema oscuro), solo el contenido y la evidencia. */
+@page {
+  margin: 14mm;
+}
+
 @media print {
-  .cabecera,
-  .pie,
-  .filtros,
-  .acciones,
-  .acciones-fila,
-  .paginacion a {
+  :root:root:root {
+    color-scheme: light;
+    --fondo: #ffffff;
+    --superficie: #ffffff;
+    --superficie-2: #f3f4f6;
+    --borde: #c4cad3;
+    --texto: #000000;
+    --texto-suave: #3d4654;
+    --acento: #0a5a6b;
+    --acento-suave: #e6f2f4;
+    --exito: #17653a;
+    --advertencia: #7a4f00;
+    --advertencia-fondo: #fff4d6;
+    --peligro: #a01e17;
+    --peligro-fondo: #fde7e5;
+    --recomendacion: #3d479c;
+    --recomendacion-fondo: #e6e8fa;
+    --informativa: #3d4654;
+    --informativa-fondo: #f3f4f6;
+    --dato: #0b5a73;
+    --sombra-borde: 0 0 0 1px #c4cad3;
+  }
+
+  body {
+    display: block;
+    background: #ffffff;
+    color: #000000;
+    font-size: 11pt;
+  }
+
+  /* El prefijo body gana a las hojas que se cargan después (guia.css, sistema.css). */
+  body :is(.cabecera, .guia, .pie, .filtros, .pestanas, .htmx-indicator, .acciones-fila, .boton, .alternar-tema, dialog),
+  body :is(.acciones, .paginacion) :is(.boton, form, .etiqueta) {
     display: none;
+  }
+
+  main {
+    max-width: none;
+    padding: 0;
+    animation: none;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .panel,
+  .tabla {
+    box-shadow: 0 0 0 1px var(--borde);
   }
 
   .tabla-desplazable {
     overflow: visible;
   }
+
+  .tabla thead {
+    display: table-header-group;
+  }
+
+  .tabla tr,
+  .tarjeta {
+    break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+
+  .tabla-desplazable .tabla {
+    min-width: 0;
+  }
+
+  .tabla th,
+  .tabla td,
+  .tabla.compacta th,
+  .tabla.compacta td {
+    padding: 0.3rem 0.35rem;
+    font-size: 0.78rem;
+    white-space: normal;
+  }
+
+  .registro,
+  .vista-yaml pre,
+  .observaciones-lista,
+  .mensajes-agente,
+  .arbol {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .semaforo,
+  .insignia,
+  .severidad-alerta {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Dentro de un panel, las métricas no repiten el marco: solo la barra de estado. */
+.panel .tarjetas > .tarjeta:has(> .numero) {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 3px 0 0 var(--tono, transparent);
 }

@@ -1,20 +1,19 @@
 .guia {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   align-items: center;
   gap: 0.5rem 1rem;
   flex-wrap: wrap;
-  padding: 0.6rem 1.5rem;
-  background: linear-gradient(90deg, var(--acento-suave), color-mix(in srgb, var(--acento-suave) 30%, var(--fondo)));
+  padding: 0.7rem 2rem;
+  background: var(--superficie);
   border-bottom: 1px solid var(--borde);
-  font-size: 0.88rem;
+  font-size: 0.9rem;
 }
 
 .guia-paso {
-  padding: 0.15rem 0.7rem;
-  border-radius: 999px;
-  background: var(--acento);
-  color: var(--sobre-color);
-  font-size: 0.8rem;
+  color: var(--acento);
+  font-size: 0.9rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -45,10 +44,9 @@
 
 .ayuda-paso {
   margin: 0.5rem 0 1rem;
-  padding: 0.6rem 0.9rem;
-  border: 1px solid var(--borde);
-  border-left: 4px solid var(--acento);
-  border-radius: var(--radio);
+  padding: 0.7rem 1rem;
+  border-left: 3px solid var(--acento);
+  border-radius: 0 var(--radio) var(--radio) 0;
   background: var(--acento-suave);
   font-size: 0.9rem;
 }
@@ -95,15 +93,13 @@
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.75rem;
   align-items: start;
-  padding: 0.6rem 0.8rem;
-  border: 1px solid var(--borde);
-  border-radius: var(--radio);
-  background: var(--superficie);
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--borde);
 }
 
 .lista-control li.siguiente {
-  border-color: var(--acento);
-  box-shadow: 0 0 0 3px var(--acento-suave);
+  box-shadow: inset 3px 0 0 var(--acento);
+  padding-left: 0.75rem;
 }
 
 .lista-control .marca-control {
@@ -113,7 +109,6 @@
   height: 1.7rem;
   border-radius: 50%;
   border: 1px solid var(--borde);
-  background: var(--superficie-2);
   font-weight: 700;
   font-size: 0.85rem;
 }
@@ -142,14 +137,10 @@
 }
 
 .etiqueta-req {
-  display: inline-block;
   margin-left: 0.5rem;
-  padding: 0.05rem 0.55rem;
-  border-radius: 999px;
-  background: var(--acento-suave);
-  color: var(--acento);
-  font-size: 0.72rem;
-  font-weight: 700;
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 600;
   vertical-align: middle;
 }
 
@@ -179,7 +170,7 @@
   margin: 0.75rem 0 0;
   padding: 0.5rem 0.8rem;
   border-radius: var(--radio);
-  background: var(--acento-suave);
+  background: color-mix(in srgb, var(--exito) 12%, transparent);
   color: var(--exito);
   font-weight: 600;
 }
@@ -196,10 +187,10 @@
 
 .ayuda-escenario {
   margin: 0.5rem 0 0;
-  padding: 0.5rem 0.8rem;
-  border-left: 4px solid var(--acento);
+  padding: 0.6rem 1rem;
+  border-left: 3px solid var(--acento);
   background: var(--acento-suave);
-  border-radius: var(--radio);
+  border-radius: 0 var(--radio) var(--radio) 0;
   font-size: 0.9rem;
 }
 
@@ -209,4 +200,16 @@
 
 .que-hacer {
   margin: 0.5rem 0;
+}
+
+@media (max-width: 900px) {
+  .guia {
+    grid-column: 1;
+    grid-row: 2;
+    padding: 0.7rem 1rem;
+  }
+}
+
+.lista-control li:last-child {
+  border-bottom: 0;
 }

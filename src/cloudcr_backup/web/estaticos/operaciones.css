@@ -15,7 +15,6 @@
   color: var(--peligro);
   padding: 0.6rem 0.9rem;
   border-radius: var(--radio);
-  box-shadow: inset 3px 0 0 currentColor;
   margin: 0;
   animation: mensaje-entra 200ms ease-out backwards;
 }
@@ -31,7 +30,6 @@
   color: var(--exito);
   padding: 0.6rem 0.9rem;
   border-radius: var(--radio);
-  box-shadow: inset 3px 0 0 currentColor;
   margin: 0;
   animation: mensaje-entra 200ms ease-out backwards;
 }
@@ -85,7 +83,7 @@ textarea {
   line-height: 1.45;
   padding: 0.6rem 0.7rem;
   border: 1px solid var(--borde);
-  border-radius: 8px;
+  border-radius: var(--radio);
   background: var(--superficie);
   color: var(--texto);
   width: 100%;
@@ -109,7 +107,7 @@ input[type="datetime-local"] {
   font-size: 0.9rem;
   padding: 0.35rem 0.55rem;
   border: 1px solid var(--borde);
-  border-radius: 8px;
+  border-radius: var(--radio);
   background: var(--superficie);
   color: var(--texto);
 }
@@ -140,10 +138,7 @@ input[type="datetime-local"] {
 }
 
 .bloque-acciones > .tarjeta-accion {
-  border: 1px solid var(--borde);
-  border-radius: var(--radio);
-  padding: 0.75rem 0.9rem;
-  background: var(--superficie-2);
+  padding: 0.25rem 0;
 }
 
 .tarjeta-accion h3 {
@@ -170,10 +165,8 @@ input[type="datetime-local"] {
 }
 
 .lista-hallazgos li {
-  padding: 0.55rem 0.7rem;
-  border: 1px solid var(--borde);
-  border-radius: 6px;
-  background: var(--superficie);
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--borde);
 }
 
 .lista-hallazgos p {
@@ -285,4 +278,8 @@ input[type="datetime-local"] {
   .formulario-accion input {
     width: 100%;
   }
+}
+
+.lista-hallazgos li:last-child {
+  border-bottom: 0;
 }

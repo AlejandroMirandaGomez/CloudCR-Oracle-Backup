@@ -20,14 +20,14 @@
   align-items: center;
   gap: 0.55rem;
   padding: 0.4rem 0.95rem 0.4rem 0.45rem;
-  border: 1px solid var(--borde);
+  border: 0;
   border-radius: 999px;
-  background: var(--superficie);
+  background: transparent;
   color: var(--texto-suave);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
-  transition-property: scale, background-color, border-color, color;
+  transition-property: scale, background-color, color;
   transition-duration: 150ms;
   transition-timing-function: ease-out;
 }
@@ -58,7 +58,6 @@
 
 .paso-boton.activo {
   background: var(--acento-suave);
-  border-color: var(--acento);
   color: var(--acento);
 }
 
@@ -74,7 +73,6 @@
 
 .avisos-formulario {
   padding: 0.7rem 1rem;
-  border: 1px solid var(--peligro);
   border-radius: var(--radio);
   background: var(--peligro-fondo);
   color: var(--peligro);
@@ -152,7 +150,7 @@
   font-size: 0.92rem;
   padding: 0.45rem 0.6rem;
   border: 1px solid var(--borde);
-  border-radius: 8px;
+  border-radius: var(--radio);
   background: var(--superficie);
   color: var(--texto);
 }
@@ -280,14 +278,12 @@
 
 .insignia-recomendado {
   justify-self: start;
-  padding: 0.05rem 0.5rem;
+  padding: 0.1rem 0.55rem;
   border-radius: 999px;
   background: var(--exito);
   color: var(--sobre-color);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  font-size: 0.78rem;
+  font-weight: 650;
 }
 
 .aviso-modo {
@@ -341,7 +337,7 @@
 
 .seleccion-resumen {
   position: sticky;
-  top: 4.5rem;
+  top: 1rem;
   padding: 0.8rem 0.9rem;
   border: 0;
   border-radius: var(--radio);
@@ -364,10 +360,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.3rem 0.5rem;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid var(--borde);
-  border-radius: 6px;
-  background: var(--superficie-2);
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--borde);
 }
 
 .item-seleccion-nombre {
@@ -383,7 +377,7 @@
   font-size: 0.84rem;
   padding: 0.25rem 0.4rem;
   border: 1px solid var(--borde);
-  border-radius: 8px;
+  border-radius: var(--radio);
   background: var(--superficie);
   color: var(--texto);
 }
@@ -401,10 +395,8 @@
 }
 
 .tarea {
-  padding: 0.85rem 1rem 1rem;
-  border: 1px solid var(--borde);
-  border-radius: var(--radio);
-  background: var(--superficie);
+  padding: 0.85rem 0 1rem;
+  border-top: 1px solid var(--borde);
 }
 
 .tarea-cabecera {
@@ -465,9 +457,8 @@
 
 .sin-observaciones {
   padding: 0.75rem 1rem;
-  border: 1px solid var(--exito);
   border-radius: var(--radio);
-  background: var(--superficie-2);
+  background: color-mix(in srgb, var(--exito) 12%, transparent);
   color: var(--exito);
   font-weight: 600;
 }
@@ -513,7 +504,6 @@
   align-items: flex-start;
   padding: 0.6rem 0.8rem;
   margin-bottom: 0.6rem;
-  border: 1px solid var(--advertencia);
   border-radius: var(--radio);
   background: var(--advertencia-fondo);
   color: var(--advertencia);
@@ -529,9 +519,8 @@
 
 .resultado-guardado {
   padding: 1rem 1.25rem;
-  border: 1px solid var(--exito);
   border-radius: var(--radio);
-  background: var(--superficie);
+  background: color-mix(in srgb, var(--exito) 10%, var(--superficie));
 }
 
 .resultado-guardado h3 {
@@ -578,6 +567,7 @@
   background: var(--superficie);
   color: var(--texto);
   box-shadow: var(--anillo), 0 12px 40px rgb(0 0 0 / 35%);
+  overscroll-behavior: contain;
 }
 
 .dialogo-carpetas[open] {
