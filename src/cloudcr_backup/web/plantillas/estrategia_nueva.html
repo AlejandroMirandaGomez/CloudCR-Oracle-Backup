@@ -123,6 +123,16 @@
         <p class="ayuda-reco"><strong>Recomendación:</strong> Use un <strong>esquema predefinido</strong> y deje la hora de la madrugada (por ejemplo 02:00).</p>
         <p class="ayuda-req"><strong>Para continuar necesita:</strong> Un esquema elegido (o al menos un tipo de respaldo) con su hora.</p>
       </details>
+      <details class="ayuda-paso" id="ayuda-modos">
+        <summary>¿Qué es el modo de respaldo? <span class="ayuda-resumen">En línea, consistente o automático</span></summary>
+        <ul><li><strong>En línea:</strong> la base sigue abierta y los usuarios siguen trabajando mientras se respalda. Exige que la base esté en ARCHIVELOG.</li><li><strong>Consistente:</strong> apaga la base (<code>SHUTDOWN IMMEDIATE</code>), la deja montada para copiarla y la vuelve a abrir. Hay caída del servicio, pero funciona también en NOARCHIVELOG.</li><li><strong>Automático:</strong> elige por usted: «En línea» si la base está en ARCHIVELOG y «Consistente» si no.</li></ul>
+        {% if catalogo.instancia.log_mode == 'ARCHIVELOG' %}
+        <p class="ayuda-reco"><strong>En esta base ({{ sid }}):</strong> está en <strong>ARCHIVELOG</strong>, así que «Automático» equivale a «En línea» y no apaga la base.</p>
+        {% else %}
+        <p class="ayuda-reco"><strong>En esta base ({{ sid }}):</strong> está en <strong>NOARCHIVELOG</strong>, así que «Automático» equivale a «Consistente» y apaga la base mientras dura el respaldo; «En línea» no es posible.</p>
+        {% endif %}
+        <p class="ayuda-req"><strong>Los esquemas predefinidos</strong> usan «Automático», salvo el respaldo de archived logs (siempre en línea) y el esquema para NOARCHIVELOG (consistente). Para elegir el modo de cada respaldo use «Definir el tipo de respaldo manualmente».</p>
+      </details>
       <p class="aviso aviso-modo" id="aviso-noarchivelog" hidden>La base está en <strong>NOARCHIVELOG</strong>: los respaldos en modo automático se ejecutan como <strong>consistentes</strong> (apagan la base mientras duran) y los respaldos en línea no son posibles.</p>
       <fieldset class="grupo-opciones">
         <legend>Cómo definir el tipo de respaldo</legend>

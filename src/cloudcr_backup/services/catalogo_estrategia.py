@@ -15,9 +15,10 @@ from cloudcr_backup.domain.enums import (
     TipoFrecuencia,
     TipoRespaldo,
 )
-from cloudcr_backup.domain.estrategia import Destino
+from cloudcr_backup.domain.estrategia import Como, Destino
 from cloudcr_backup.domain.perfil_bd import PerfilBD
 from cloudcr_backup.oracle.capacidades import capacidades_de
+from cloudcr_backup.rman.constructor import modo_efectivo
 from cloudcr_backup.strategy.codigos import siguiente_codigo_sugerido
 from cloudcr_backup.strategy.plantillas_esquema import (
     DescripcionEsquema,
@@ -95,6 +96,14 @@ def responsable_sugerido() -> str:
         return ""
 
 
+def _descripcion_de_modo(modo: ModoRespaldo, log_mode: LogMode) -> str:
+    descripcion = DESCRIPCION_MODO[modo]
+    if modo is not ModoRespaldo.AUTO:
+        return descripcion
+    elegido = modo_efectivo(Como(tipo_respaldo=TipoRespaldo.COMPLETO, modo_respaldo=modo), log_mode)
+    return f"{descripcion} En esta base equivale a «{ETIQUETA_MODO[elegido]}»."
+
+
 def _descripcion_de_esquema(descripcion: DescripcionEsquema) -> dict[str, Any]:
     parametros = ParametrosEsquema(
         destino=Destino(ruta="x"), dia_n0=DiaSemana.DOMINGO, hora_n0=HORA_REFERENCIA, hora_n1=HORA_REFERENCIA
@@ -155,8 +164,12 @@ def construir_catalogo(perfil: PerfilBD, codigos_existentes: list[str], ajustes:
             for tipo in TipoRespaldo
         ],
         "modos_respaldo": [
-            {"valor": modo.value, "etiqueta": ETIQUETA_MODO[modo], "descripcion": texto}
-            for modo, texto in DESCRIPCION_MODO.items()
+            {
+                "valor": modo.value,
+                "etiqueta": ETIQUETA_MODO[modo],
+                "descripcion": _descripcion_de_modo(modo, perfil.log_mode),
+            }
+            for modo in DESCRIPCION_MODO
         ],
         "compresiones": [
             compresion.value for compresion in Compresion if compresion in capacidades.compresiones_soportadas

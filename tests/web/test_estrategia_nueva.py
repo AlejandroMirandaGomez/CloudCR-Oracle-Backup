@@ -206,6 +206,50 @@ def test_el_formulario_habla_de_tipo_de_respaldo_en_lugar_de_tareas(cliente_estr
         assert retirado not in html
 
 
+def test_el_paso_3_explica_los_modos_en_linea_consistente_y_automatico(cliente_estrategias: TestClient) -> None:
+    html = cliente_estrategias.get("/instancias/XE/estrategias/nueva").text
+    ayuda = html.split('id="ayuda-modos"', 1)[1].split("</details>", 1)[0]
+    assert "¿Qué es el modo de respaldo?" in ayuda
+    for modo in ("En línea:", "Consistente:", "Automático:"):
+        assert modo in ayuda
+    assert "SHUTDOWN IMMEDIATE" in ayuda
+
+
+def test_la_ayuda_de_modos_dice_que_automatico_es_consistente_en_noarchivelog(cliente_estrategias: TestClient) -> None:
+    html = cliente_estrategias.get("/instancias/XE/estrategias/nueva").text
+    ayuda = html.split('id="ayuda-modos"', 1)[1].split("</details>", 1)[0]
+    assert "está en <strong>NOARCHIVELOG</strong>" in ayuda
+    assert "«Automático» equivale a «Consistente»" in ayuda
+
+
+def test_la_ayuda_de_modos_dice_que_automatico_es_en_linea_en_archivelog(
+    cliente_estrategias: TestClient, servicio_archivelog: ServicioFalso
+) -> None:
+    html = cliente_estrategias.get("/instancias/XE/estrategias/nueva").text
+    ayuda = html.split('id="ayuda-modos"', 1)[1].split("</details>", 1)[0]
+    assert "está en <strong>ARCHIVELOG</strong>" in ayuda
+    assert "«Automático» equivale a «En línea»" in ayuda
+
+
+def _descripciones_de_modo(catalogo: dict[str, Any]) -> dict[str, str]:
+    return {modo["valor"]: modo["descripcion"] for modo in catalogo["modos_respaldo"]}
+
+
+def test_el_catalogo_dice_en_que_se_convierte_automatico_en_noarchivelog(cliente_estrategias: TestClient) -> None:
+    catalogo = cliente_estrategias.get("/api/instancias/XE/estrategias/catalogo").json()
+    descripciones = _descripciones_de_modo(catalogo)
+    assert descripciones["AUTO"].endswith("En esta base equivale a «Consistente».")
+    assert "equivale" not in descripciones["EN_LINEA"]
+    assert "equivale" not in descripciones["CONSISTENTE"]
+
+
+def test_el_catalogo_dice_en_que_se_convierte_automatico_en_archivelog(
+    cliente_estrategias: TestClient, servicio_archivelog: ServicioFalso
+) -> None:
+    catalogo = cliente_estrategias.get("/api/instancias/XE/estrategias/catalogo").json()
+    assert _descripciones_de_modo(catalogo)["AUTO"].endswith("En esta base equivale a «En línea».")
+
+
 def test_cada_esquema_declara_los_rotulos_que_muestra_el_formulario(cliente_estrategias: TestClient) -> None:
     html = cliente_estrategias.get("/instancias/XE/estrategias/nueva").text
     completo = next(t for t in _tarjetas_de_esquema(html) if 'value="COMPLETO_SEMANAL"' in t)
