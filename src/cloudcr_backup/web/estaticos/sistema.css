@@ -17,10 +17,17 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition-property: scale, background-color, border-color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .pestana:hover {
   background: var(--superficie-2);
+}
+
+.pestana:active {
+  scale: 0.96;
 }
 
 .pestana:focus-visible {
@@ -80,8 +87,14 @@
   height: 2rem;
   border-radius: 50%;
   background: var(--acento);
-  color: #fff;
+  color: var(--sobre-color);
   font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pestana:active {
+    scale: 1;
+  }
 }
 
 @media (max-width: 700px) {

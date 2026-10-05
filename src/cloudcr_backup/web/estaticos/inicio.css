@@ -4,9 +4,47 @@
   gap: 2rem;
   align-items: center;
   padding: 2rem;
-  border: 1px solid var(--borde);
+  border: 0;
   border-radius: calc(var(--radio) * 2);
-  background: linear-gradient(135deg, var(--acento-suave), var(--superficie) 70%);
+  background:
+    radial-gradient(520px 260px at 100% 0%, color-mix(in srgb, var(--acento) 16%, transparent), transparent 70%),
+    linear-gradient(135deg, var(--acento-suave), var(--superficie) 70%);
+  box-shadow: var(--sombra-borde);
+}
+
+@keyframes entrada-suave {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.heroe-texto > *,
+.heroe-cifras {
+  animation: entrada-suave 400ms ease-out both;
+}
+
+.heroe-texto > :nth-child(2) {
+  animation-delay: 100ms;
+}
+
+.heroe-texto > :nth-child(3) {
+  animation-delay: 200ms;
+}
+
+.heroe-texto > :nth-child(4) {
+  animation-delay: 300ms;
+}
+
+.heroe-cifras {
+  animation-delay: 200ms;
 }
 
 .heroe-etiqueta {
@@ -19,8 +57,10 @@
 }
 
 .heroe h1 {
-  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
-  line-height: 1.2;
+  font-size: clamp(1.6rem, 2.8vw, 2.3rem);
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
   margin-bottom: 0.75rem;
 }
 
@@ -45,10 +85,10 @@
 
 .heroe-cifras div {
   padding: 0.9rem 1rem;
-  border: 1px solid var(--borde);
+  border: 0;
   border-radius: var(--radio);
   background: var(--superficie);
-  box-shadow: var(--sombra);
+  box-shadow: var(--sombra-borde);
 }
 
 .heroe-cifras dt {
@@ -81,11 +121,11 @@
 }
 
 .pregunta {
-  padding: 1.1rem 1.25rem;
-  border: 1px solid var(--borde);
-  border-radius: var(--radio);
+  padding: 1.25rem 1.4rem;
+  border: 0;
+  border-radius: var(--radio-grande);
   background: var(--superficie);
-  box-shadow: var(--sombra);
+  box-shadow: var(--sombra-borde);
 }
 
 .pregunta h2 {
@@ -134,7 +174,16 @@
 .progreso span {
   display: block;
   height: 100%;
-  background: var(--exito);
+  border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--exito) 70%, var(--acento)), var(--exito));
+  transform-origin: left;
+  animation: llenar 700ms cubic-bezier(0.2, 0, 0, 1) 250ms backwards;
+}
+
+@keyframes llenar {
+  from {
+    transform: scaleX(0);
+  }
 }
 
 .ruta {
@@ -180,13 +229,13 @@
 .ruta-paso.actual .ruta-numero {
   background: var(--acento);
   border-color: var(--acento);
-  color: #fff;
+  color: var(--sobre-color);
 }
 
 .ruta-paso.hecho .ruta-numero {
   background: var(--exito);
   border-color: var(--exito);
-  color: #fff;
+  color: var(--sobre-color);
 }
 
 .ruta-cuerpo h3 {
@@ -296,8 +345,55 @@
   opacity: 0.65;
 }
 
+.creditos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.5rem 1.25rem;
+  border-radius: var(--radio-grande);
+  background: linear-gradient(135deg, var(--acento-suave), color-mix(in srgb, var(--grupo) 10%, var(--superficie)));
+  box-shadow: var(--sombra-borde);
+  text-align: center;
+}
+
+.creditos-etiqueta {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--acento);
+}
+
+.creditos-lista {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.creditos-lista li {
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: var(--superficie);
+  box-shadow: var(--sombra-borde);
+  font-weight: 600;
+}
+
 .boton.bloqueado {
   cursor: not-allowed;
   color: var(--texto-suave);
   background: var(--superficie-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroe-texto > *,
+  .heroe-cifras,
+  .progreso span {
+    animation: none;
+  }
 }
