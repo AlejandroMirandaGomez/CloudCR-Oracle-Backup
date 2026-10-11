@@ -25,7 +25,12 @@ def _conectar() -> oracledb.Connection:
         terminar_con_error(str(error), error.sugerencia)
 
 
-@app.command(help="Crea las 12 tablas del repositorio y carga los parámetros iniciales. Es idempotente.")
+@app.command(
+    help=(
+        "Crea las 12 tablas del repositorio (más la de procedimientos de recuperación) y carga los parámetros "
+        "iniciales. Es idempotente."
+    )
+)
 def instalar() -> None:
     conexion = _conectar()
     repositorio_esquema.instalar(conexion)
@@ -53,14 +58,14 @@ def estado() -> None:
     salida.print(tabla)
 
 
-@app.command(help="Elimina las 12 tablas del repositorio y todos sus datos.")
+@app.command(help="Elimina las tablas del repositorio y todos sus datos.")
 def desinstalar(
     confirmar: Annotated[
         bool, typer.Option("--confirmar", help="Confirma la eliminación sin preguntar.")
     ] = False,
 ) -> None:
     if not confirmar and not typer.confirm(
-        "Esto elimina las 12 tablas del repositorio y todos sus datos. ¿Continuar?"
+        "Esto elimina las tablas del repositorio y todos sus datos. ¿Continuar?"
     ):
         raise typer.Exit(1)
     conexion = _conectar()

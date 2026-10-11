@@ -1,0 +1,70 @@
+{% set registro = vista.registro %}
+{% set accion = '/recuperacion/' ~ (vista.bd | urlencode) %}
+{% set destino = '#control-recuperacion-' ~ registro.id %}
+{% set tonos_resultado = {'EN_CURSO': 'advertencia', 'EJECUTADO_OK': 'exito', 'EJECUTADO_CON_ERRORES': 'peligro', 'NO_LANZADO': 'peligro'} %}
+{% set textos_resultado = {'EN_CURSO': 'Ejecutándose', 'EJECUTADO_OK': 'Ejecutado sin errores', 'EJECUTADO_CON_ERRORES': 'Ejecutado con errores', 'NO_LANZADO': 'No se lanzó'} %}
+{% if vista.aviso %}<p class="mensaje-estado" role="status">{{ vista.aviso }}</p>{% endif %}
+{% include "parciales/_error_en_linea.html" %}
+<div class="tarjeta-accion">
+  <div class="encabezado-seccion">
+    <h4>Procedimiento {{ registro.id }} · {{ etiqueta }}</h4>
+    <span>
+      <span class="semaforo tono-{{ registro.estado | tono_script }}">{{ registro.estado | etiqueta_script }}</span>
+      {% if registro.resultado %}<span class="semaforo tono-{{ tonos_resultado[registro.resultado.value] }}">{{ textos_resultado[registro.resultado.value] }}</span>{% endif %}
+    </span>
+  </div>
+  <dl class="ficha">
+    <dt>Base</dt><dd>{{ vista.bd }} · {{ 'ambiente PRUEBAS' if vista.en_pruebas else 'no es de PRUEBAS: solo se aplica a mano' }}</dd>
+    {% if registro.objetivo %}<dt>Objetivo</dt><dd><code>{{ registro.objetivo }}</code></dd>{% endif %}
+    <dt>Script</dt>
+    <dd><code>{{ registro.ruta_script }}</code> ·
+      {% if vista.archivo_intacto is none %}<span class="tono-peligro">no está en disco</span>
+      {% elif vista.archivo_intacto %}<span class="tono-exito">intacto: el hash coincide</span>
+      {% else %}<span class="tono-peligro">MODIFICADO: el hash no coincide</span>{% endif %}
+    </dd>
+    <dt>SHA-256</dt><dd class="huella">{{ registro.hash_sha256 }}</dd>
+    {% if registro.aprobado_por %}<dt>Aprobado</dt><dd>{{ registro.aprobado_por }} · {{ registro.aprobado_en | local(zona) }}</dd>{% endif %}
+    {% if registro.ejecutado_en %}<dt>Ejecución</dt><dd>desde {{ registro.ejecutado_en | local(zona) }}{% if registro.finalizado_en %} hasta {{ registro.finalizado_en | local(zona) }}{% endif %}</dd>{% endif %}
+    {% if registro.mensaje %}<dt>Resultado</dt><dd>{{ registro.mensaje }}</dd>{% endif %}
+  </dl>
+
+  {% if registro.estado.value == 'BORRADOR' %}
+    {% if vista.puede_aprobar %}
+    <form class="formulario-columna" method="post" action="{{ accion }}/aprobar" hx-post="{{ accion }}/aprobar" hx-target="{{ destino }}" hx-disabled-elt="find button">
+      <input type="hidden" name="procedimiento_id" value="{{ registro.id }}">
+      <label><strong>Aprobado por</strong> <span class="etiqueta-req">Obligatorio</span> <input type="text" name="aprobado_por" maxlength="100" placeholder="Su nombre completo" autocomplete="name" required></label>
+      <label class="casilla"><input type="checkbox" name="confirmo" value="on" required> Revisé los pasos y el script y corresponden a la falla diagnosticada</label>
+      <button class="boton primario" type="submit">Aprobar el procedimiento {{ registro.id }}</button>
+    </form>
+    {% else %}
+    <p class="aviso">No se puede aprobar: el archivo del script no coincide con el generado. Genere un procedimiento nuevo.</p>
+    {% endif %}
+  {% elif vista.puede_ejecutar %}
+  <div class="advertencia-ejecucion" role="alert">
+    <strong>Esto modifica la base {{ vista.bd }} de verdad.</strong> RMAN correrá el script aprobado ({{ 'RESTORE, RECOVER, reinicio de la instancia' if registro.escenario.value in ('datafile-critico', 'controlfile', 'grupo-redolog-actual', 'spfile', 'total-noarchivelog', 'punto-en-tiempo') else 'RESTORE, RECOVER o cambios en los redo logs' }}); lo que haga no se puede deshacer. Si el repositorio vive en la misma instancia, esta página puede dejar de responder hasta que la base vuelva a abrirse.
+  </div>
+  <form class="formulario-columna" method="post" action="{{ accion }}/ejecutar" hx-post="{{ accion }}/ejecutar" hx-target="{{ destino }}" hx-disabled-elt="find button"
+        hx-confirm="Se ejecutará con RMAN el procedimiento {{ registro.id }} ({{ registro.escenario.value }}) sobre {{ vista.bd }}. ¿Continuar?">
+    <input type="hidden" name="procedimiento_id" value="{{ registro.id }}">
+    <label class="casilla"><input type="checkbox" name="confirmo" value="on" required> Entiendo que la ejecución modifica la base de datos y no se puede deshacer</label>
+    <button class="boton peligro" type="submit">Ejecutar en PRUEBAS</button>
+  </form>
+  {% elif vista.en_curso %}
+  <p class="mensaje-estado" role="status" hx-get="{{ ruta }}" hx-trigger="every 3s" hx-target="{{ destino }}">RMAN está ejecutando el procedimiento. Esta tarjeta se actualiza sola cada pocos segundos.</p>
+  {% elif registro.resultado %}
+    {% if registro.resultado.value == 'EJECUTADO_OK' %}
+    <p class="mensaje-exito">Recuperación terminada. Pulse «Diagnosticar ahora» para confirmar que la base quedó sana{% if registro.escenario.value in ('controlfile', 'grupo-redolog-actual', 'total-noarchivelog', 'punto-en-tiempo') %} y haga un respaldo completo de inmediato: se abrió con RESETLOGS{% endif %}.</p>
+    {% else %}
+    <p class="aviso">Revise el log de RMAN de abajo, corrija la causa y genere un procedimiento nuevo: cada procedimiento aprobado se ejecuta una sola vez.</p>
+    {% endif %}
+  {% elif vista.bloqueo %}
+  <p class="aviso">{{ vista.bloqueo }}</p>
+  {% endif %}
+
+  {% if vista.log_rman %}
+  <details{% if registro.resultado and registro.resultado.value != 'EN_CURSO' %} open{% endif %}>
+    <summary>Log de RMAN ({{ registro.ruta_log }})</summary>
+    <pre class="registro codigo-script">{{ vista.log_rman }}</pre>
+  </details>
+  {% endif %}
+</div>

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block titulo %}Procedimiento de recuperación {{ vista.registro.id }} · CloudCR Oracle Backup{% endblock %}
+{% block contenido %}
+<div class="contenido">
+  <section class="encabezado-seccion">
+    <div>
+      <h1>Procedimiento de recuperación {{ vista.registro.id }}</h1>
+      <p class="subtitulo"><a href="/recuperacion?bd={{ vista.bd | urlencode }}">← Volver a Recuperación de {{ vista.bd }}</a></p>
+    </div>
+  </section>
+  <section class="panel">
+    <div id="control-recuperacion-{{ vista.registro.id }}" class="control-recuperacion" aria-live="polite">{% include "parciales/_control_recuperacion.html" %}</div>
+  </section>
+  <section class="panel">
+    <h2>Contenido del script</h2>
+    <pre class="registro codigo-script">{{ vista.registro.contenido }}</pre>
+  </section>
+</div>
+{% endblock %}

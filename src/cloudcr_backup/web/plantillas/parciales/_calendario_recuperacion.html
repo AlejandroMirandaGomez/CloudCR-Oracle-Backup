@@ -1,0 +1,50 @@
+{% set nombres_dia = {'LUN': 'Lunes', 'MAR': 'Martes', 'MIE': 'Miércoles', 'JUE': 'Jueves', 'VIE': 'Viernes', 'SAB': 'Sábado', 'DOM': 'Domingo'} %}
+{% set base_url = '/recuperacion/' ~ (calendario.bd | urlencode) ~ '/calendario' %}
+{% set pagina_url = '/recuperacion?bd=' ~ (calendario.bd | urlencode) %}
+<section class="panel" id="calendario">
+  <div class="encabezado-seccion">
+    <h2>Calendario semanal de {{ calendario.bd }}</h2>
+    <span class="semaforo tono-{{ 'peligro' if calendario.fallas else ('exito' if calendario.respaldos else 'atenuado') }}">{{ calendario.respaldos }} {{ 'respaldo' if calendario.respaldos == 1 else 'respaldos' }} · {{ calendario.fallas | length }} {{ 'falla detectada' if calendario.fallas | length == 1 else 'fallas detectadas' }}</span>
+  </div>
+  <p class="nota">Semana del {{ calendario.inicio.strftime('%d/%m/%Y') }} al {{ calendario.fin.strftime('%d/%m/%Y') }}, en hora de {{ calendario.zona }}. Cada símbolo es un respaldo correcto desde el que se puede recuperar; <span class="tono-peligro">⚠</span> marca cuándo un diagnóstico detectó la falla. Es la hora de la detección, no el instante exacto de la caída: ese solo queda en el alert log de Oracle.</p>
+  <div class="grupo-botones navegacion-calendario">
+    <a class="boton" href="{{ pagina_url }}&amp;semana={{ calendario.anterior.isoformat() }}#calendario" hx-get="{{ base_url }}?semana={{ calendario.anterior.isoformat() }}" hx-target="#zona-calendario">← Semana anterior</a>
+    <a class="boton" href="{{ pagina_url }}#calendario" hx-get="{{ base_url }}" hx-target="#zona-calendario">Esta semana</a>
+    <a class="boton" href="{{ pagina_url }}&amp;semana={{ calendario.siguiente.isoformat() }}#calendario" hx-get="{{ base_url }}?semana={{ calendario.siguiente.isoformat() }}" hx-target="#zona-calendario">Semana siguiente →</a>
+  </div>
+  <div class="tabla-desplazable">
+    <table class="tabla compacta calendario-semanal">
+      <caption class="nota">Hora × día: respaldos utilizables y fallas detectadas</caption>
+      <thead>
+        <tr>
+          <th scope="col">Hora</th>
+          {% for dia in calendario.dias %}<th scope="col">{{ nombres_dia[dia.dia.value] }}<span class="fecha-calendario">{{ dia.fecha.strftime('%d/%m') }}</span></th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for fila in calendario.filas %}
+        <tr>
+          <th scope="row">{{ '%02d:00' | format(fila.hora) }}</th>
+          {% for celda in fila.celdas %}
+          <td class="celda-calendario{% if celda | selectattr('falla') | list %} celda-falla{% elif celda %} celda-respaldo{% endif %}">
+            {% for marca in celda %}<span class="marca-calendario{% if marca.falla %} tono-peligro{% endif %}" title="{{ marca.etiqueta }} · {{ marca.detalle }}" aria-label="{{ marca.etiqueta }} · {{ marca.detalle }}">{{ marca.simbolo }}</span>{% endfor %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <ul class="leyenda-calendario">
+    {% for simbolo, etiqueta in calendario.leyenda %}<li><span class="marca-calendario{% if simbolo == '⚠' %} tono-peligro{% endif %}" aria-hidden="true">{{ simbolo }}</span> {{ etiqueta }}</li>{% endfor %}
+  </ul>
+  {% if calendario.fallas %}
+  <h3>Fallas detectadas esta semana</h3>
+  <ul class="pasos">
+    {% for falla in calendario.fallas %}<li class="tono-peligro">{{ falla.detalle }}</li>{% endfor %}
+  </ul>
+  <p class="nota">Siguiente paso: pulse «Diagnosticar ahora» para ver el estado actual y genere el procedimiento del escenario sugerido.</p>
+  {% elif not calendario.respaldos %}
+  <p class="nota">No hay respaldos utilizables ni fallas detectadas en esta semana. Use las flechas para ver otras semanas.</p>
+  {% endif %}
+</section>

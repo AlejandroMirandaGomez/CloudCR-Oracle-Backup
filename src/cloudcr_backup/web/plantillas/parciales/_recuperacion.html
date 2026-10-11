@@ -3,9 +3,10 @@
 {% elif puntos is none %}
 <div class="vacio vacio-guiado">
 <p><strong>Elija una base de datos para empezar.</strong></p>
-<p>Después podrá: 1) ver desde qué respaldos se puede recuperar, 2) diagnosticar qué archivo falta o está dañado y 3) generar el procedimiento para su caso, por ejemplo «se perdió un datafile», «se dañó el control file» o «hay que volver a una hora exacta».</p>
+<p>Después podrá: 1) ver en el calendario semanal cuándo se respaldó y cuándo se detectó una falla, 2) ver desde qué respaldos se puede recuperar, 3) diagnosticar qué archivo falta o está dañado y 4) generar el procedimiento para su caso (los 8 escenarios de fallo de medios), aprobarlo y, en bases de PRUEBAS, ejecutarlo desde aquí.</p>
 </div>
 {% else %}
+{% if calendario %}<div id="zona-calendario">{% include "parciales/_calendario_recuperacion.html" %}</div>{% endif %}
 <section class="panel">
   <div class="encabezado-seccion">
     <h2>Puntos de recuperación de {{ puntos.bd }}</h2>
@@ -47,7 +48,7 @@
     <h2>Diagnóstico</h2>
     <button class="boton" type="button" hx-get="/recuperacion/{{ puntos.bd | urlencode }}/diagnostico" hx-target="#zona-diagnostico" hx-disabled-elt="this" hx-indicator="#diagnosticando">Diagnosticar ahora</button>
   </div>
-  <p class="nota">Consulta <code>V$RECOVER_FILE</code> y <code>V$DATAFILE</code> en la instancia para decir qué archivo concreto falta o está dañado: es el primer paso de la línea de tiempo de una falla.</p>
+  <p class="nota">Consulta <code>V$RECOVER_FILE</code>, <code>V$DATAFILE</code>, <code>V$DATABASE_BLOCK_CORRUPTION</code> y <code>V$LOGFILE</code> en la instancia para decir qué archivo concreto falta o está dañado y sugerir el escenario: es el primer paso de la línea de tiempo de una falla. Si encuentra una falla, la anota en el calendario y abre una alerta (que llega por correo si ese canal está configurado).</p>
   <p id="diagnosticando" class="htmx-indicator">Consultando la instancia…</p>
   <div id="zona-diagnostico" aria-live="polite"></div>
 </section>
@@ -55,12 +56,13 @@
 <section class="panel">
   <h2>Generar un procedimiento</h2>
 <details class="ayuda-paso" open>
-<summary>¿Qué hago aquí? <span class="ayuda-resumen">Le dice qué comandos usar para recuperar; no recupera nada por sí solo</span></summary>
+<summary>¿Qué hago aquí? <span class="ayuda-resumen">Le dice qué comandos usar para recuperar; solo se ejecutan si usted los aprueba y la base es de PRUEBAS</span></summary>
 <ol>
 <li><strong>Diagnostique</strong> primero: suba al panel <a href="#diagnostico">«Diagnóstico»</a> (arriba de este) y pulse «Diagnosticar ahora». Así el sistema detecta qué archivo está dañado.</li>
 <li>Elija <strong>qué pasó</strong> en el primer campo.</li>
 <li>En <strong>«Objeto dañado»</strong> escriba qué se dañó (una PDB, un tablespace o un archivo). Si lo deja vacío, el sistema lo deduce del diagnóstico.</li>
-<li>Pulse <strong>Generar procedimiento</strong> y revise los pasos y el script. Un DBA los aplica.</li>
+<li>Pulse <strong>Generar procedimiento</strong> y revise los pasos y el script.</li>
+<li><strong>Apruébelo</strong> con su nombre: queda fijada la huella SHA-256 del script. Si la base está registrada en ambiente <strong>PRUEBAS</strong>, aparece el botón <strong>Ejecutar en PRUEBAS</strong>; en otros ambientes el DBA lo aplica a mano.</li>
 </ol>
 <p class="ayuda-req">Si la base está sana, el sistema responderá «No es posible» porque no hay nada que recuperar: es normal.</p>
 </details>
@@ -69,7 +71,7 @@
     <div class="formulario-accion">
       <label>¿Qué pasó? (escenario)
         <select name="escenario" required>
-          {% for valor, etiqueta, ayuda in escenarios %}<option value="{{ valor }}" data-ayuda="{{ ayuda }}" data-sin-objetivo="{{ 'si' if ayuda.startswith('No necesita') else 'no' }}" data-etiqueta-objetivo="{{ {'pdb': 'Nombre de la PDB dañada', 'tablespace': 'Tablespace dañado (PDB:TABLESPACE)', 'datafile': 'Número del datafile dañado'}.get(valor, 'Objeto dañado') }}" data-ejemplo-objetivo="{{ {'pdb': 'XEPDB1', 'tablespace': 'XEPDB1:USERS', 'datafile': '7'}.get(valor, '') }}">{{ etiqueta }}</option>{% endfor %}
+          {% for valor, etiqueta, ayuda in escenarios %}<option value="{{ valor }}" data-ayuda="{{ ayuda }}" data-sin-objetivo="{{ 'si' if ayuda.startswith('No necesita') else 'no' }}" data-etiqueta-objetivo="{{ {'pdb': 'Nombre de la PDB dañada', 'tablespace': 'Tablespace dañado (PDB:TABLESPACE)', 'datafile': 'Número del datafile dañado', 'datafile-critico': 'Número del datafile de SYSTEM o UNDO', 'miembro-redolog': 'Miembro dañado (GRUPO:RUTA)', 'grupo-redolog-actual': 'Secuencia del grupo perdido', 'corrupcion-bloque': 'Bloque dañado (FILE#:BLOQUE)'}.get(valor, 'Objeto dañado') }}" data-ejemplo-objetivo="{{ {'pdb': 'XEPDB1', 'tablespace': 'XEPDB1:USERS', 'datafile': '7', 'datafile-critico': '1', 'miembro-redolog': '2:C:\\ORADATA\\XE\\REDO02B.LOG', 'grupo-redolog-actual': '41', 'corrupcion-bloque': '7:131'}.get(valor, '') }}">{{ etiqueta }}</option>{% endfor %}
         </select>
       </label>
       <label><span id="etiqueta-objetivo">Objeto dañado</span> <span class="opcional">(opcional)</span> <input type="text" name="objetivo" maxlength="130" placeholder="Déjelo vacío para deducirlo del diagnóstico" class="campo-ancho" autocomplete="off" spellcheck="false"></label>
@@ -77,7 +79,7 @@
       <button class="boton primario" type="submit">Generar procedimiento</button>
     </div>
     <p class="ayuda-escenario" id="ayuda-escenario" aria-live="polite"></p>
-    <p class="nota">«Objeto dañado» cambia según la falla que elija: nombre de la PDB, tablespace o número de archivo. En «control file» y «recuperación total» no se necesita. «Hasta» solo sirve para volver a una hora exacta.</p>
+    <p class="nota">«Objeto dañado» cambia según la falla que elija: nombre de la PDB, tablespace, número de archivo, miembro de redo log, secuencia o bloque. En «control file», «SPFILE» y «recuperación total» no se necesita. «Hasta» solo sirve para volver a una hora exacta.</p>
     <details>
       <summary>Ver todos los escenarios</summary>
       <ul class="nota">

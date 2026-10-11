@@ -80,6 +80,10 @@ CATALOGO: dict[str, DescripcionAlerta] = {
         "La base no se reabrió",
         "Abra la base manualmente (ALTER DATABASE OPEN) y revise el log del respaldo consistente.",
     ),
+    CodigoAlerta.CAIDA_DETECTADA: DescripcionAlerta(
+        "Falla de medios detectada",
+        "Abra Recuperación, revise el diagnóstico y genere el procedimiento del escenario sugerido.",
+    ),
 }
 
 
@@ -420,4 +424,6 @@ REGLAS: dict[CodigoAlerta, ReglaAlerta] = {
     CodigoAlerta.ARCHIVELOG_ACUMULADO: archivelog_acumulado,
 }
 
-CODIGOS_DE_EVENTO = frozenset({CodigoAlerta.SCRIPT_ALTERADO.value, CodigoAlerta.BASE_NO_REABIERTA.value})
+CODIGOS_DE_EVENTO = frozenset(
+    {CodigoAlerta.SCRIPT_ALTERADO.value, CodigoAlerta.BASE_NO_REABIERTA.value, CodigoAlerta.CAIDA_DETECTADA.value}
+)

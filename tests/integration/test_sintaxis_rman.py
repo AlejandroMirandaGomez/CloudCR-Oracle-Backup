@@ -8,7 +8,13 @@ import pytest
 
 from cloudcr_backup.domain.enums import Compresion, LogMode
 from cloudcr_backup.domain.estrategia import Retencion
-from cloudcr_backup.domain.recuperacion import ArchivoDanado, Escenario
+from cloudcr_backup.domain.recuperacion import (
+    ArchivoDanado,
+    BloqueCorrupto,
+    Escenario,
+    GrupoRedoActual,
+    MiembroRedoDanado,
+)
 from cloudcr_backup.recovery.procedimientos import SolicitudProcedimiento, generar
 from cloudcr_backup.retention import politica
 from cloudcr_backup.rman.constructor import SolicitudScript, construir
@@ -19,6 +25,9 @@ pytestmark = pytest.mark.oracle
 
 ESTRATEGIAS = Path(__file__).resolve().parents[2] / "config" / "estrategias"
 DANADO = ArchivoDanado(file_id=12, ruta="X", tablespace="USERS", contenedor="XEPDB1", estado="OFFLINE", origen="x")
+MIEMBRO = MiembroRedoDanado(
+    grupo=2, miembro="C:\\ORADATA\\XE\\REDO02B.LOG", estado_miembro="INVALID", estado_grupo="CURRENT", secuencia=41
+)
 
 
 def _rman() -> Path:
@@ -65,6 +74,9 @@ def _scripts() -> dict[str, str]:
                 destino_autobackup="C:\\backups\\XE",
                 hasta=datetime(2026, 10, 4, 13, 0),
                 danados=[DANADO],
+                bloques=[BloqueCorrupto(file_id=12, bloque=131)],
+                miembros_redo=[MIEMBRO],
+                redo_actual=GrupoRedoActual(grupo=2, secuencia=41),
             )
         )
         assert procedimiento.script is not None, procedimiento.motivo

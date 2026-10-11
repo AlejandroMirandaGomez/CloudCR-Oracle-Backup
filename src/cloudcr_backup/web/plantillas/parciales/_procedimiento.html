@@ -7,7 +7,7 @@
   {% if procedimiento.objetivo %}<p class="nota">Objetivo: <code>{{ procedimiento.objetivo }}</code></p>{% endif %}
   <div class="ayuda-escenario que-hacer-ahora">
     {% if procedimiento.posible %}
-    <strong>Qué hacer ahora:</strong> revise los pasos y el script de abajo. Esta herramienta no ejecuta nada: el DBA es quien los aplica, después de confirmar que es el procedimiento correcto.
+    <strong>Qué hacer ahora:</strong> revise los pasos y el script de abajo. Nada se ejecuta solo: si es el procedimiento correcto, apruébelo al final de este panel; en bases de PRUEBAS podrá ejecutarlo desde aquí y en otros ambientes el DBA lo aplica a mano.
     {% else %}
     <strong>Qué hacer ahora:</strong> este procedimiento no se pudo armar con lo que se indicó. Si hay una falla real, pulse primero «Diagnosticar ahora» (panel <a href="#diagnostico">Diagnóstico</a>, arriba) para que el sistema detecte el archivo dañado, y vuelva a generar. Si solo está probando, escriba el objeto a mano en el campo Objetivo (por ejemplo <code>XEPDB1</code>) y genere de nuevo.
     {% endif %}
@@ -18,8 +18,24 @@
   <ol class="pasos">{% for paso in procedimiento.pasos %}<li>{{ paso }}</li>{% endfor %}</ol>
   {% endif %}
   {% if procedimiento.script %}
-  <h4>Script RMAN (para revisar; la herramienta no lo ejecuta)</h4>
+  <h4>Script RMAN (revíselo antes de aprobarlo)</h4>
   <pre class="registro codigo-script">{{ procedimiento.script }}</pre>
-  {% if procedimiento.archivo %}<p class="nota">Guardado en <code>{{ procedimiento.archivo }}</code>.</p>{% endif %}
+  {% if procedimiento.archivo %}<p class="nota">Guardado en <code>{{ procedimiento.archivo }}</code>{% if procedimiento.hash_sha256 %} · SHA-256 <span class="huella">{{ procedimiento.hash_sha256 }}</span>{% endif %}.</p>{% endif %}
+  {% endif %}
+  {% if procedimiento.id %}
+  <div id="control-recuperacion-{{ procedimiento.id }}" class="control-recuperacion" aria-live="polite">
+    <div class="tarjeta-accion">
+      <h4>Aprobar el procedimiento {{ procedimiento.id }}</h4>
+      <p>Aprobar deja registrado quién revisó los pasos y el script, y fija su huella SHA-256: si alguien edita el archivo después, la ejecución queda bloqueada. Aprobar no ejecuta nada.</p>
+      <form class="formulario-columna" method="post" action="/recuperacion/{{ procedimiento.bd | urlencode }}/aprobar" hx-post="/recuperacion/{{ procedimiento.bd | urlencode }}/aprobar" hx-target="#control-recuperacion-{{ procedimiento.id }}" hx-disabled-elt="find button">
+        <input type="hidden" name="procedimiento_id" value="{{ procedimiento.id }}">
+        <label><strong>Aprobado por</strong> <span class="etiqueta-req">Obligatorio</span> <input type="text" name="aprobado_por" maxlength="100" placeholder="Su nombre completo" autocomplete="name" required></label>
+        <label class="casilla"><input type="checkbox" name="confirmo" value="on" required> Revisé los pasos y el script y corresponden a la falla diagnosticada</label>
+        <button class="boton primario" type="submit">Aprobar el procedimiento {{ procedimiento.id }}</button>
+      </form>
+    </div>
+  </div>
+  {% elif procedimiento.script %}
+  <p class="nota">Este procedimiento no quedó registrado para aprobarlo desde la herramienta (vea los avisos): solo puede aplicarse a mano.</p>
   {% endif %}
 </section>

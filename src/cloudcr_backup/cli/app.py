@@ -47,7 +47,11 @@ app.add_typer(cmd_reporte.app, name="reporte", help="Exporta el historial y la e
 app.add_typer(cmd_script.app, name="script", help="Genera, muestra, aprueba y rechaza los scripts RMAN.")
 app.registered_commands.extend(cmd_ejecutar.app.registered_commands)
 app.add_typer(cmd_retencion.app, name="retencion", help="Informe de respaldos obsoletos y purga controlada.")
-app.add_typer(cmd_recuperacion.app, name="recuperacion", help="Puntos de recuperación, diagnóstico y procedimientos.")
+app.add_typer(
+    cmd_recuperacion.app,
+    name="recuperacion",
+    help="Puntos de recuperación, diagnóstico y procedimientos (se ejecutan solo aprobados y en PRUEBAS).",
+)
 
 
 @app.callback(invoke_without_command=True)
