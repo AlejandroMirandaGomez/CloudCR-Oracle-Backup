@@ -204,7 +204,7 @@ Es la secuencia que pide el enunciado: **estrategia → programación → script
 | 12 | Ver el resultado y la evidencia | `cloudcr historial --bd XE` · `cloudcr historial mostrar <ID>` | Historial → detalle de la ejecución |
 | 13 | Recomendaciones del validador | `cloudcr estrategia aplicar-recomendacion EST001 ARCH_002 --bd XE` | Detalle de la estrategia → aplicar recomendación |
 | 14 | Retención (informa; borrar es decisión del administrador) | `cloudcr retencion informe XE` | Retención |
-| 15 | Recuperación (genera el procedimiento, nunca lo ejecuta) | `cloudcr recuperacion puntos XE` · `cloudcr recuperacion plan XE tablespace` | Recuperación |
+| 15 | Recuperación (genera el procedimiento; solo se ejecuta aprobado, con confirmación y en PRUEBAS) | `cloudcr recuperacion puntos XE` · `cloudcr recuperacion plan XE tablespace` · `cloudcr recuperacion aprobar XE <id> --confirmo` · `cloudcr recuperacion ejecutar XE <id> --confirmo` | Recuperación |
 
 Otras pantallas y comandos de consulta:
 

@@ -34,7 +34,7 @@ Estructura que marca el enunciado: **qué se configuró → cómo → cuándo �
 | 13 ★ | **Recomendación aplicada** | Detalle de la estrategia → aplicar `ARCH_002` (`cloudcr estrategia aplicar-recomendacion`): versión 2 con `PLUS ARCHIVELOG`, script v1 obsoleto | Se aplica sin apagar la base | E5 | §2, §6 |
 | 14 ★ | **Evidencia e historial** | `/historial` (`cloudcr historial`): Hora, símbolo, tipo, inicio, fin, duración, resultado y **Pruebas**; detalle y exportación a HTML | Misma tabla en terminal y navegador | E8 | §5 |
 | 15 | **Retención** | `/retencion` · `cloudcr retencion informe XE` | «El sistema informa; borrar lo decide el administrador» | E9 | §3 |
-| 16 | **Recuperación** | `/recuperacion` · `cloudcr recuperacion puntos XE` y `plan XE tablespace` | Procedimientos generados, nunca ejecutados; solo en ambiente `PRUEBAS` | E9 | §6 |
+| 16 | **Recuperación (control correctivo)** | `/recuperacion`: calendario semanal, diagnóstico con escenario sugerido, procedimiento, aprobación y «Ejecutar en PRUEBAS» (guion completo en `docs/demo_control_correctivo.md`) · `cloudcr recuperacion plan/aprobar/ejecutar` | Se borra un datafile y el sistema lo recupera; nunca se ejecuta solo: aprobación con hash, confirmación y solo en ambiente `PRUEBAS` | E9 | §6 |
 | 17 | **Afinamiento** | `docs/afinamiento_redo_archivelog.md` y `/estado` (observaciones de redo) | Los cuatro pasos: actual, estrategia, aplicación, final. `RED_003` mide el log switch | E1, E10 | Clase del 10/09 |
 | 18 | **Cierre** | `/evidencias` (`cloudcr evidencias`): 10 evidencias y su estado. Matriz de controles antes, durante y después (`docs/analisis.md`, sec. 17) | «Planificada, ejecutada, monitoreada y documentada» | Todas | Conclusión |
 

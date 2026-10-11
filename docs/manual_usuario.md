@@ -173,7 +173,7 @@ Desde «Script RMAN» de cada tarea (`/estrategias/{bd}/{codigo}/scripts/{tarea}
 ### 4.6 Retención y recuperación
 
 - `/retencion`: por estrategia, la política (ventana o redundancia), las piezas vencidas y el script que se usaría. «Consultar a RMAN» corre `CROSSCHECK BACKUP` + `REPORT OBSOLETE`. El botón de purga **solo aparece** si la estrategia tiene `purga_automatica` activa, y pide confirmación.
-- `/recuperacion`: puntos de recuperación (respaldos correctos con piezas), **Diagnosticar ahora** (`V$RECOVER_FILE`/`V$DATAFILE`) y el generador de procedimientos por escenario. El procedimiento se muestra y se guarda en la carpeta de trabajo; **nunca se ejecuta**.
+- `/recuperacion` (control correctivo): **calendario semanal** (hora × día) con un símbolo por cada respaldo utilizable y ⚠ donde un diagnóstico detectó una falla; puntos de recuperación (respaldos correctos con piezas); **Diagnosticar ahora** (`V$RECOVER_FILE`, `V$DATAFILE`, `V$DATABASE_BLOCK_CORRUPTION`, `V$LOGFILE`), que sugiere el escenario, anota la falla en el calendario y abre la alerta `CAIDA_DETECTADA`; y el generador de procedimientos para los 8 escenarios de fallo de medios. El procedimiento **nunca se ejecuta solo**: se aprueba con su nombre (queda fijado el SHA-256 del script) y, solo si la base está registrada en ambiente `PRUEBAS`, aparece **Ejecutar en PRUEBAS**, que pide confirmación, corre RMAN en segundo plano y muestra el resultado y el log. Ver §13.3.
 
 ### 4.7 Sistema
 
@@ -282,6 +282,7 @@ El símbolo siempre va acompañado de texto: la información no depende solo del
 | `RETENCION_VENCIDA` | RECOMENDACION | Hay piezas vencidas sin marcar obsoletas y la estrategia no tiene purga automática | Se purgan |
 | `ARCHIVELOG_ACUMULADO` | ADVERTENCIA | Más de `alertas.archivelogs_max` archived logs sin respaldar | Se respaldan |
 | `SCRIPT_ALTERADO`, `BASE_NO_REABIERTA` | ALERTA | Los informa el pipeline de ejecución | Solo a mano (son eventos) |
+| `CAIDA_DETECTADA` | ALERTA | «Diagnosticar ahora» (o `cloudcr recuperacion diagnostico`) encontró daños o no pudo consultar la instancia | Cuando un diagnóstico posterior no encuentra daños, o a mano |
 
 - **Una alerta por condición**: la clave de deduplicación es `CÓDIGO:BD/ESTRATEGIA/TAREA`. Mientras siga vigente (abierta **o reconocida**) solo se actualiza su mensaje; no se duplica ni se vuelve a notificar.
 - **Notificación solo cuando la alerta es nueva**. Un fallo del correo se registra en `logs/cloudcr.log` y nunca detiene al agente.
@@ -390,6 +391,8 @@ Semántica de la programación:
 | **`ARCHIVELOG_ACUMULADO` cuenta, no mide antigüedad** | El perfil solo trae la cantidad de archived logs sin respaldo, tomada en la última inspección. |
 | **Ritmo de log switch (`RED_003`)** | Se mide con `V$LOG_HISTORY` de las últimas 24 h; con menos de 4 cambios se informa que no hay datos suficientes. Los perfiles guardados antes de esta versión no traen el dato. |
 | **Pruebas «Pendiente»** | Solo queda así si `verificacion.automatica` está en `false`; en ese caso use `cloudcr verificar <id>` (CROSSCHECK + existencia + `VALIDATE BACKUPSET`). |
+| **Hora de la falla en el calendario** | Es la hora en que un diagnóstico la detectó, no el instante exacto de la caída (ese solo está en el alert log de Oracle). |
+| **Recuperación con el repositorio en la misma CDB** | Los escenarios que reinician la instancia (`datafile-critico`, `controlfile`, `grupo-redolog-actual`, `spfile`, `total-noarchivelog`, `punto-en-tiempo`) apagan también `BKPCAT`: la web deja de responder hasta que la base se reabre. El resultado se escribe primero en disco (`*.resultado.json`) y la tarjeta lo toma al volver. Si la CDB queda montada (por ejemplo, tras borrar un datafile con la base apagada), CloudCR no puede conectarse al repositorio y el DBA aplica el script a mano. |
 | **Horas en UTC** | El repositorio guarda horas en UTC (`SYS_EXTRACT_UTC(SYSTIMESTAMP)`); la web y la CLI las muestran en la zona de cada tarea. `perfil_bd.capturado_en` y `script_rman.creado_en` siguen usando el valor por defecto del DDL (hora del servidor); solo se comparan entre sí. |
 
 ---
@@ -447,18 +450,42 @@ cloudcr retencion informe XE --rman    # además CROSSCHECK + REPORT OBSOLETE en
 cloudcr retencion purgar XE EST004 --purgar   # solo con purga_automatica: true; borra solo piezas propias obsoletas
 ```
 
-### 13.3 Recuperación (se genera, nunca se ejecuta)
+### 13.3 Recuperación (se genera; se ejecuta solo aprobada, con confirmación y en PRUEBAS)
 
 ```powershell
 cloudcr recuperacion puntos XE         # respaldos correctos desde los que se puede recuperar
-cloudcr recuperacion diagnostico XE    # V$RECOVER_FILE / V$DATAFILE: qué archivo falta o está dañado
-cloudcr recuperacion plan XE datafile  # toma el archivo del diagnóstico sin que haya que escribirlo
+cloudcr recuperacion diagnostico XE    # qué falta o está dañado y qué escenario se sugiere
+cloudcr recuperacion plan XE datafile  # toma el archivo del diagnóstico; imprime "Registrado como procedimiento N"
 cloudcr recuperacion plan XE punto-en-tiempo --hasta "2026-10-04 13:00"
+cloudcr recuperacion aprobar XE N --confirmo --por "Nombre Apellido"   # fija el SHA-256; no ejecuta nada
+cloudcr recuperacion ejecutar XE N --confirmo                          # solo en ambiente PRUEBAS
 ```
 
-Escenarios: `pdb`, `tablespace`, `datafile`, `controlfile`, `total-noarchivelog` y `punto-en-tiempo`. Si el
-modo de archivado no permite un escenario, el comando lo explica en lugar de generar un script inválido. Los
-scripts quedan en `recuperacion\<BD>\`.
+Escenarios (los 8 de clase, más `pdb` y `punto-en-tiempo`):
+
+| Escenario | Clase | Objeto dañado (`--objetivo`; vacío = se deduce del diagnóstico) |
+|---|---|---|
+| `datafile` / `tablespace` / `pdb` | `PERDIDA_DATAFILE_NO_CRITICO` | file#, `PDB:TABLESPACE` o nombre de la PDB |
+| `datafile-critico` | `PERDIDA_DATAFILE_CRITICO` | file# del datafile de SYSTEM o UNDO |
+| `controlfile` | `PERDIDA_CONTROL_FILE` | — |
+| `miembro-redolog` | `PERDIDA_MIEMBRO_REDOLOG` | `GRUPO:RUTA`, por ejemplo `2:C:\ORADATA\XE\REDO02B.LOG` |
+| `grupo-redolog-actual` | `PERDIDA_GRUPO_REDOLOG_CURRENT` | secuencia del grupo perdido, o `HILO:SECUENCIA` |
+| `corrupcion-bloque` | `CORRUPCION_DE_BLOQUE` | `FILE#:BLOQUE`; vacío = `RECOVER CORRUPTION LIST` |
+| `spfile` | `PERDIDA_SPFILE` | — |
+| `total-noarchivelog` | `PERDIDA_TOTAL_SIN_ARCHIVELOG` | — |
+| `punto-en-tiempo` | (recuperación incompleta a una hora) | `--hasta` |
+
+Si el modo de archivado no permite un escenario, o si se pide `datafile` sobre un datafile de SYSTEM/UNDO del
+contenedor raíz, el comando lo explica en lugar de generar un script que Oracle rechazaría.
+
+**Aprobar y ejecutar.** La ejecución se bloquea si la base no está en ambiente `PRUEBAS`, si el procedimiento no
+está aprobado, si ya se ejecutó (cada procedimiento aprobado se ejecuta una sola vez) o si el `.rman` cambió
+después de aprobarse. Los escenarios que reinician la instancia terminan dejando abiertas la base y sus PDB, igual
+que tras un respaldo consistente. El resultado es **EJECUTADO_OK**, **EJECUTADO_CON_ERRORES** o **NO_LANZADO**.
+
+Archivos en `recuperacion\<BD>\`: `<escenario>_<fecha>.rman` (script), `.log` (log de RMAN),
+`.resultado.json` (resultado, escrito antes del repositorio) y `fallas_detectadas.jsonl` (fallas del
+calendario). Guion de demostración: `docs/demo_control_correctivo.md`.
 
 ### 13.4 API JSON
 

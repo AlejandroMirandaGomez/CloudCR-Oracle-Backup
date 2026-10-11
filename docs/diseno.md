@@ -70,7 +70,11 @@ Ninguno de ellos escribe SQL ni invoca RMAN: toda sentencia contra `BKPCAT` sigu
 │   ├── rman.log
 │   ├── verificacion.log
 │   └── evidencia.json
-├── recuperacion/<BD>/<escenario>_<fecha>.rman
+├── recuperacion/<BD>/
+│   ├── <escenario>_<fecha>.rman          (script; su SHA-256 queda en RECUPERACION_PROCEDIMIENTO)
+│   ├── <escenario>_<fecha>.log           (log de RMAN, si se ejecutó)
+│   ├── <escenario>_<fecha>.resultado.json (resultado, escrito antes del repositorio)
+│   └── fallas_detectadas.jsonl           (fallas que marca el calendario semanal)
 ├── buzon/<timestamp>_<id>.json
 └── logs/cloudcr.log
 ```
@@ -101,7 +105,7 @@ El destino de los respaldos (`C:\backups\XE` por defecto, configurable con `CLOU
 | `execution/` | Pipeline de ejecución: preflight, runner (subprocess), parser de log, correlador con vistas `V$`, clasificador, evidencia, buzón | — |
 | `verification/` | `CROSSCHECK` + existencia en disco + `VALIDATE` → columna Pruebas | — |
 | `retention/` | Informe de piezas obsoletas y purga controlada, limitada a las piezas de la propia estrategia | — |
-| `recovery/` | Diagnóstico con `V$RECOVER_FILE`, puntos de recuperación, generación de procedimientos (nunca los ejecuta) | — |
+| `recovery/` | Diagnóstico (`V$RECOVER_FILE`, `V$DATABASE_BLOCK_CORRUPTION`, `V$LOGFILE`) con escenario sugerido, puntos de recuperación, calendario semanal, generación de procedimientos para los 8 escenarios y clasificación del resultado. La ejecución la orquesta `services/recuperacion.py` con `execution/runner.py`, solo tras aprobación y en ambiente `PRUEBAS` | — |
 | `scheduling/` | Recurrencia (`dateutil.rrule`), ventanas de respaldo, planificador de próximas ejecuciones | — |
 | `agent/` | Bucle continuo: reclama ejecuciones vencidas, las despacha, sincroniza el buzón, evalúa alertas | — |
 | `alerts/` | Motor de 11+ reglas de alerta, deduplicación por `clave_dedup`, notificadores (consola, correo) | — |
@@ -279,10 +283,23 @@ PARAMETRO (clave/valor global, sin relaciones)
 
 Índice: `ix_alerta_abierta (estado, clave_dedup)`.
 
+**`RECUPERACION_PROCEDIMIENTO`** (complementaria, ver 3.3) — procedimientos de recuperación generados, su aprobación y su ejecución.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `bd_id` | NUMBER FK | Base a la que pertenece; la ejecución exige que su `ambiente` sea `PRUEBAS` |
+| `escenario`, `objetivo` | VARCHAR2(30), VARCHAR2(400) | Uno de los 11 valores de `Escenario` y el objeto dañado |
+| `ruta_script`, `contenido`, `hash_sha256` | VARCHAR2(1000), CLOB, VARCHAR2(64) | El `.rman` en disco y su huella; si no coinciden, no se aprueba ni se ejecuta |
+| `estado` | VARCHAR2(15) CHECK | `BORRADOR` → `APROBADO` (mismo `EstadoScript` que `SCRIPT_RMAN`) |
+| `generado_en`, `aprobado_por`, `aprobado_en` | TIMESTAMP, VARCHAR2(100), TIMESTAMP | Horas en UTC |
+| `ejecutado_en`, `finalizado_en`, `resultado` | TIMESTAMP, TIMESTAMP, VARCHAR2(30) CHECK | `EN_CURSO`, `EJECUTADO_OK`, `EJECUTADO_CON_ERRORES`, `NO_LANZADO`; una sola ejecución por procedimiento |
+| `ruta_log`, `mensaje` | VARCHAR2(1000), VARCHAR2(4000) | Log de RMAN y resumen del resultado |
+
 ### 3.3 Decisiones de diseño explícitas
 
 - **Sin tabla `AGENTE`:** un solo host en la demo; `EJECUCION.agente` guarda el hostname.
 - **Sin tabla `AUDITORIA`:** se cubre con `creada_por` en `ESTRATEGIA` y `aprobado_por` en `SCRIPT_RMAN`.
+- **`RECUPERACION_PROCEDIMIENTO` es complementaria:** se crea al instalar el repositorio y, en repositorios ya instalados, la primera vez que se usa la recuperación (`CREATE TABLE` con el privilegio que ya tiene `BKP_ADMIN`). No cuenta entre las 12 tablas que deciden si el repositorio está instalado, así que un repositorio existente sigue siendo válido sin reinstalarlo.
 - **La estrategia no se versiona como filas separadas:** `editar` actualiza la misma fila de `ESTRATEGIA` y sube `version`; el historial real y auditable vive en `SCRIPT_RMAN`, donde cada versión de script sí queda como fila propia y las anteriores pasan a `OBSOLETO`.
 - **`ESTRATEGIA_OBJETO.identificador` admite `NULL`:** decisión corregida durante el desarrollo — Oracle no distingue `''` de `NULL` en `VARCHAR2`, y la convención del dominio usa `identificador=""` para "toda la base".
 
@@ -427,7 +444,7 @@ cloudcr
 ├── ejecutar  <estrategia> <tarea> [--ahora] [--simular]
 ├── verificar (dentro de execution/verification)
 ├── retencion informe · purgar
-├── recuperacion puntos · plan · diagnostico
+├── recuperacion puntos · plan · diagnostico · aprobar · ejecutar
 ├── agente    ejecutar · estado
 ├── historial listar · mostrar <id>
 ├── alertas   listar · reconocer · resolver · evaluar
@@ -547,7 +564,7 @@ stateDiagram-v2
     RESUELTA --> [*]
 ```
 
-`ABIERTA` y `RECONOCIDA` son «vigentes»: ambas cuentan para la deduplicación y para la resolución automática. Las alertas de evento (`SCRIPT_ALTERADO`, `BASE_NO_REABIERTA`) no se resuelven solas.
+`ABIERTA` y `RECONOCIDA` son «vigentes»: ambas cuentan para la deduplicación y para la resolución automática. Las alertas de evento (`SCRIPT_ALTERADO`, `BASE_NO_REABIERTA`, `CAIDA_DETECTADA`) no las resuelve el motor de reglas; `CAIDA_DETECTADA` la resuelve el siguiente diagnóstico sin daños.
 
 ### 7.5 Dependencias entre paquetes (medidas)
 

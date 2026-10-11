@@ -181,7 +181,7 @@ La ventana va **en línea, dentro del comando** (`REPORT OBSOLETE RECOVERY WINDO
   archived logs ya respaldados. El script con `DELETE NOPROMPT OBSOLETE` del plan queda como referencia
   (`politica.script(..., purgar=True)`) y no se ejecuta.
 
-## 9. Recuperación (se genera, nunca se ejecuta)
+## 9. Recuperación (se genera; se ejecuta solo aprobada, con confirmación y en PRUEBAS)
 
 | Escenario | Requiere | Script |
 |---|---|---|
@@ -191,11 +191,21 @@ La ventana va **en línea, dentro del comando** (`REPORT OBSOLETE RECOVERY WINDO
 | `controlfile` | autobackup o pieza registrada | `STARTUP NOMOUNT; SET DBID; RESTORE CONTROLFILE FROM '<pieza>' (o FROM AUTOBACKUP); MOUNT; RECOVER; OPEN RESETLOGS` |
 | `total-noarchivelog` | respaldo consistente | `SHUTDOWN IMMEDIATE; STARTUP MOUNT; RESTORE DATABASE; RECOVER DATABASE NOREDO; OPEN RESETLOGS` |
 | `punto-en-tiempo` | ARCHIVELOG continuo | `SET UNTIL TIME …; RESTORE DATABASE; RECOVER DATABASE; OPEN RESETLOGS` |
+| `datafile-critico` | ARCHIVELOG | `STARTUP FORCE MOUNT; RESTORE DATAFILE n; RECOVER DATAFILE n; ALTER DATABASE OPEN` (SYSTEM/UNDO del contenedor raíz) |
+| `miembro-redolog` | grupo multiplexado | `SWITCH LOGFILE` si es CURRENT; `CHECKPOINT; DROP LOGFILE MEMBER '…'; ADD LOGFILE MEMBER '…' REUSE TO GROUP g` |
+| `grupo-redolog-actual` | ARCHIVELOG | `STARTUP FORCE MOUNT; SET UNTIL SEQUENCE s THREAD t; RESTORE DATABASE; RECOVER DATABASE; OPEN RESETLOGS` (equivale a `UNTIL CANCEL`) |
+| `corrupcion-bloque` | ARCHIVELOG | `RECOVER DATAFILE n BLOCK b` o `RECOVER CORRUPTION LIST` |
+| `spfile` | autobackup o pieza registrada | `STARTUP FORCE NOMOUNT; SET DBID; RESTORE SPFILE FROM AUTOBACKUP; STARTUP FORCE NOMOUNT; MOUNT; OPEN` |
 
 Si el escenario no es posible con el modo actual (por ejemplo, `datafile` en NOARCHIVELOG), el comando
 **lo explica** en lugar de generar un script inválido. El primer paso de cada procedimiento es la línea de
 tiempo de la clase §2: identificar con `V$RECOVER_FILE` qué archivo falta. Después `RECOVER` aplica primero
 los archived redo logs y al final los redo logs online.
+
+El procedimiento queda registrado en `RECUPERACION_PROCEDIMIENTO` con el SHA-256 del `.rman`. Ejecutarlo exige
+aprobarlo, confirmar y que la base esté en ambiente `PRUEBAS`; lo lanza `execution/runner.py` (la misma
+función que usan los respaldos, sin pasar por el pipeline) y el log se clasifica con `execution/parser.py`.
+Detalle en `docs/analisis.md` §20.
 
 ## 10. Por qué el modo consistente usa `SHUTDOWN IMMEDIATE`
 
