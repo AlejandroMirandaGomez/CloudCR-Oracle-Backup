@@ -4,15 +4,15 @@
 {% else %}
 <p class="aviso">El repositorio no está instalado o está incompleto ({{ estado.tablas | length }} de {{ estado.esperadas }} tablas).</p>
 <form class="formulario-accion" method="post" action="/sistema/repositorio/instalar" hx-post="/sistema/repositorio/instalar" hx-target="#zona-repositorio" hx-disabled-elt="find button"
-      hx-confirm="Instalar el repositorio crea las 12 tablas desde cero: si quedó alguna tabla de una instalación anterior, se borra con sus datos. ¿Continuar?">
+      hx-confirm="Instalar el repositorio crea sus tablas desde cero: si quedó alguna tabla de una instalación anterior, se borra con sus datos. ¿Continuar?">
   <button class="boton primario" type="submit">Instalar el repositorio</button>
 </form>
 {% endif %}
 <details class="zona-peligrosa">
   <summary>Borrar todo el repositorio</summary>
-  <p class="aviso">Elimina las 12 tablas y <strong>todos</strong> los datos: bases registradas, estrategias, scripts, historial de ejecuciones y alertas. Los archivos de respaldo en disco no se tocan. No se puede deshacer; el agente de esta web debe estar detenido.</p>
+  <p class="aviso">Elimina las tablas del repositorio y <strong>todos</strong> los datos: bases registradas, estrategias, scripts, historial de ejecuciones, alertas y procedimientos de recuperación. Los archivos de respaldo en disco no se tocan. No se puede deshacer; el agente de esta web debe estar detenido.</p>
   <form class="formulario-columna" method="post" action="/sistema/repositorio/reiniciar" hx-post="/sistema/repositorio/reiniciar" hx-target="#zona-repositorio" hx-disabled-elt="find button"
-        hx-confirm="Se borrarán las 12 tablas del repositorio con todos sus datos. ¿Seguro?">
+        hx-confirm="Se borrarán las tablas del repositorio con todos sus datos. ¿Seguro?">
     <label>Para confirmar escriba <strong>BORRAR TODO</strong>
       <input type="text" name="confirmacion" autocomplete="off" spellcheck="false" required>
     </label>

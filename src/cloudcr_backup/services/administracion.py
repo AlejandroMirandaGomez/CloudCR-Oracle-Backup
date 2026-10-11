@@ -200,7 +200,7 @@ def instalar_repositorio(ajustes: Ajustes) -> EstadoRepositorio:
     with conexion_repositorio(ajustes) as conexion:
         if repositorio_esquema.estado(conexion).instalado:
             raise OperacionNoPermitida(
-                "El repositorio ya está instalado: volver a instalarlo borraría las 12 tablas y todos sus datos.",
+                "El repositorio ya está instalado: volver a instalarlo borraría sus tablas y todos sus datos.",
                 "Si de verdad quiere empezar de cero, use 'cloudcr repo instalar' en la terminal.",
             )
         repositorio_esquema.instalar(conexion)
@@ -254,7 +254,7 @@ def reiniciar_repositorio(ajustes: Ajustes, confirmacion: str, reinstalar: bool)
     if confirmacion.strip() != FRASE_REINICIO:
         raise OperacionNoPermitida(
             "Falta la confirmación escrita.",
-            f"Escriba exactamente «{FRASE_REINICIO}» para borrar las 12 tablas del repositorio y todos sus datos.",
+            f"Escriba exactamente «{FRASE_REINICIO}» para borrar las tablas del repositorio y todos sus datos.",
         )
     with conexion_repositorio(ajustes) as conexion:
         if repositorio_esquema.estado(conexion).instalado and repositorio_ejecuciones.contar_en_curso(conexion) > 0:

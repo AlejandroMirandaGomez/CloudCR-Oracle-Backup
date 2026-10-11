@@ -1,0 +1,5 @@
+{% if datafile %}
+RECOVER DATAFILE {{ datafile }} BLOCK {{ bloque }};
+{% else %}
+RECOVER CORRUPTION LIST;
+{% endif %}

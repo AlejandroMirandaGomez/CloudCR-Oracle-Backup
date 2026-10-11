@@ -9,7 +9,17 @@ from cloudcr_backup.cli.app import app
 from cloudcr_backup.domain.ejecucion import PiezaEvidencia, ResultadoEjecucion
 from cloudcr_backup.domain.enums import EstadoEjecucion, EstadoPrueba, EstadoScript, LogMode, ModoRespaldo
 from cloudcr_backup.domain.errores import OperacionNoPermitida
-from cloudcr_backup.domain.recuperacion import ArchivoDanado, Diagnostico, Escenario, Procedimiento, PuntosRecuperacion
+from cloudcr_backup.domain.recuperacion import (
+    ArchivoDanado,
+    BloqueCorrupto,
+    Diagnostico,
+    Escenario,
+    Procedimiento,
+    PuntosRecuperacion,
+    RegistroRecuperacion,
+    ResultadoRecuperacion,
+    VistaRecuperacion,
+)
 from cloudcr_backup.domain.retencion import InformeRetencion, RetencionEstrategia
 from cloudcr_backup.domain.scripts import FilaExplicacion, SimulacionEjecucion, VistaScript
 from cloudcr_backup.services import ejecucion, recuperacion, retencion, scripts
@@ -263,3 +273,84 @@ def test_recuperacion_diagnostico_y_puntos(monkeypatch: pytest.MonkeyPatch) -> N
     assert "XEPDB1:USERS" in salida.output
     assert "FILE NOT FOUND" in salida.output
     assert "sin puntos" in corredor.invoke(app, ["recuperacion", "puntos", "XE"]).output
+
+
+def _vista_recuperacion(**cambios: Any) -> VistaRecuperacion:
+    registro = RegistroRecuperacion(
+        id=4,
+        bd_id=1,
+        escenario=Escenario.DATAFILE,
+        ruta_script="C:\\w\\datafile.rman",
+        contenido="RESTORE DATAFILE 7;\n",
+        hash_sha256="b" * 64,
+        estado=EstadoScript.APROBADO,
+        aprobado_por="Ana",
+    )
+    datos: dict[str, Any] = {"registro": registro, "bd": "XE", "en_pruebas": True, "archivo_intacto": True}
+    datos.update(cambios)
+    return VistaRecuperacion(**datos)
+
+
+def test_recuperacion_plan_registrado_indica_como_aprobar(monkeypatch: pytest.MonkeyPatch) -> None:
+    procedimiento = Procedimiento(
+        bd="XE", escenario=Escenario.SPFILE, posible=True, motivo="ok", script="STARTUP FORCE NOMOUNT;\n", id=4
+    )
+    monkeypatch.setattr(recuperacion, "plan", lambda *a: procedimiento)
+    salida = corredor.invoke(app, ["recuperacion", "plan", "XE", "spfile"])
+    assert salida.exit_code == 0, salida.output
+    assert "cloudcr recuperacion aprobar XE 4 --confirmo" in salida.output
+
+
+def test_recuperacion_aprobar_y_ejecutar(monkeypatch: pytest.MonkeyPatch) -> None:
+    recibidos: list[Any] = []
+
+    def aprobar(a: Any, bd: str, procedimiento_id: int, por: str, confirmo: bool) -> VistaRecuperacion:
+        recibidos.append(("aprobar", bd, procedimiento_id, por, confirmo))
+        return _vista_recuperacion()
+
+    def ejecutar(a: Any, bd: str, procedimiento_id: int, confirmo: bool) -> VistaRecuperacion:
+        recibidos.append(("ejecutar", bd, procedimiento_id, confirmo))
+        terminado = _vista_recuperacion().registro.model_copy(
+            update={"resultado": ResultadoRecuperacion.EJECUTADO_OK, "mensaje": "RMAN terminó sin errores."}
+        )
+        return _vista_recuperacion(registro=terminado, bloqueo="ya se ejecutó", log_rman="Recovery Manager complete.")
+
+    monkeypatch.setattr(recuperacion, "aprobar", aprobar)
+    monkeypatch.setattr(recuperacion, "ejecutar", ejecutar)
+    salida = corredor.invoke(app, ["recuperacion", "aprobar", "XE", "4", "--confirmo", "--por", "Ana"])
+    assert salida.exit_code == 0, salida.output
+    assert "cloudcr recuperacion ejecutar XE 4 --confirmo" in salida.output
+    salida = corredor.invoke(app, ["recuperacion", "ejecutar", "XE", "4", "--confirmo"])
+    assert salida.exit_code == 0, salida.output
+    assert "EJECUTADO_OK" in salida.output and "Recovery Manager complete." in salida.output
+    assert recibidos == [("aprobar", "XE", 4, "Ana", True), ("ejecutar", "XE", 4, True)]
+
+
+def test_recuperacion_ejecutar_bloqueado_o_con_errores(monkeypatch: pytest.MonkeyPatch) -> None:
+    def bloqueado(*argumentos: Any) -> VistaRecuperacion:
+        raise OperacionNoPermitida("Solo se ejecutan procedimientos sobre bases registradas en ambiente PRUEBAS.")
+
+    monkeypatch.setattr(recuperacion, "ejecutar", bloqueado)
+    salida = corredor.invoke(app, ["recuperacion", "ejecutar", "XE", "4", "--confirmo"])
+    assert salida.exit_code == 2
+    assert "PRUEBAS" in salida.output
+    fallido = _vista_recuperacion().registro.model_copy(
+        update={"resultado": ResultadoRecuperacion.EJECUTADO_CON_ERRORES, "mensaje": "ORA-19870"}
+    )
+    monkeypatch.setattr(recuperacion, "ejecutar", lambda *a: _vista_recuperacion(registro=fallido))
+    salida = corredor.invoke(app, ["recuperacion", "ejecutar", "XE", "4", "--confirmo"])
+    assert salida.exit_code == 1
+    assert "ORA-19870" in salida.output
+
+
+def test_recuperacion_diagnostico_sugiere_escenario(monkeypatch: pytest.MonkeyPatch) -> None:
+    diagnostico = Diagnostico(
+        bd="XE",
+        generado_en=AHORA,
+        bloques=[BloqueCorrupto(file_id=7, bloque=131, tipo="CHECKSUM")],
+        sugeridos=[Escenario.CORRUPCION_BLOQUE],
+    )
+    monkeypatch.setattr(recuperacion, "diagnostico", lambda a, bd: diagnostico)
+    salida = corredor.invoke(app, ["recuperacion", "diagnostico", "XE"])
+    assert "CHECKSUM" in salida.output
+    assert "Escenario sugerido: corrupcion-bloque" in salida.output

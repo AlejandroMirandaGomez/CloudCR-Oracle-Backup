@@ -5,10 +5,20 @@
   <dt>Consultado</dt><dd>{{ diagnostico.generado_en | local(zona, '%Y-%m-%d %H:%M:%S') }}</dd>
 </dl>
 {% for nota in diagnostico.avisos %}<p class="{{ 'mensaje-exito' if diagnostico.sin_danos else 'aviso' }}">{{ nota }}</p>{% endfor %}
+{% if diagnostico.sugeridos %}
+<div class="ayuda-escenario que-hacer-ahora">
+  <strong>Escenario sugerido:</strong>
+  <ul>
+    {% for escenario in diagnostico.sugeridos %}<li>{{ etiquetas[escenario] if etiquetas is defined else escenario.value }} (<code>{{ escenario.value }}</code>)</li>{% endfor %}
+  </ul>
+  Elíjalo en «¿Qué pasó?» del panel siguiente y genere el procedimiento. La falla quedó anotada en el calendario semanal.
+</div>
+{% endif %}
 {% if diagnostico.archivos %}
+<h3>Datafiles que necesitan recuperación</h3>
 <div class="tabla-desplazable">
   <table class="tabla compacta">
-    <thead><tr><th scope="col">file#</th><th scope="col">Archivo</th><th scope="col">Tablespace</th><th scope="col">Contenedor</th><th scope="col">Estado</th><th scope="col">Error</th><th scope="col">Origen</th></tr></thead>
+    <thead><tr><th scope="col">file#</th><th scope="col">Archivo</th><th scope="col">Tablespace</th><th scope="col">Contenedor</th><th scope="col">Estado</th><th scope="col">Error</th><th scope="col">Crítico</th><th scope="col">Origen</th></tr></thead>
     <tbody>
       {% for archivo in diagnostico.archivos %}
       <tr>
@@ -18,7 +28,47 @@
         <td>{{ archivo.contenedor or '—' }}</td>
         <td class="tono-peligro">{{ archivo.estado }}</td>
         <td>{{ archivo.error or '—' }}</td>
+        <td>{% if archivo.critico %}<span class="tono-peligro">Sí (SYSTEM/UNDO)</span>{% else %}No{% endif %}</td>
         <td>{{ archivo.origen }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% if diagnostico.bloques %}
+<h3>Bloques corruptos (V$DATABASE_BLOCK_CORRUPTION)</h3>
+<div class="tabla-desplazable">
+  <table class="tabla compacta">
+    <thead><tr><th scope="col">file#</th><th scope="col">Bloque</th><th scope="col">Bloques</th><th scope="col">Tipo</th><th scope="col">Tablespace</th><th scope="col">Archivo</th></tr></thead>
+    <tbody>
+      {% for bloque in diagnostico.bloques %}
+      <tr>
+        <td>{{ bloque.file_id }}</td>
+        <td>{{ bloque.bloque }}</td>
+        <td class="cifra">{{ bloque.bloques }}</td>
+        <td class="tono-peligro">{{ bloque.tipo or '—' }}</td>
+        <td>{{ bloque.tablespace or '—' }}</td>
+        <td class="envolver"><code>{{ bloque.ruta or '—' }}</code></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% if diagnostico.miembros_redo %}
+<h3>Miembros de redo log inválidos (V$LOGFILE)</h3>
+<div class="tabla-desplazable">
+  <table class="tabla compacta">
+    <thead><tr><th scope="col">Grupo</th><th scope="col">Miembro</th><th scope="col">Estado del grupo</th><th scope="col">Secuencia</th><th scope="col">¿Grupo completo perdido?</th></tr></thead>
+    <tbody>
+      {% for miembro in diagnostico.miembros_redo %}
+      <tr>
+        <td>{{ miembro.grupo }}</td>
+        <td class="envolver"><code>{{ miembro.miembro }}</code></td>
+        <td>{{ miembro.estado_grupo }}</td>
+        <td>{{ miembro.secuencia if miembro.secuencia is not none else '—' }}</td>
+        <td>{% if miembro.grupo_perdido %}<span class="tono-peligro">Sí</span>{% else %}No: el grupo sigue con otro miembro{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody>
