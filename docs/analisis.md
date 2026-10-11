@@ -246,7 +246,7 @@ Reproducen la tabla del §6 de la clase del 21/09.
 | **Después** | `CROSSCHECK` + `VALIDATE BACKUPSET` → columna **Pruebas** | Verificador |
 | **Después** | Alertas por evento y por condición, con correo al DBA | Motor de alertas |
 | **Después** | Informe de obsoletos y purga solo bajo confirmación | Retención |
-| **Siempre** | Procedimientos de recuperación **generados, nunca ejecutados**; solo en ambiente `PRUEBAS` | Recuperación |
+| **Siempre** | Procedimientos de recuperación que **nunca se ejecutan solos**: se generan, se aprueban con hash y solo se ejecutan con confirmación en ambiente `PRUEBAS` | Recuperación (sección 20) |
 
 ## 18. Cobertura de las notas de clase
 
@@ -267,9 +267,49 @@ Reproducen la tabla del §6 de la clase del 21/09.
 | Tablespaces READ ONLY | `ALC_008` y `SKIP READONLY` |
 | Umbral de capacidad (85 %) | Parámetro `alertas.disco_uso_pct` |
 | Mínimo privilegio | `C##BKP_MON` de solo lectura |
+| Control correctivo: los 8 escenarios de fallo de medios | Sección 20 y pantalla Recuperación |
+| Pizarra: semana con los respaldos y el momento de la falla | Calendario semanal (hora × día) en Recuperación |
+| «El sistema debe decir qué pasos seguir y generar el script» | Diagnóstico con escenario sugerido y generador de procedimientos |
+| «Desde el sistema se ejecutan los pasos» | Aprobación con hash + ejecución confirmada, solo en `PRUEBAS` |
+| Notificación de la caída | Alerta `CAIDA_DETECTADA` (correo si está configurado) |
+| Demostración: se borra un datafile y el sistema lo recupera | `docs/demo_control_correctivo.md` |
 
 ## 19. Puntos que se deben confirmar con el profesor
 
-1. **Redo logs online.** La clase los lista entre los archivos a proteger, pero RMAN no los respalda. Aquí se cubren por multiplexado y por ARCHIVELOG (sección 11). Confirmar que esa lectura es la esperada.
+1. **Redo logs online.** La clase los lista entre los archivos a proteger, pero RMAN no los respalda. Aquí se cubren por multiplexado y por ARCHIVELOG (sección 11). Confirmar que esa lectura es la esperada. Es más relevante desde que existen los escenarios 4 y 5 de la sección 20 (pérdida de un miembro y del grupo actual), que se resuelven sin restaurar redo online desde un respaldo.
 2. **Valores de retención.** Son de demostración, no de producción.
 3. **Cantidad de reglas.** La tabla del plan enumera 35 códigos (34 más `PRG_007`); el catálogo implementado los incluye todos.
+
+## 20. Control correctivo: los 8 escenarios de fallo de medios
+
+Todo lo anterior es **control preventivo**: reduce la probabilidad de una falla grave y garantiza que exista
+con qué reconstruir la base. El **control correctivo** es qué hacer cuando la falla ya ocurrió. La pantalla
+Recuperación lo cubre en cuatro pasos: calendario semanal (cuándo se respaldó y cuándo se detectó la falla) →
+diagnóstico con escenario sugerido → procedimiento (pasos y script RMAN) → aprobación y ejecución controlada.
+
+| N.° | Escenario (clase) | Explicación | Estrategia a considerar | Instrucciones (script que genera CloudCR) |
+|---|---|---|---|---|
+| 1 | `PERDIDA_DATAFILE_NO_CRITICO` (`datafile`, `tablespace`, `pdb`) | Falta o se dañó un datafile que no es de SYSTEM ni UNDO; el resto de la base sigue en servicio | ARCHIVELOG + respaldo de la base o del tablespace | `ALTER DATABASE DATAFILE n OFFLINE; RESTORE DATAFILE n; RECOVER DATAFILE n; ALTER DATABASE DATAFILE n ONLINE;` (en una PDB: cerrar y abrir la PDB) |
+| 2 | `PERDIDA_DATAFILE_CRITICO` (`datafile-critico`) | Datafile de SYSTEM o UNDO del contenedor raíz: Oracle no permite dejarlo OFFLINE con la base abierta | ARCHIVELOG + respaldo de la base completa | `STARTUP FORCE MOUNT; RESTORE DATAFILE n; RECOVER DATAFILE n; ALTER DATABASE OPEN;` |
+| 3 | `PERDIDA_CONTROL_FILE` (`controlfile`) | Se perdieron las copias del control file: la instancia no monta | Autobackup del control file o pieza respaldada por la estrategia | `STARTUP NOMOUNT; SET DBID …; RESTORE CONTROLFILE FROM AUTOBACKUP; ALTER DATABASE MOUNT; RECOVER DATABASE; ALTER DATABASE OPEN RESETLOGS;` |
+| 4 | `PERDIDA_MIEMBRO_REDOLOG` (`miembro-redolog`) | Un miembro de un grupo multiplexado está INVALID; el grupo sigue con el otro miembro | Multiplexar los redo logs (sección 11) | `ALTER SYSTEM SWITCH LOGFILE` si el grupo es CURRENT; `ALTER SYSTEM CHECKPOINT; ALTER DATABASE DROP LOGFILE MEMBER '…'; ALTER DATABASE ADD LOGFILE MEMBER '…' REUSE TO GROUP g;` |
+| 5 | `PERDIDA_GRUPO_REDOLOG_CURRENT` (`grupo-redolog-actual`) | Se perdieron todos los miembros del grupo CURRENT: su redo no existe; recuperación incompleta | ARCHIVELOG + respaldo de la base completa | `STARTUP FORCE MOUNT; SET UNTIL SEQUENCE s THREAD t; RESTORE DATABASE; RECOVER DATABASE; ALTER DATABASE OPEN RESETLOGS;` — equivale en RMAN a `RECOVER DATABASE UNTIL CANCEL` de SQL*Plus |
+| 6 | `CORRUPCION_DE_BLOQUE` (`corrupcion-bloque`) | Bloques dañados registrados en `V$DATABASE_BLOCK_CORRUPTION`; el datafile sigue en línea | ARCHIVELOG + respaldo que contenga esos bloques | `RECOVER DATAFILE n BLOCK b;` o `RECOVER CORRUPTION LIST;` |
+| 7 | `PERDIDA_SPFILE` (`spfile`) | Falta el SPFILE: la instancia no arranca | Autobackup del control file (incluye el SPFILE) | `STARTUP FORCE NOMOUNT; SET DBID …; RESTORE SPFILE FROM AUTOBACKUP; STARTUP FORCE NOMOUNT; ALTER DATABASE MOUNT; ALTER DATABASE OPEN;` |
+| 8 | `PERDIDA_TOTAL_SIN_ARCHIVELOG` (`total-noarchivelog`) | En NOARCHIVELOG solo se puede volver al último respaldo consistente | Respaldo en frío (modo `CONSISTENTE`) | `SHUTDOWN IMMEDIATE; STARTUP MOUNT; RESTORE DATABASE; RECOVER DATABASE NOREDO; ALTER DATABASE OPEN RESETLOGS;` |
+
+Además se conserva `punto-en-tiempo` (`SET UNTIL TIME`), de la misma familia que el escenario 5 (recuperación
+incompleta) pero para volver a una hora exacta por otro motivo, por ejemplo un `DROP TABLE` accidental.
+
+**Qué se detecta automáticamente.** Con la instancia accesible: datafiles (`V$RECOVER_FILE`, `V$DATAFILE`, y si
+son de SYSTEM/UNDO), bloques (`V$DATABASE_BLOCK_CORRUPTION`) y miembros de redo inválidos (`V$LOGFILE`, `V$LOG`).
+Sin control file o sin SPFILE la instancia no monta o no arranca y no hay a qué consultar: ese mismo fallo de
+conexión se interpreta y se sugieren los escenarios 3 y 7. El calendario marca la **hora de la detección**, no
+la de la caída (esa solo queda en el alert log).
+
+**Ejecución controlada.** Tres decisiones humanas, como en los respaldos: generar, aprobar (se fija el SHA-256
+del script) y ejecutar con confirmación. La ejecución se bloquea si la base no está en ambiente `PRUEBAS`, si el
+procedimiento no está aprobado, si ya se ejecutó o si el archivo cambió después de aprobarse. RMAN no admite
+pausas dentro de un `cmdfile`: la confirmación es antes de ejecutar, no línea por línea. Guion de la
+demostración: `docs/demo_control_correctivo.md`.
+
