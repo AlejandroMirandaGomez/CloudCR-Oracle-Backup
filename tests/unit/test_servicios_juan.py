@@ -296,7 +296,6 @@ def test_plan_de_datafile_identifica_el_archivo_y_lo_guarda(tmp_path: Path, alma
     assert (procedimiento.objetivo or "").startswith("12")
     assert procedimiento.archivo is not None
     assert Path(procedimiento.archivo).read_text(encoding="ascii") == procedimiento.script
-    assert any("PRUEBAS" in aviso for aviso in procedimiento.avisos)
 
 
 def test_diagnostico_sin_conexion_lo_avisa(tmp_path: Path, almacen: Almacen) -> None:

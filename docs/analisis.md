@@ -246,7 +246,7 @@ Reproducen la tabla del §6 de la clase del 21/09.
 | **Después** | `CROSSCHECK` + `VALIDATE BACKUPSET` → columna **Pruebas** | Verificador |
 | **Después** | Alertas por evento y por condición, con correo al DBA | Motor de alertas |
 | **Después** | Informe de obsoletos y purga solo bajo confirmación | Retención |
-| **Siempre** | Procedimientos de recuperación que **nunca se ejecutan solos**: se generan, se aprueban con hash y solo se ejecutan con confirmación en ambiente `PRUEBAS` | Recuperación (sección 20) |
+| **Siempre** | Procedimientos de recuperación que **nunca se ejecutan solos**: se generan, se aprueban con hash y solo se ejecutan con confirmación | Recuperación (sección 20) |
 
 ## 18. Cobertura de las notas de clase
 
@@ -270,7 +270,7 @@ Reproducen la tabla del §6 de la clase del 21/09.
 | Control correctivo: los 8 escenarios de fallo de medios | Sección 20 y pantalla Recuperación |
 | Pizarra: semana con los respaldos y el momento de la falla | Calendario semanal (hora × día) en Recuperación |
 | «El sistema debe decir qué pasos seguir y generar el script» | Diagnóstico con escenario sugerido y generador de procedimientos |
-| «Desde el sistema se ejecutan los pasos» | Aprobación con hash + ejecución confirmada, solo en `PRUEBAS` |
+| «Desde el sistema se ejecutan los pasos» | Aprobación con hash + ejecución confirmada |
 | Notificación de la caída | Alerta `CAIDA_DETECTADA` (correo si está configurado) |
 | Demostración: se borra un datafile y el sistema lo recupera | `docs/demo_control_correctivo.md` |
 
@@ -308,8 +308,12 @@ conexión se interpreta y se sugieren los escenarios 3 y 7. El calendario marca 
 la de la caída (esa solo queda en el alert log).
 
 **Ejecución controlada.** Tres decisiones humanas, como en los respaldos: generar, aprobar (se fija el SHA-256
-del script) y ejecutar con confirmación. La ejecución se bloquea si la base no está en ambiente `PRUEBAS`, si el
-procedimiento no está aprobado, si ya se ejecutó o si el archivo cambió después de aprobarse. RMAN no admite
-pausas dentro de un `cmdfile`: la confirmación es antes de ejecutar, no línea por línea. Guion de la
+del script) y ejecutar con confirmación. La ejecución funciona en cualquier ambiente registrado (`PRODUCCION`,
+`PRUEBAS` o `DESARROLLO`) y se bloquea si el procedimiento no está aprobado, si ya se ejecutó o si el archivo cambió
+después de aprobarse. RMAN no admite
+pausas dentro de un `cmdfile`: la confirmación es antes de ejecutar, no línea por línea. En los escenarios
+`datafile` y `tablespace` de una PDB, RMAN tampoco puede cambiar de contenedor para poner en línea lo que restauró
+(RMAN-06815): al terminar sin errores, CloudCR entra a la PDB y, solo si el tablespace o el datafile había quedado
+`OFFLINE`, lo pone `ONLINE`. El plan lo avisa y el resultado de la ejecución lo informa. Guion de la
 demostración: `docs/demo_control_correctivo.md`.
 

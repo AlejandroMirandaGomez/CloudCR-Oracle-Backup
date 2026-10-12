@@ -171,7 +171,7 @@ class RegistroRecuperacion(BaseModel):
 class VistaRecuperacion(BaseModel):
     registro: RegistroRecuperacion
     bd: str
-    en_pruebas: bool
+    ambiente: str
     archivo_intacto: bool | None = None
     bloqueo: str | None = None
     aviso: str | None = None
@@ -195,6 +195,11 @@ class FallaDetectada(BaseModel):
     detectada_en: datetime
     resumen: str
     sugeridos: list[Escenario] = Field(default_factory=list)
+
+
+class FallaResuelta(BaseModel):
+    bd: str
+    resuelta_en: datetime
 
 
 class MarcaCalendario(BaseModel):

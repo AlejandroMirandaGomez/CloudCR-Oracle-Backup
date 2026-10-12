@@ -54,8 +54,8 @@ PASO_DIAGNOSTICO = (
 )
 PASO_REVISAR = "Revisar el script generado y confirmar que existe un respaldo válido (columna Pruebas en OK)."
 PASO_EJECUTAR = (
-    "Aprobarlo y ejecutarlo desde la herramienta (solo en bases registradas en ambiente PRUEBAS; nunca se ejecuta "
-    "solo), o aplicarlo a mano con 'rman target /' y 'CMDFILE=' bajo la responsabilidad del DBA."
+    "Aprobarlo y ejecutarlo desde la herramienta (nunca se ejecuta solo), o aplicarlo a mano con 'rman target /' y "
+    "'CMDFILE=' bajo la responsabilidad del DBA."
 )
 PASO_REDO = (
     "RECOVER aplica los cambios desde el respaldo: primero los archived redo logs y al final los redo logs online, "
@@ -63,6 +63,11 @@ PASO_REDO = (
 )
 PASO_RESPALDO_NUEVO = (
     "Abrir con RESETLOGS: se inicia una nueva encarnación y hay que hacer un respaldo completo de inmediato."
+)
+AVISO_EN_LINEA_PDB = (
+    "RMAN no puede cambiar de contenedor, así que el script no pone el tablespace en línea: si había quedado "
+    "OFFLINE, CloudCR lo hace al terminar la ejecución. Si aplica el script a mano, ejecute "
+    "'ALTER TABLESPACE <nombre> ONLINE;' dentro de la PDB."
 )
 
 PASOS_ESCENARIO = {
@@ -213,7 +218,7 @@ def _objetivo_datafile(solicitud: SolicitudProcedimiento) -> Objetivo | str:
             f"El datafile {numero} pertenece a SYSTEM o UNDO del contenedor raíz: Oracle no permite dejarlo OFFLINE "
             "con la base abierta. Use el escenario datafile-critico, que lo recupera con la base montada."
         )
-    return Objetivo({"datafile": numero, "pdb": pdb}, descripcion)
+    return Objetivo({"datafile": numero, "pdb": pdb}, descripcion, [AVISO_EN_LINEA_PDB] if pdb else [])
 
 
 def _objetivo_datafile_critico(solicitud: SolicitudProcedimiento) -> Objetivo | str:
@@ -252,7 +257,7 @@ def _objetivo_tablespace(solicitud: SolicitudProcedimiento) -> Objetivo | str:
             f"El tablespace {identificador} es SYSTEM o UNDO del contenedor raíz: Oracle no permite dejarlo OFFLINE "
             "con la base abierta. Use el escenario datafile-critico con el número de su datafile dañado."
         )
-    return Objetivo({"tablespace": identificador, "pdb": pdb}, identificador)
+    return Objetivo({"tablespace": identificador, "pdb": pdb}, identificador, [AVISO_EN_LINEA_PDB] if pdb else [])
 
 
 def _objetivo_pdb(solicitud: SolicitudProcedimiento) -> Objetivo | str:

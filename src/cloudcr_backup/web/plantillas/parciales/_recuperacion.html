@@ -3,7 +3,7 @@
 {% elif puntos is none %}
 <div class="vacio vacio-guiado">
 <p><strong>Elija una base de datos para empezar.</strong></p>
-<p>Después podrá: 1) ver en el calendario semanal cuándo se respaldó y cuándo se detectó una falla, 2) ver desde qué respaldos se puede recuperar, 3) diagnosticar qué archivo falta o está dañado y 4) generar el procedimiento para su caso (los 8 escenarios de fallo de medios), aprobarlo y, en bases de PRUEBAS, ejecutarlo desde aquí.</p>
+<p>Después podrá: 1) ver en el calendario semanal cuándo se respaldó y cuándo se detectó una falla, 2) ver desde qué respaldos se puede recuperar, 3) diagnosticar qué archivo falta o está dañado y 4) generar el procedimiento para su caso (los 8 escenarios de fallo de medios), aprobarlo y ejecutarlo desde aquí.</p>
 </div>
 {% else %}
 {% if calendario %}<div id="zona-calendario">{% include "parciales/_calendario_recuperacion.html" %}</div>{% endif %}
@@ -48,7 +48,7 @@
     <h2>Diagnóstico</h2>
     <button class="boton" type="button" hx-get="/recuperacion/{{ puntos.bd | urlencode }}/diagnostico" hx-target="#zona-diagnostico" hx-disabled-elt="this" hx-indicator="#diagnosticando">Diagnosticar ahora</button>
   </div>
-  <p class="nota">Consulta <code>V$RECOVER_FILE</code>, <code>V$DATAFILE</code>, <code>V$DATABASE_BLOCK_CORRUPTION</code> y <code>V$LOGFILE</code> en la instancia para decir qué archivo concreto falta o está dañado y sugerir el escenario: es el primer paso de la línea de tiempo de una falla. Si encuentra una falla, la anota en el calendario y abre una alerta (que llega por correo si ese canal está configurado).</p>
+  <p class="nota">Consulta <code>V$RECOVER_FILE</code>, <code>V$DATAFILE</code>, <code>V$DATABASE_BLOCK_CORRUPTION</code> y <code>V$LOGFILE</code> en la instancia para decir qué archivo concreto falta o está dañado y sugerir el escenario: es el primer paso de la línea de tiempo de una falla. Si encuentra una falla, la anota en el calendario y abre una alerta (que llega por correo si ese canal está configurado). Si la base ya está sana, quita del calendario las fallas anotadas y resuelve la alerta.</p>
   <p id="diagnosticando" class="htmx-indicator">Consultando la instancia…</p>
   <div id="zona-diagnostico" aria-live="polite"></div>
 </section>
@@ -56,13 +56,13 @@
 <section class="panel">
   <h2>Generar un procedimiento</h2>
 <details class="ayuda-paso" open>
-<summary>¿Qué hago aquí? <span class="ayuda-resumen">Le dice qué comandos usar para recuperar; solo se ejecutan si usted los aprueba y la base es de PRUEBAS</span></summary>
+<summary>¿Qué hago aquí? <span class="ayuda-resumen">Le dice qué comandos usar para recuperar; solo se ejecutan si usted los aprueba y los confirma</span></summary>
 <ol>
-<li><strong>Diagnostique</strong> primero: suba al panel <a href="#diagnostico">«Diagnóstico»</a> (arriba de este) y pulse «Diagnosticar ahora». Así el sistema detecta qué archivo está dañado.</li>
+<li><strong>Diagnostique</strong> primero: suba al panel <a href="#diagnostico">«Diagnóstico»</a> (arriba de este) y pulse «Diagnosticar ahora». El sistema detecta qué archivo está dañado y le muestra ahí mismo el procedimiento sugerido, listo para revisar y aprobar. Este formulario sirve cuando necesita otro escenario o no hay daños que diagnosticar.</li>
 <li>Elija <strong>qué pasó</strong> en el primer campo.</li>
 <li>En <strong>«Objeto dañado»</strong> escriba qué se dañó (una PDB, un tablespace o un archivo). Si lo deja vacío, el sistema lo deduce del diagnóstico.</li>
 <li>Pulse <strong>Generar procedimiento</strong> y revise los pasos y el script.</li>
-<li><strong>Apruébelo</strong> con su nombre: queda fijada la huella SHA-256 del script. Si la base está registrada en ambiente <strong>PRUEBAS</strong>, aparece el botón <strong>Ejecutar en PRUEBAS</strong>; en otros ambientes el DBA lo aplica a mano.</li>
+<li><strong>Apruébelo</strong> con su nombre: queda fijada la huella SHA-256 del script. Después aparece el botón <strong>Ejecutar procedimiento</strong>: marque la confirmación y púlselo para que RMAN lo ejecute.</li>
 </ol>
 <p class="ayuda-req">Si la base está sana, el sistema responderá «No es posible» porque no hay nada que recuperar: es normal.</p>
 </details>

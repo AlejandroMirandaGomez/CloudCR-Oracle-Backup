@@ -8,7 +8,7 @@ from typing import TypeVar
 from zoneinfo import ZoneInfo
 
 import oracledb
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.alertas import CodigoAlerta, Condicion, SeveridadAlerta
@@ -20,6 +20,7 @@ from cloudcr_backup.domain.recuperacion import (
     Diagnostico,
     Escenario,
     FallaDetectada,
+    FallaResuelta,
     Procedimiento,
     PuntosRecuperacion,
     RegistroRecuperacion,
@@ -35,7 +36,13 @@ from cloudcr_backup.execution.runner import InvocacionRman, Lanzador, lanzar, le
 from cloudcr_backup.recovery import calendario as calendario_semanal
 from cloudcr_backup.recovery import diagnostico as diagnostico_rman
 from cloudcr_backup.recovery import puntos as puntos_recuperacion
-from cloudcr_backup.recovery.ejecucion import ESCENARIOS_CON_REINICIO, clasificar
+from cloudcr_backup.recovery.ejecucion import ESCENARIOS_CON_REINICIO, clasificar, motivos_de_fallo
+from cloudcr_backup.recovery.en_linea import (
+    PonedorEnLinea,
+    ResultadoEnLinea,
+    objetos_a_poner_en_linea,
+    poner_en_linea,
+)
 from cloudcr_backup.recovery.procedimientos import RAIZ, SolicitudProcedimiento, generar
 from cloudcr_backup.repository import alertas as repositorio_alertas
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
@@ -44,7 +51,7 @@ from cloudcr_backup.repository import estrategias as repositorio_estrategias
 from cloudcr_backup.repository import parametros as repositorio_parametros
 from cloudcr_backup.repository import piezas as repositorio_piezas
 from cloudcr_backup.repository import recuperaciones as repositorio_recuperaciones
-from cloudcr_backup.repository.bases_datos import Ambiente, BaseDatosRegistrada
+from cloudcr_backup.repository.bases_datos import BaseDatosRegistrada
 from cloudcr_backup.repository.ejecuciones import FiltrosHistorial
 from cloudcr_backup.rman import nombres
 from cloudcr_backup.rman.aprobacion import AprobacionRechazada, hash_de_bytes, script_intacto, validar_transicion
@@ -64,17 +71,9 @@ ARCHIVO_FALLAS = "fallas_detectadas.jsonl"
 MAXIMO_FALLAS_LEIDAS = 1000
 LARGO_MAXIMO_APROBADOR = 100
 LINEAS_LOG_VISIBLES = 80
-AVISO_AMBIENTE = (
-    "La base no está registrada en ambiente PRUEBAS: el procedimiento es informativo y no debe aplicarse sin la "
-    "aprobación del DBA."
-)
 AVISO_SIN_CONEXION = (
     "No se pudo consultar la instancia (no responde o no está montada): puede indicar pérdida del control file, "
     "del SPFILE o que la instancia está caída. Revise el escenario controlfile o spfile según corresponda."
-)
-BLOQUEO_AMBIENTE = (
-    "Solo se ejecutan procedimientos sobre bases registradas en ambiente PRUEBAS: RESTORE, RECOVER y OPEN RESETLOGS "
-    "modifican la base de verdad y no se pueden deshacer. En otros ambientes, el DBA lo aplica a mano."
 )
 SUGERENCIA_NUEVO = "Genere un procedimiento nuevo desde la pantalla Recuperación ('cloudcr recuperacion plan')."
 
@@ -82,6 +81,7 @@ AbrirConsulta = Callable[[BaseDestino], AbstractContextManager[Consulta]]
 Notificador = Callable[[Sequence[Condicion], Ajustes], object]
 Comprobador = Callable[[BaseDestino], EstadoApertura]
 T = TypeVar("T")
+ENTRADA_DE_FALLAS: TypeAdapter[FallaDetectada | FallaResuelta] = TypeAdapter(FallaDetectada | FallaResuelta)
 
 
 def escenario_de(texto: str) -> Escenario:
@@ -154,6 +154,17 @@ def _carpeta(ajustes: Ajustes, bd: str) -> Path:
     return ajustes.rutas.recuperacion / nombres.segmento(bd)
 
 
+def _anotar_en_calendario(ajustes: Ajustes, bd: str, entrada: FallaDetectada | FallaResuelta, accion: str) -> list[str]:
+    ruta = _carpeta(ajustes, bd) / ARCHIVO_FALLAS
+    try:
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        with ruta.open("a", encoding="utf-8") as archivo:
+            archivo.write(entrada.model_dump_json() + "\n")
+    except OSError as error:
+        return [f"No se pudo {accion} en el calendario ({ruta}): {error}"]
+    return []
+
+
 def _registrar_falla(ajustes: Ajustes, resultado: Diagnostico) -> list[str]:
     falla = FallaDetectada(
         bd=resultado.bd,
@@ -161,14 +172,14 @@ def _registrar_falla(ajustes: Ajustes, resultado: Diagnostico) -> list[str]:
         resumen=diagnostico_rman.resumen(resultado),
         sugeridos=resultado.sugeridos,
     )
-    ruta = _carpeta(ajustes, resultado.bd) / ARCHIVO_FALLAS
-    try:
-        ruta.parent.mkdir(parents=True, exist_ok=True)
-        with ruta.open("a", encoding="utf-8") as archivo:
-            archivo.write(falla.model_dump_json() + "\n")
-    except OSError as error:
-        return [f"No se pudo anotar la falla en el calendario ({ruta}): {error}"]
-    return []
+    return _anotar_en_calendario(ajustes, resultado.bd, falla, "anotar la falla")
+
+
+def _cerrar_fallas(ajustes: Ajustes, resultado: Diagnostico) -> list[str]:
+    if not fallas_detectadas(ajustes, resultado.bd):
+        return []
+    cierre = FallaResuelta(bd=resultado.bd, resuelta_en=resultado.generado_en)
+    return _anotar_en_calendario(ajustes, resultado.bd, cierre, "cerrar las fallas anotadas")
 
 
 def fallas_detectadas(ajustes: Ajustes, bd: str) -> list[FallaDetectada]:
@@ -177,13 +188,17 @@ def fallas_detectadas(ajustes: Ajustes, bd: str) -> list[FallaDetectada]:
         lineas = ruta.read_text(encoding="utf-8").splitlines()[-MAXIMO_FALLAS_LEIDAS:]
     except OSError:
         return []
-    fallas = []
+    vigentes: list[FallaDetectada] = []
     for linea in lineas:
         try:
-            fallas.append(FallaDetectada.model_validate_json(linea))
+            entrada = ENTRADA_DE_FALLAS.validate_json(linea)
         except ValidationError:
             continue
-    return fallas
+        if isinstance(entrada, FallaResuelta):
+            vigentes.clear()
+        else:
+            vigentes.append(entrada)
+    return vigentes
 
 
 def _notificar_por_alerta(condiciones: Sequence[Condicion], ajustes: Ajustes) -> object:
@@ -242,7 +257,8 @@ def diagnostico(
     resultado = _diagnosticar(base, abrir)
     if resultado.sin_danos:
         _resolver_alerta_de_caida(ajustes, base)
-        return resultado
+        avisos_de_cierre = _cerrar_fallas(ajustes, resultado)
+        return resultado.model_copy(update={"avisos": [*resultado.avisos, *avisos_de_cierre]})
     avisos = _registrar_falla(ajustes, resultado)
     avisos += _notificar(ajustes, base, resultado, notificar or _notificar_por_alerta)
     return resultado.model_copy(update={"avisos": [*resultado.avisos, *avisos]})
@@ -318,6 +334,21 @@ def _ruta_nueva(carpeta: Path, escenario: Escenario, momento: datetime) -> Path:
     return ruta
 
 
+def _borrador_reutilizable(
+    ajustes: Ajustes, base: BaseDatosRegistrada, escenario: Escenario, huella: str
+) -> RegistroRecuperacion | None:
+    try:
+        with conexion_repositorio(ajustes) as conexion:
+            repositorio_recuperaciones.asegurar_tabla(conexion)
+            registro = repositorio_recuperaciones.borrador_sin_usar(conexion, base.id, escenario, huella)
+    except (ErrorServicio, oracledb.Error):
+        REGISTRO.exception("No se pudo buscar un borrador reutilizable de %s", base.nombre)
+        return None
+    if registro is None or _archivo_intacto(registro) is not True:
+        return None
+    return registro
+
+
 def plan(
     ajustes: Ajustes,
     bd: str,
@@ -326,6 +357,7 @@ def plan(
     hasta: datetime | None = None,
     guardar: bool = True,
     abrir: AbrirConsulta = consulta_destino,
+    reutilizar: bool = False,
 ) -> Procedimiento:
     elegido = escenario_de(escenario)
     preparar_cliente_oracle()
@@ -357,15 +389,24 @@ def plan(
         )
     )
     avisos = [*procedimiento.avisos, *diagnosticado.avisos]
-    if base.ambiente is not Ambiente.PRUEBAS:
-        avisos.append(AVISO_AMBIENTE)
     if not guardar or procedimiento.script is None:
         return procedimiento.model_copy(update={"avisos": avisos})
+    datos = bytes_ascii(procedimiento.script)
+    huella = hash_de_bytes(datos)
+    existente = _borrador_reutilizable(ajustes, base, elegido, huella) if reutilizar else None
+    if existente is not None:
+        reutilizado: dict[str, object] = {
+            "archivo": existente.ruta_script,
+            "hash_sha256": existente.hash_sha256,
+            "id": existente.id,
+            "estado": existente.estado,
+            "avisos": avisos,
+        }
+        return procedimiento.model_copy(update=reutilizado)
     ruta = _ruta_nueva(_carpeta(ajustes, base.nombre), elegido, diagnosticado.generado_en)
     ruta.parent.mkdir(parents=True, exist_ok=True)
-    datos = bytes_ascii(procedimiento.script)
     ruta.write_bytes(datos)
-    cambios: dict[str, object] = {"archivo": str(ruta), "hash_sha256": hash_de_bytes(datos)}
+    cambios: dict[str, object] = {"archivo": str(ruta), "hash_sha256": huella}
     try:
         with conexion_repositorio(ajustes) as conexion:
             repositorio_recuperaciones.asegurar_tabla(conexion)
@@ -376,7 +417,7 @@ def plan(
                 procedimiento.objetivo,
                 str(ruta),
                 procedimiento.script,
-                hash_de_bytes(datos),
+                huella,
                 utc_ingenuo(diagnosticado.generado_en),
             )
         cambios.update({"id": registro.id, "estado": registro.estado})
@@ -384,6 +425,14 @@ def plan(
         REGISTRO.exception("No se pudo registrar el procedimiento de %s", base.nombre)
         avisos.append(f"El procedimiento no quedó registrado para aprobarlo desde la herramienta: {error}")
     return procedimiento.model_copy(update={**cambios, "avisos": avisos})
+
+
+def procedimientos_sugeridos(
+    ajustes: Ajustes, resultado: Diagnostico, abrir: AbrirConsulta = consulta_destino
+) -> list[Procedimiento]:
+    return [
+        plan(ajustes, resultado.bd, escenario.value, abrir=abrir, reutilizar=True) for escenario in resultado.sugeridos
+    ]
 
 
 def _archivo_intacto(registro: RegistroRecuperacion) -> bool | None:
@@ -394,9 +443,7 @@ def _archivo_intacto(registro: RegistroRecuperacion) -> bool | None:
     return script_intacto(datos, registro.hash_sha256)
 
 
-def _bloqueo(base: BaseDatosRegistrada, registro: RegistroRecuperacion, intacto: bool | None) -> str | None:
-    if base.ambiente is not Ambiente.PRUEBAS:
-        return BLOQUEO_AMBIENTE
+def _bloqueo(registro: RegistroRecuperacion, intacto: bool | None) -> str | None:
     if registro.estado is not EstadoScript.APROBADO:
         return f"El procedimiento {registro.id} está {registro.estado.value}: apruébelo antes de ejecutarlo."
     if registro.resultado is ResultadoRecuperacion.EN_CURSO:
@@ -428,9 +475,9 @@ def _vista(base: BaseDatosRegistrada, registro: RegistroRecuperacion, aviso: str
     return VistaRecuperacion(
         registro=registro,
         bd=base.nombre,
-        en_pruebas=base.ambiente is Ambiente.PRUEBAS,
+        ambiente=base.ambiente.value,
         archivo_intacto=intacto,
-        bloqueo=_bloqueo(base, registro, intacto),
+        bloqueo=_bloqueo(registro, intacto),
         aviso=aviso,
         log_rman=_final_del_log(registro),
     )
@@ -535,6 +582,7 @@ def _correr(
     nls: str,
     lanzador: Lanzador,
     comprobar: Comprobador,
+    ponedor: PonedorEnLinea,
 ) -> tuple[ResultadoRecuperacion, str]:
     if _archivo_intacto(registro) is not True:
         return (
@@ -550,7 +598,24 @@ def _correr(
     if corrida.lanzado and registro.escenario in ESCENARIOS_CON_REINICIO:
         carpeta = script.parent / f"{script.stem}_apertura"
         reapertura = apertura.asegurar(_base(base), carpeta, es_cdb, lanzador, comprobar, nls)
-    return clasificar(corrida, analizar(leer_log(log) or corrida.salida), reapertura)
+    analizado = analizar(leer_log(log) or corrida.salida)
+    en_linea = None
+    if corrida.lanzado and not motivos_de_fallo(corrida, analizado):
+        en_linea = _poner_en_linea(base, registro, ponedor)
+    return clasificar(corrida, analizado, reapertura, en_linea)
+
+
+def _poner_en_linea(
+    base: BaseDatosRegistrada, registro: RegistroRecuperacion, ponedor: PonedorEnLinea
+) -> ResultadoEnLinea | None:
+    objetos = objetos_a_poner_en_linea(registro.escenario, registro.contenido)
+    if not objetos:
+        return None
+    resultados = [ponedor(_base(base), objeto) for objeto in objetos]
+    return ResultadoEnLinea(
+        detalle=" ".join(r.detalle for r in resultados if r.detalle),
+        errores=[error for r in resultados for error in r.errores],
+    )
 
 
 def completar_ejecucion(
@@ -559,6 +624,7 @@ def completar_ejecucion(
     procedimiento_id: int,
     lanzador: Lanzador = lanzar,
     comprobar: Comprobador = estado_apertura_destino,
+    ponedor: PonedorEnLinea = poner_en_linea,
 ) -> VistaRecuperacion:
     preparar_cliente_oracle()
     with conexion_repositorio(ajustes) as conexion:
@@ -570,7 +636,7 @@ def completar_ejecucion(
         raise OperacionNoPermitida(f"El procedimiento {procedimiento_id} no está marcado para ejecutarse.")
     es_cdb = perfil.es_cdb if perfil is not None else True
     try:
-        resultado, mensaje = _correr(base, registro, es_cdb, nls, lanzador, comprobar)
+        resultado, mensaje = _correr(base, registro, es_cdb, nls, lanzador, comprobar, ponedor)
     except Exception as error:
         REGISTRO.exception("La ejecución del procedimiento %s se interrumpió", procedimiento_id)
         resultado = ResultadoRecuperacion.EJECUTADO_CON_ERRORES
@@ -593,6 +659,7 @@ def ejecutar(
     confirmo: bool,
     lanzador: Lanzador = lanzar,
     comprobar: Comprobador = estado_apertura_destino,
+    ponedor: PonedorEnLinea = poner_en_linea,
 ) -> VistaRecuperacion:
     preparar_ejecucion(ajustes, bd, procedimiento_id, confirmo)
-    return completar_ejecucion(ajustes, bd, procedimiento_id, lanzador, comprobar)
+    return completar_ejecucion(ajustes, bd, procedimiento_id, lanzador, comprobar, ponedor)

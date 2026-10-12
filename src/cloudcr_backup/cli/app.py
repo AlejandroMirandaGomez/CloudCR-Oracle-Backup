@@ -50,7 +50,7 @@ app.add_typer(cmd_retencion.app, name="retencion", help="Informe de respaldos ob
 app.add_typer(
     cmd_recuperacion.app,
     name="recuperacion",
-    help="Puntos de recuperación, diagnóstico y procedimientos (se ejecutan solo aprobados y en PRUEBAS).",
+    help="Puntos de recuperación, diagnóstico y procedimientos (se ejecutan solo aprobados y confirmados).",
 )
 
 

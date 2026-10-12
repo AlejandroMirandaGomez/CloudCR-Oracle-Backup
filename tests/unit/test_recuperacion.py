@@ -72,7 +72,7 @@ def test_plan_de_datafile_identifica_el_archivo_sin_que_el_usuario_lo_escriba() 
         "ALTER PLUGGABLE DATABASE XEPDB1 OPEN;\n"
     )
     assert any("V$RECOVER_FILE" in paso for paso in procedimiento.pasos)
-    assert any("PRUEBAS" in paso and "nunca se ejecuta" in paso for paso in procedimiento.pasos)
+    assert any("nunca se ejecuta solo" in paso for paso in procedimiento.pasos)
 
 
 def test_plan_de_datafile_de_la_raiz_lo_pone_fuera_de_linea() -> None:

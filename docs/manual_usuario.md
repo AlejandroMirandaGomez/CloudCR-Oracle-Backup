@@ -173,7 +173,7 @@ Desde «Script RMAN» de cada tarea (`/estrategias/{bd}/{codigo}/scripts/{tarea}
 ### 4.6 Retención y recuperación
 
 - `/retencion`: por estrategia, la política (ventana o redundancia), las piezas vencidas y el script que se usaría. «Consultar a RMAN» corre `CROSSCHECK BACKUP` + `REPORT OBSOLETE`. El botón de purga **solo aparece** si la estrategia tiene `purga_automatica` activa, y pide confirmación.
-- `/recuperacion` (control correctivo): **calendario semanal** (hora × día) con un símbolo por cada respaldo utilizable y ⚠ donde un diagnóstico detectó una falla; puntos de recuperación (respaldos correctos con piezas); **Diagnosticar ahora** (`V$RECOVER_FILE`, `V$DATAFILE`, `V$DATABASE_BLOCK_CORRUPTION`, `V$LOGFILE`), que sugiere el escenario, anota la falla en el calendario y abre la alerta `CAIDA_DETECTADA`; y el generador de procedimientos para los 8 escenarios de fallo de medios. El procedimiento **nunca se ejecuta solo**: se aprueba con su nombre (queda fijado el SHA-256 del script) y, solo si la base está registrada en ambiente `PRUEBAS`, aparece **Ejecutar en PRUEBAS**, que pide confirmación, corre RMAN en segundo plano y muestra el resultado y el log. Ver §13.3.
+- `/recuperacion` (control correctivo): **calendario semanal** (hora × día) con un símbolo por cada respaldo utilizable y ⚠ donde un diagnóstico detectó una falla; puntos de recuperación (respaldos correctos con piezas); **Diagnosticar ahora** (`V$RECOVER_FILE`, `V$DATAFILE`, `V$DATABASE_BLOCK_CORRUPTION`, `V$LOGFILE`), que sugiere el escenario, anota la falla en el calendario y abre la alerta `CAIDA_DETECTADA`; y el generador de procedimientos para los 8 escenarios de fallo de medios. El procedimiento **nunca se ejecuta solo**: se aprueba con su nombre (queda fijado el SHA-256 del script) y entonces aparece **Ejecutar procedimiento**, que funciona en cualquier ambiente, pide confirmación, corre RMAN en segundo plano y muestra el resultado y el log. Ver §13.3.
 
 ### 4.7 Sistema
 
@@ -450,7 +450,7 @@ cloudcr retencion informe XE --rman    # además CROSSCHECK + REPORT OBSOLETE en
 cloudcr retencion purgar XE EST004 --purgar   # solo con purga_automatica: true; borra solo piezas propias obsoletas
 ```
 
-### 13.3 Recuperación (se genera; se ejecuta solo aprobada, con confirmación y en PRUEBAS)
+### 13.3 Recuperación (se genera; se ejecuta solo aprobada y con confirmación)
 
 ```powershell
 cloudcr recuperacion puntos XE         # respaldos correctos desde los que se puede recuperar
@@ -458,7 +458,7 @@ cloudcr recuperacion diagnostico XE    # qué falta o está dañado y qué escen
 cloudcr recuperacion plan XE datafile  # toma el archivo del diagnóstico; imprime "Registrado como procedimiento N"
 cloudcr recuperacion plan XE punto-en-tiempo --hasta "2026-10-04 13:00"
 cloudcr recuperacion aprobar XE N --confirmo --por "Nombre Apellido"   # fija el SHA-256; no ejecuta nada
-cloudcr recuperacion ejecutar XE N --confirmo                          # solo en ambiente PRUEBAS
+cloudcr recuperacion ejecutar XE N --confirmo                          # en cualquier ambiente
 ```
 
 Escenarios (los 8 de clase, más `pdb` y `punto-en-tiempo`):
@@ -478,14 +478,17 @@ Escenarios (los 8 de clase, más `pdb` y `punto-en-tiempo`):
 Si el modo de archivado no permite un escenario, o si se pide `datafile` sobre un datafile de SYSTEM/UNDO del
 contenedor raíz, el comando lo explica en lugar de generar un script que Oracle rechazaría.
 
-**Aprobar y ejecutar.** La ejecución se bloquea si la base no está en ambiente `PRUEBAS`, si el procedimiento no
+**Aprobar y ejecutar.** La ejecución funciona en cualquier ambiente y se bloquea si el procedimiento no
 está aprobado, si ya se ejecutó (cada procedimiento aprobado se ejecuta una sola vez) o si el `.rman` cambió
 después de aprobarse. Los escenarios que reinician la instancia terminan dejando abiertas la base y sus PDB, igual
-que tras un respaldo consistente. El resultado es **EJECUTADO_OK**, **EJECUTADO_CON_ERRORES** o **NO_LANZADO**.
+que tras un respaldo consistente. En los escenarios `datafile` y `tablespace` de una PDB, al terminar RMAN sin errores
+la herramienta pone en línea el tablespace o el datafile si había quedado `OFFLINE` (RMAN no puede cambiar de
+contenedor para hacerlo); si aplica el script a mano, ejecute `ALTER TABLESPACE <nombre> ONLINE;` dentro de la PDB.
+El resultado es **EJECUTADO_OK**, **EJECUTADO_CON_ERRORES** o **NO_LANZADO**.
 
 Archivos en `recuperacion\<BD>\`: `<escenario>_<fecha>.rman` (script), `.log` (log de RMAN),
 `.resultado.json` (resultado, escrito antes del repositorio) y `fallas_detectadas.jsonl` (fallas del
-calendario). Guion de demostración: `docs/demo_control_correctivo.md`.
+calendario; un diagnóstico sano las cierra y dejan de mostrarse). Guion de demostración: `docs/demo_control_correctivo.md`.
 
 ### 13.4 API JSON
 

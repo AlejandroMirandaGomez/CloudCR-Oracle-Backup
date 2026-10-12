@@ -14,7 +14,7 @@
     </span>
   </div>
   <dl class="ficha">
-    <dt>Base</dt><dd>{{ vista.bd }} · {{ 'ambiente PRUEBAS' if vista.en_pruebas else 'no es de PRUEBAS: solo se aplica a mano' }}</dd>
+    <dt>Base</dt><dd>{{ vista.bd }} · ambiente {{ vista.ambiente }}</dd>
     {% if registro.objetivo %}<dt>Objetivo</dt><dd><code>{{ registro.objetivo }}</code></dd>{% endif %}
     <dt>Script</dt>
     <dd><code>{{ registro.ruta_script }}</code> ·
@@ -47,7 +47,7 @@
         hx-confirm="Se ejecutará con RMAN el procedimiento {{ registro.id }} ({{ registro.escenario.value }}) sobre {{ vista.bd }}. ¿Continuar?">
     <input type="hidden" name="procedimiento_id" value="{{ registro.id }}">
     <label class="casilla"><input type="checkbox" name="confirmo" value="on" required> Entiendo que la ejecución modifica la base de datos y no se puede deshacer</label>
-    <button class="boton peligro" type="submit">Ejecutar en PRUEBAS</button>
+    <button class="boton peligro" type="submit">Ejecutar procedimiento</button>
   </form>
   {% elif vista.en_curso %}
   <p class="mensaje-estado" role="status" hx-get="{{ ruta }}" hx-trigger="every 3s" hx-target="{{ destino }}">RMAN está ejecutando el procedimiento. Esta tarjeta se actualiza sola cada pocos segundos.</p>

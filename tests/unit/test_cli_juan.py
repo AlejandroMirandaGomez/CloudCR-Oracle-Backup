@@ -286,7 +286,7 @@ def _vista_recuperacion(**cambios: Any) -> VistaRecuperacion:
         estado=EstadoScript.APROBADO,
         aprobado_por="Ana",
     )
-    datos: dict[str, Any] = {"registro": registro, "bd": "XE", "en_pruebas": True, "archivo_intacto": True}
+    datos: dict[str, Any] = {"registro": registro, "bd": "XE", "ambiente": "PRUEBAS", "archivo_intacto": True}
     datos.update(cambios)
     return VistaRecuperacion(**datos)
 
@@ -328,12 +328,12 @@ def test_recuperacion_aprobar_y_ejecutar(monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_recuperacion_ejecutar_bloqueado_o_con_errores(monkeypatch: pytest.MonkeyPatch) -> None:
     def bloqueado(*argumentos: Any) -> VistaRecuperacion:
-        raise OperacionNoPermitida("Solo se ejecutan procedimientos sobre bases registradas en ambiente PRUEBAS.")
+        raise OperacionNoPermitida("El procedimiento 4 ya se ejecutó.")
 
     monkeypatch.setattr(recuperacion, "ejecutar", bloqueado)
     salida = corredor.invoke(app, ["recuperacion", "ejecutar", "XE", "4", "--confirmo"])
     assert salida.exit_code == 2
-    assert "PRUEBAS" in salida.output
+    assert "ya se ejecutó" in salida.output
     fallido = _vista_recuperacion().registro.model_copy(
         update={"resultado": ResultadoRecuperacion.EJECUTADO_CON_ERRORES, "mensaje": "ORA-19870"}
     )

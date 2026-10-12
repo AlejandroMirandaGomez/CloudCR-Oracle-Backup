@@ -68,7 +68,7 @@ def registro(**cambios: Any) -> RegistroRecuperacion:
 
 
 def vista(**cambios: Any) -> VistaRecuperacion:
-    base: dict[str, Any] = {"registro": registro(), "bd": "XE", "en_pruebas": True, "archivo_intacto": True}
+    base: dict[str, Any] = {"registro": registro(), "bd": "XE", "ambiente": "PRUEBAS", "archivo_intacto": True}
     base.update(cambios)
     return VistaRecuperacion(**base)
 
@@ -110,6 +110,30 @@ def test_la_pantalla_muestra_el_calendario_y_los_once_escenarios(
     assert "Bloque dañado (FILE#:BLOQUE)" in html
 
 
+def test_sin_fallas_vigentes_el_calendario_no_muestra_nada_rojo(
+    web: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(recuperacion, "puntos", puntos_de_la_semana)
+    monkeypatch.setattr(recuperacion, "fallas_detectadas", lambda a, bd: [])
+    html = web.get("/recuperacion?bd=XE&semana=2026-10-07").text
+    calendario = html[html.index('id="calendario"') : html.index("leyenda-calendario")]
+    assert "celda-respaldo" in calendario
+    assert "celda-falla" not in calendario
+    assert "tono-peligro" not in calendario.split("<tbody>")[1]
+    assert "semaforo tono-exito" in calendario
+    assert "1 respaldo</span>" in calendario
+    assert 'hx-trigger="calendario-actualizado from:body"' in calendario
+    assert 'hx-get="/recuperacion/XE/calendario?semana=2026-10-05"' in calendario
+
+
+def test_el_diagnostico_pide_refrescar_el_calendario(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    sano = Diagnostico(bd="XE", generado_en=AHORA, log_mode=LogMode.ARCHIVELOG)
+    monkeypatch.setattr(recuperacion, "diagnostico", lambda a, bd: sano)
+    monkeypatch.setattr(recuperacion, "procedimientos_sugeridos", lambda a, resultado: [])
+    respuesta = web.get("/recuperacion/XE/diagnostico", headers=HTMX)
+    assert respuesta.headers["HX-Trigger"] == "calendario-actualizado"
+
+
 def test_navegar_el_calendario(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     recibidos: list[Any] = []
 
@@ -148,12 +172,68 @@ def test_el_diagnostico_muestra_bloques_redo_y_sugerencia(web: TestClient, monke
         sugeridos=[Escenario.DATAFILE_CRITICO, Escenario.CORRUPCION_BLOQUE],
     )
     monkeypatch.setattr(recuperacion, "diagnostico", lambda a, bd: diagnostico)
+    monkeypatch.setattr(recuperacion, "procedimientos_sugeridos", lambda a, resultado: [])
     html = web.get("/recuperacion/XE/diagnostico", headers=HTMX).text
     assert "Sí (SYSTEM/UNDO)" in html
     assert "Bloques corruptos" in html and "CHECKSUM" in html
     assert "REDO02B.LOG" in html
     assert "Escenario sugerido" in html and "<code>datafile-critico</code>" in html
     assert "PERDIDA_DATAFILE_CRITICO" in html
+    assert "Procedimiento sugerido" not in html
+
+
+def test_el_diagnostico_muestra_debajo_el_procedimiento_sugerido_listo_para_aprobar(
+    web: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    diagnostico = Diagnostico(
+        bd="XE",
+        generado_en=AHORA,
+        log_mode=LogMode.ARCHIVELOG,
+        archivos=[
+            ArchivoDanado(
+                file_id=17,
+                ruta="C:\\X\\CLIENTEPDB\\A1_01.DBF",
+                tablespace="A1",
+                contenedor="CLIENTEPDB",
+                estado="OFFLINE",
+                origen="V$RECOVER_FILE",
+            )
+        ],
+        sugeridos=[Escenario.DATAFILE],
+    )
+    recibidos: list[Any] = []
+
+    def sugeridos(a: Any, resultado: Diagnostico) -> list[Procedimiento]:
+        recibidos.append(resultado.sugeridos)
+        return [
+            Procedimiento(
+                bd="XE",
+                escenario=Escenario.DATAFILE,
+                posible=True,
+                motivo="ok",
+                objetivo="17 (C:\\X\\CLIENTEPDB\\A1_01.DBF)",
+                pasos=["Cerrar la PDB"],
+                script="RESTORE DATAFILE 17;\n",
+                archivo="C:\\w\\datafile.rman",
+                id=9,
+                estado=EstadoScript.BORRADOR,
+                hash_sha256="c" * 64,
+            )
+        ]
+
+    monkeypatch.setattr(recuperacion, "diagnostico", lambda a, bd: diagnostico)
+    monkeypatch.setattr(recuperacion, "procedimientos_sugeridos", sugeridos)
+    html = web.get("/recuperacion/XE/diagnostico", headers=HTMX).text
+    assert recibidos == [[Escenario.DATAFILE]]
+    assert "aparece al final de este diagnóstico" in html
+    assert "Elíjalo en" not in html
+    assert html.index("Datafiles que necesitan recuperación") < html.index("Procedimiento sugerido")
+    assert "RESTORE DATAFILE 17;" in html
+    assert "Pérdida de un datafile no crítico" in html
+    assert 'id="control-recuperacion-9"' in html
+    assert 'hx-post="/recuperacion/XE/aprobar"' in html
+    assert 'name="procedimiento_id" value="9"' in html
+    assert "c" * 64 in html
 
 
 def test_el_plan_registrado_ofrece_aprobar(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -196,7 +276,7 @@ def test_aprobar_desde_la_web(web: TestClient, monkeypatch: pytest.MonkeyPatch) 
     assert recibidos == [("XE", 4, "Ana", True)]
     assert "Procedimiento 4 aprobado." in html
     assert 'hx-post="/recuperacion/XE/ejecutar"' in html
-    assert "Ejecutar en PRUEBAS" in html and "de verdad" in html
+    assert "Ejecutar procedimiento" in html and "de verdad" in html
     sin_js = web.post(
         "/recuperacion/XE/aprobar",
         content="procedimiento_id=4&aprobado_por=Ana&confirmo=on",
@@ -254,21 +334,26 @@ def test_ejecutar_lanza_en_segundo_plano_y_la_tarjeta_se_actualiza(
     assert "Procedimiento de recuperación 4" in pagina and "ALTER DATABASE DATAFILE 7 OFFLINE;" in pagina
 
 
-def test_fuera_de_pruebas_no_hay_boton_de_ejecutar(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    bloqueada = vista(
-        registro=registro(estado=EstadoScript.APROBADO),
-        en_pruebas=False,
-        bloqueo="Solo se ejecutan procedimientos sobre bases registradas en ambiente PRUEBAS.",
-    )
-    monkeypatch.setattr(recuperacion, "estado_procedimiento", lambda a, bd, i: bloqueada)
+def test_en_produccion_tambien_hay_boton_de_ejecutar(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    aprobada = vista(registro=registro(estado=EstadoScript.APROBADO), ambiente="PRODUCCION")
+    monkeypatch.setattr(recuperacion, "estado_procedimiento", lambda a, bd, i: aprobada)
     html = web.get("/recuperacion/XE/procedimientos/4", headers=HTMX).text
-    assert "Ejecutar en PRUEBAS" not in html
-    assert "ambiente PRUEBAS" in html
+    assert "Ejecutar procedimiento" in html
+    assert "ambiente PRODUCCION" in html
+    assert 'hx-post="/recuperacion/XE/ejecutar"' in html
+
+
+def test_ejecutar_bloqueado_muestra_el_motivo(web: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    ejecutada = vista(
+        registro=registro(estado=EstadoScript.APROBADO, resultado=ResultadoRecuperacion.EJECUTADO_OK),
+        bloqueo="El procedimiento 4 ya se ejecutó.",
+    )
 
     def preparar(*argumentos: Any) -> VistaRecuperacion:
-        raise OperacionNoPermitida(bloqueada.bloqueo or "")
+        raise OperacionNoPermitida(ejecutada.bloqueo or "")
 
+    monkeypatch.setattr(recuperacion, "estado_procedimiento", lambda a, bd, i: ejecutada)
     monkeypatch.setattr(recuperacion, "preparar_ejecucion", preparar)
     respuesta = web.post("/recuperacion/XE/ejecutar", content="procedimiento_id=4&confirmo=on", headers=FORMULARIO)
     assert respuesta.status_code == 409
-    assert "ambiente PRUEBAS" in respuesta.text
+    assert "ya se ejecutó" in respuesta.text

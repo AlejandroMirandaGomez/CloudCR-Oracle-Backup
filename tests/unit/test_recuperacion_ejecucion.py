@@ -16,6 +16,7 @@ from cloudcr_backup.domain.alertas import CodigoAlerta, Condicion
 from cloudcr_backup.domain.enums import EstadoPrueba, EstadoScript, TipoRespaldo
 from cloudcr_backup.domain.errores import OperacionNoPermitida, RecursoNoEncontrado, RepositorioNoDisponible
 from cloudcr_backup.domain.recuperacion import (
+    Diagnostico,
     Escenario,
     FallaDetectada,
     PuntoRecuperacion,
@@ -28,6 +29,8 @@ from cloudcr_backup.execution.parser import analizar
 from cloudcr_backup.execution.runner import InvocacionRman, ResultadoRman
 from cloudcr_backup.recovery import calendario
 from cloudcr_backup.recovery.ejecucion import clasificar
+from cloudcr_backup.recovery.en_linea import ObjetoEnLinea, ResultadoEnLinea
+from cloudcr_backup.recovery.procedimientos import AVISO_EN_LINEA_PDB
 from cloudcr_backup.repository import alertas as repositorio_alertas
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository import conexion as repositorio_conexion
@@ -42,7 +45,6 @@ from cloudcr_backup.services import recuperacion
 from tests.unit.oracle_falso import ConexionFalsa
 
 BD_PRUEBAS = BaseDatosRegistrada(id=1, nombre="XE", oracle_home=r"C:\oracle", ambiente=Ambiente.PRUEBAS, activa=True)
-AVISO_NO_PRUEBAS = recuperacion.AVISO_AMBIENTE
 LOG_CORRECTO = (
     "connected to target database: XE (DBID=1)\nFinished recover at 11-OCT-26\n\nRecovery Manager complete.\n"
 )
@@ -75,6 +77,18 @@ class RepositorioFalso:
 
     def obtener(self, c: Any, procedimiento_id: int) -> RegistroRecuperacion | None:
         return self.registros.get(procedimiento_id)
+
+    def borrador_sin_usar(self, c: Any, bd_id: int, escenario: Escenario, hash_: str) -> RegistroRecuperacion | None:
+        return next(
+            (
+                r
+                for r in reversed(self.registros.values())
+                if (r.bd_id, r.escenario, r.hash_sha256) == (bd_id, escenario, hash_)
+                and r.estado is EstadoScript.BORRADOR
+                and r.resultado is None
+            ),
+            None,
+        )
 
     def _cambiar(self, procedimiento_id: int, **cambios: Any) -> None:
         self.registros[procedimiento_id] = self.registros[procedimiento_id].model_copy(update=cambios)
@@ -134,7 +148,7 @@ def entorno(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Entorno:
     monkeypatch.setattr(repositorio_piezas, "de_base", lambda c, b: [])
     monkeypatch.setattr(repositorio_parametros, "obtener", lambda c, clave: None)
     monkeypatch.setattr(repositorio_recuperaciones, "asegurar_tabla", lambda c: None)
-    for nombre in ("registrar", "obtener", "aprobar", "marcar_en_curso", "registrar_resultado"):
+    for nombre in ("registrar", "obtener", "borrador_sin_usar", "aprobar", "marcar_en_curso", "registrar_resultado"):
         monkeypatch.setattr(repositorio_recuperaciones, nombre, getattr(datos.repositorio, nombre))
     monkeypatch.setattr(
         repositorio_alertas, "vigentes", lambda c: [SimpleNamespace(id=5, clave_dedup="CAIDA_DETECTADA:bd:1")]
@@ -191,8 +205,7 @@ def test_el_plan_queda_registrado_como_borrador_con_su_huella(entorno: Entorno) 
     assert registro.ruta_script == procedimiento.archivo
     assert Path(registro.ruta_script).read_text(encoding="ascii") == procedimiento.script
     assert registro.hash_sha256 == procedimiento.hash_sha256
-    assert AVISO_NO_PRUEBAS not in procedimiento.avisos
-    otro = recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia(DATAFILE_7))
+    otro =recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia(DATAFILE_7))
     assert otro.archivo != procedimiento.archivo
 
 
@@ -206,6 +219,63 @@ def test_si_el_repositorio_falla_el_plan_se_genera_igual(entorno: Entorno, monke
     assert procedimiento.id is None
     assert procedimiento.archivo is not None
     assert any("no quedó registrado" in aviso for aviso in procedimiento.avisos)
+
+
+def sugiriendo(*escenarios: Escenario) -> Diagnostico:
+    return Diagnostico(bd="XE", generado_en=datetime(2026, 10, 11, 18, 34), sugeridos=list(escenarios))
+
+
+def test_los_procedimientos_sugeridos_se_generan_y_se_reutilizan_mientras_sean_borrador(entorno: Entorno) -> None:
+    sugerido = sugiriendo(Escenario.DATAFILE)
+    [primero] = recuperacion.procedimientos_sugeridos(entorno.ajustes, sugerido, instancia(DATAFILE_7))
+    assert primero.posible
+    assert primero.id == 1
+    assert primero.estado is EstadoScript.BORRADOR
+    assert primero.archivo is not None
+    [repetido] = recuperacion.procedimientos_sugeridos(entorno.ajustes, sugerido, instancia(DATAFILE_7))
+    assert repetido.id == 1
+    assert repetido.archivo == primero.archivo
+    assert repetido.hash_sha256 == primero.hash_sha256
+    assert list(entorno.repositorio.registros) == [1]
+    assert len(list(Path(primero.archivo).parent.glob("*.rman"))) == 1
+    recuperacion.aprobar(entorno.ajustes, "XE", 1, "Ana DBA", True)
+    [nuevo] = recuperacion.procedimientos_sugeridos(entorno.ajustes, sugerido, instancia(DATAFILE_7))
+    assert nuevo.id == 2
+    assert nuevo.archivo != primero.archivo
+
+
+def test_un_borrador_con_el_archivo_alterado_no_se_reutiliza(entorno: Entorno) -> None:
+    sugerido = sugiriendo(Escenario.DATAFILE)
+    [primero] = recuperacion.procedimientos_sugeridos(entorno.ajustes, sugerido, instancia(DATAFILE_7))
+    assert primero.archivo is not None
+    Path(primero.archivo).write_bytes(b"SHUTDOWN ABORT;\n")
+    [nuevo] = recuperacion.procedimientos_sugeridos(entorno.ajustes, sugerido, instancia(DATAFILE_7))
+    assert nuevo.id == 2
+    assert nuevo.archivo != primero.archivo
+
+
+def test_sin_escenarios_sugeridos_no_se_genera_ni_se_registra_nada(entorno: Entorno) -> None:
+    assert recuperacion.procedimientos_sugeridos(entorno.ajustes, sugiriendo(), instancia()) == []
+    assert entorno.repositorio.registros == {}
+
+
+def test_el_plan_manual_sigue_creando_un_borrador_nuevo_cada_vez(entorno: Entorno) -> None:
+    primero = recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia(DATAFILE_7))
+    segundo = recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia(DATAFILE_7))
+    assert (primero.id, segundo.id) == (1, 2)
+
+
+def test_el_repositorio_busca_un_borrador_sin_usar_por_su_huella() -> None:
+    huella = "a" * 64
+    vacia = ConexionFalsa()
+    assert repositorio_recuperaciones.borrador_sin_usar(vacia, 1, Escenario.DATAFILE, huella) is None  # type: ignore[arg-type]
+    assert "estado = 'BORRADOR' AND resultado IS NULL" in vacia.sql(0)
+    sin_aprobar = (None,) * 7
+    fila = (4, 1, "datafile", "7", "C:\\w\\d.rman", "RESTORE DATAFILE 7;\n", huella, "BORRADOR", datetime(2026, 10, 11))
+    conexion = ConexionFalsa([(*fila, *sin_aprobar)])
+    encontrada = repositorio_recuperaciones.borrador_sin_usar(conexion, 1, Escenario.DATAFILE, huella)  # type: ignore[arg-type]
+    assert encontrada is not None
+    assert (encontrada.id, encontrada.estado) == (4, EstadoScript.BORRADOR)
 
 
 def test_aprobar_exige_confirmacion_nombre_y_script_intacto(entorno: Entorno) -> None:
@@ -230,7 +300,7 @@ def test_aprobar_exige_confirmacion_nombre_y_script_intacto(entorno: Entorno) ->
         recuperacion.aprobar(entorno.ajustes, "XE", procedimiento_id, "Ana", True)
 
 
-def test_ejecutar_en_pruebas_aprobado_e_intacto(entorno: Entorno) -> None:
+def test_ejecutar_aprobado_e_intacto(entorno: Entorno) -> None:
     procedimiento_id = aprobado(entorno)
     with pytest.raises(OperacionNoPermitida, match="confirmar"):
         recuperacion.ejecutar(entorno.ajustes, "XE", procedimiento_id, False, entorno.lanzador())
@@ -250,16 +320,16 @@ def test_ejecutar_en_pruebas_aprobado_e_intacto(entorno: Entorno) -> None:
     assert len(entorno.invocaciones) == 1
 
 
-def test_ejecutar_se_bloquea_fuera_de_pruebas(entorno: Entorno) -> None:
-    entorno.base = replace(BD_PRUEBAS, ambiente=Ambiente.DESARROLLO)
-    procedimiento = recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia(DATAFILE_7))
-    assert AVISO_NO_PRUEBAS in procedimiento.avisos
-    assert procedimiento.id is not None
-    vista = recuperacion.aprobar(entorno.ajustes, "XE", procedimiento.id, "Ana", True)
-    assert not vista.puede_ejecutar
-    with pytest.raises(OperacionNoPermitida, match="PRUEBAS"):
-        recuperacion.ejecutar(entorno.ajustes, "XE", procedimiento.id, True, entorno.lanzador())
-    assert entorno.invocaciones == []
+@pytest.mark.parametrize("ambiente", list(Ambiente))
+def test_ejecutar_funciona_en_cualquier_ambiente(entorno: Entorno, ambiente: Ambiente) -> None:
+    entorno.base = replace(BD_PRUEBAS, ambiente=ambiente)
+    procedimiento_id = aprobado(entorno)
+    vista = recuperacion.estado_procedimiento(entorno.ajustes, "XE", procedimiento_id)
+    assert vista.ambiente == ambiente.value
+    assert vista.puede_ejecutar
+    ejecutada = recuperacion.ejecutar(entorno.ajustes, "XE", procedimiento_id, True, entorno.lanzador())
+    assert ejecutada.registro.resultado is ResultadoRecuperacion.EJECUTADO_OK
+    assert len(entorno.invocaciones) == 1
 
 
 def test_ejecutar_se_bloquea_sin_aprobar_o_con_script_alterado(entorno: Entorno) -> None:
@@ -346,6 +416,29 @@ def test_diagnostico_sano_resuelve_la_alerta_y_no_anota(entorno: Entorno) -> Non
     assert entorno.notificadas == []
     assert entorno.resueltas == [5]
     assert recuperacion.fallas_detectadas(entorno.ajustes, "XE") == []
+
+
+def test_diagnostico_sano_cierra_las_fallas_anotadas_y_el_calendario_queda_sin_rojo(entorno: Entorno) -> None:
+    recuperacion.diagnostico(entorno.ajustes, "XE", instancia(DATAFILE_7), entorno.notificar)
+    recuperacion.diagnostico(entorno.ajustes, "XE", instancia(DATAFILE_7), entorno.notificar)
+    assert len(recuperacion.fallas_detectadas(entorno.ajustes, "XE")) == 2
+    sano = recuperacion.diagnostico(entorno.ajustes, "XE", instancia([]), entorno.notificar)
+    assert sano.sin_danos
+    assert recuperacion.fallas_detectadas(entorno.ajustes, "XE") == []
+    zona = ZoneInfo(entorno.ajustes.zona_horaria)
+    semana = recuperacion.calendario(entorno.ajustes, "XE", sano.generado_en.astimezone(zona).date())
+    assert semana.fallas == []
+    assert not any(marca.falla for fila in semana.filas for celda in fila.celdas for marca in celda)
+    recuperacion.diagnostico(entorno.ajustes, "XE", instancia([]), entorno.notificar)
+    ruta = recuperacion._carpeta(entorno.ajustes, "XE") / recuperacion.ARCHIVO_FALLAS
+    assert len(ruta.read_text(encoding="utf-8").splitlines()) == 3
+
+
+def test_una_falla_nueva_despues_de_un_diagnostico_sano_vuelve_a_marcarse(entorno: Entorno) -> None:
+    recuperacion.diagnostico(entorno.ajustes, "XE", instancia(DATAFILE_7), entorno.notificar)
+    recuperacion.diagnostico(entorno.ajustes, "XE", instancia([]), entorno.notificar)
+    recuperacion.diagnostico(entorno.ajustes, "XE", instancia(DATAFILE_7), entorno.notificar)
+    assert len(recuperacion.fallas_detectadas(entorno.ajustes, "XE")) == 1
 
 
 def test_sin_conexion_sugiere_controlfile_o_spfile(entorno: Entorno) -> None:
@@ -468,3 +561,67 @@ def test_una_falla_inesperada_no_deja_el_procedimiento_en_curso(entorno: Entorno
     vista = recuperacion.ejecutar(entorno.ajustes, "XE", procedimiento_id, True, revienta)
     assert vista.registro.resultado is ResultadoRecuperacion.EJECUTADO_CON_ERRORES
     assert "se cortó la luz" in (vista.registro.mensaje or "")
+
+
+DATAFILE_PDB = [(17, r"C:\ORADATA\XE\CLIENTEPDB\A1_01.DBF", "A1", "CLIENTEPDB", "OFFLINE", "FILE NOT FOUND", 9)]
+DATAFILE_17_DE_LA_PDB = ObjetoEnLinea(pdb="CLIENTEPDB", datafile=17)
+
+
+class PonedorFalso:
+    def __init__(self, resultado: ResultadoEnLinea) -> None:
+        self.resultado = resultado
+        self.llamadas: list[ObjetoEnLinea] = []
+
+    def __call__(self, base: BaseDestino, objeto: ObjetoEnLinea) -> ResultadoEnLinea:
+        self.llamadas.append(objeto)
+        return self.resultado
+
+
+def aprobado_en_pdb(entorno: Entorno) -> int:
+    procedimiento = recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia(DATAFILE_PDB))
+    assert procedimiento.id is not None
+    recuperacion.aprobar(entorno.ajustes, "XE", procedimiento.id, "Ana DBA", True)
+    return procedimiento.id
+
+
+def test_un_datafile_de_pdb_se_pone_en_linea_al_terminar_rman(entorno: Entorno) -> None:
+    procedimiento_id = aprobado_en_pdb(entorno)
+    detalle = "Se puso en línea el tablespace CLIENTEPDB:A1, que había quedado OFFLINE."
+    ponedor = PonedorFalso(ResultadoEnLinea(detalle=detalle))
+    vista = recuperacion.ejecutar(entorno.ajustes, "XE", procedimiento_id, True, entorno.lanzador(), ponedor=ponedor)
+    assert ponedor.llamadas == [DATAFILE_17_DE_LA_PDB]
+    assert vista.registro.resultado is ResultadoRecuperacion.EJECUTADO_OK
+    assert detalle in (vista.registro.mensaje or "")
+
+
+def test_si_no_se_puede_poner_en_linea_la_ejecucion_queda_con_errores(entorno: Entorno) -> None:
+    procedimiento_id = aprobado_en_pdb(entorno)
+    ponedor = PonedorFalso(ResultadoEnLinea(errores=["RMAN terminó, pero no se pudo poner en línea: ORA-01113"]))
+    vista = recuperacion.ejecutar(entorno.ajustes, "XE", procedimiento_id, True, entorno.lanzador(), ponedor=ponedor)
+    assert vista.registro.resultado is ResultadoRecuperacion.EJECUTADO_CON_ERRORES
+    assert "ORA-01113" in (vista.registro.mensaje or "")
+
+
+def test_si_rman_falla_no_se_intenta_poner_en_linea(entorno: Entorno) -> None:
+    procedimiento_id = aprobado_en_pdb(entorno)
+    ponedor = PonedorFalso(ResultadoEnLinea())
+    vista = recuperacion.ejecutar(
+        entorno.ajustes, "XE", procedimiento_id, True, entorno.lanzador(LOG_CON_ERROR, 1), ponedor=ponedor
+    )
+    assert vista.registro.resultado is ResultadoRecuperacion.EJECUTADO_CON_ERRORES
+    assert ponedor.llamadas == []
+
+
+def test_un_datafile_de_la_raiz_no_necesita_el_paso_en_linea(entorno: Entorno) -> None:
+    procedimiento_id = aprobado(entorno)
+    ponedor = PonedorFalso(ResultadoEnLinea())
+    vista = recuperacion.ejecutar(entorno.ajustes, "XE", procedimiento_id, True, entorno.lanzador(), ponedor=ponedor)
+    assert vista.registro.resultado is ResultadoRecuperacion.EJECUTADO_OK
+    assert ponedor.llamadas == []
+
+
+def test_el_plan_de_un_datafile_de_pdb_avisa_que_la_herramienta_lo_pone_en_linea(entorno: Entorno) -> None:
+    en_pdb = recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia(DATAFILE_PDB))
+    assert AVISO_EN_LINEA_PDB in en_pdb.avisos
+    en_la_raiz = recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia(DATAFILE_7))
+    assert AVISO_EN_LINEA_PDB not in en_la_raiz.avisos

@@ -11,7 +11,7 @@
   <ul>
     {% for escenario in diagnostico.sugeridos %}<li>{{ etiquetas[escenario] if etiquetas is defined else escenario.value }} (<code>{{ escenario.value }}</code>)</li>{% endfor %}
   </ul>
-  Elíjalo en «¿Qué pasó?» del panel siguiente y genere el procedimiento. La falla quedó anotada en el calendario semanal.
+  El procedimiento para {{ 'ese escenario' if diagnostico.sugeridos | length == 1 else 'esos escenarios' }} aparece al final de este diagnóstico. La falla quedó anotada en el calendario semanal.
 </div>
 {% endif %}
 {% if diagnostico.archivos %}
@@ -74,4 +74,12 @@
     </tbody>
   </table>
 </div>
+{% endif %}
+{% if procedimientos %}
+<h3>{{ 'Procedimiento sugerido' if procedimientos | length == 1 else 'Procedimientos sugeridos' }}</h3>
+<p class="nota">Se generó a partir de este diagnóstico y nada se ejecuta solo: revíselo y apruébelo si es el que necesita. Si no lo es, genere otro en «Generar un procedimiento».</p>
+{% for procedimiento in procedimientos %}
+{% set etiqueta = etiquetas[procedimiento.escenario] %}
+{% include "parciales/_procedimiento.html" %}
+{% endfor %}
 {% endif %}

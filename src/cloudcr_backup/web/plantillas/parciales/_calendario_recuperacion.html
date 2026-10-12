@@ -1,10 +1,10 @@
 {% set nombres_dia = {'LUN': 'Lunes', 'MAR': 'Martes', 'MIE': 'Miércoles', 'JUE': 'Jueves', 'VIE': 'Viernes', 'SAB': 'Sábado', 'DOM': 'Domingo'} %}
 {% set base_url = '/recuperacion/' ~ (calendario.bd | urlencode) ~ '/calendario' %}
 {% set pagina_url = '/recuperacion?bd=' ~ (calendario.bd | urlencode) %}
-<section class="panel" id="calendario">
+<section class="panel" id="calendario" hx-get="{{ base_url }}?semana={{ calendario.inicio.isoformat() }}" hx-trigger="calendario-actualizado from:body" hx-target="#zona-calendario">
   <div class="encabezado-seccion">
     <h2>Calendario semanal de {{ calendario.bd }}</h2>
-    <span class="semaforo tono-{{ 'peligro' if calendario.fallas else ('exito' if calendario.respaldos else 'atenuado') }}">{{ calendario.respaldos }} {{ 'respaldo' if calendario.respaldos == 1 else 'respaldos' }} · {{ calendario.fallas | length }} {{ 'falla detectada' if calendario.fallas | length == 1 else 'fallas detectadas' }}</span>
+    <span class="semaforo tono-{{ 'peligro' if calendario.fallas else ('exito' if calendario.respaldos else 'atenuado') }}">{{ calendario.respaldos }} {{ 'respaldo' if calendario.respaldos == 1 else 'respaldos' }}{% if calendario.fallas %} · {{ calendario.fallas | length }} {{ 'falla detectada' if calendario.fallas | length == 1 else 'fallas detectadas' }}{% endif %}</span>
   </div>
   <p class="nota">Semana del {{ calendario.inicio.strftime('%d/%m/%Y') }} al {{ calendario.fin.strftime('%d/%m/%Y') }}, en hora de {{ calendario.zona }}. Cada símbolo es un respaldo correcto desde el que se puede recuperar; <span class="tono-peligro">⚠</span> marca cuándo un diagnóstico detectó la falla. Es la hora de la detección, no el instante exacto de la caída: ese solo queda en el alert log de Oracle.</p>
   <div class="grupo-botones navegacion-calendario">

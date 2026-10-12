@@ -4,8 +4,10 @@ Guion reproducible para la presentación. Muestra la línea de tiempo completa d
 falla → detección (calendario + alerta) → diagnóstico → procedimiento → aprobación → ejecución → base sana.
 Ensáyelo completo al menos dos veces antes de presentar y anote los tiempos reales de su equipo.
 
-> **Solo en una base de PRUEBAS.** Este guion borra un archivo de datos de verdad. CloudCR se niega a ejecutar
-> procedimientos de recuperación sobre bases que no estén registradas en ambiente `PRUEBAS`.
+> **Úselo en una base donde pueda perder datos.** Este guion borra un archivo de datos de verdad. CloudCR ejecuta
+> los procedimientos aprobados en cualquier ambiente (`PRODUCCION`, `PRUEBAS` o `DESARROLLO`): el ambiente de la
+> base es informativo y no frena la ejecución. Las protecciones son la aprobación con huella SHA-256, la
+> confirmación y que cada procedimiento se ejecute una sola vez.
 
 ## Por qué este escenario y no otro
 
@@ -25,15 +27,9 @@ el DBA aplica a mano el script ya generado (`recuperacion\XE\datafile_*.rman`) c
 ## 0. Requisitos (una sola vez)
 
 1. La base en **ARCHIVELOG** (`sql\archivelog\activar_archivelog.sql`; Sistema → Modo de archivado).
-2. La base registrada en ambiente **PRUEBAS**: Sistema → Bases de datos (el formulario propone `PRUEBAS`) o
-   `cloudcr db agregar XE --ambiente PRUEBAS` (ojo: en la terminal el valor por defecto es `DESARROLLO`).
-   Compruébelo con `cloudcr db listar`. Si ya estaba registrada con otro ambiente, el cambio es una decisión
-   del DBA y se hace a mano, conectado a `BKPCAT` como `BKP_ADMIN`:
-
-   ```sql
-   UPDATE bd_registrada SET ambiente = 'PRUEBAS' WHERE nombre = 'XE';
-   COMMIT;
-   ```
+2. La base registrada en CloudCR, con el ambiente que corresponda: Sistema → Bases de datos o
+   `cloudcr db agregar XE --ambiente PRUEBAS`. Compruébelo con `cloudcr db listar`. El ambiente solo se muestra en
+   la ficha del procedimiento; no limita la ejecución.
 3. Un respaldo de la **base completa** ejecutado con éxito y con Pruebas en OK. La estrategia de ejemplo `EST004`
    (base completa + control file + SPFILE + archived logs) sirve: Estrategias → EST004 → generar, aprobar y
    «Ejecutar ahora» su tarea de nivel 0 o completo.
@@ -93,8 +89,10 @@ Equivalente en la terminal: `cloudcr recuperacion diagnostico XE`.
 
 ## 4. Generar, aprobar y ejecutar
 
-1. En «Generar un procedimiento», elegir «Pérdida de un datafile no crítico» y dejar «Objeto dañado» vacío (se
-   deduce del diagnóstico). Pulsar **Generar procedimiento**. El script debe ser:
+1. Al final del diagnóstico aparece solo el **Procedimiento sugerido** para el escenario detectado, con sus pasos
+   y su script, sin elegir nada. Si el DBA necesita otro escenario, lo genera en «Generar un procedimiento». Un
+   nuevo «Diagnosticar ahora» reutiliza el mismo borrador mientras no se apruebe y el script no cambie. El script
+   debe ser:
 
    ```
    ALTER DATABASE DATAFILE 7 OFFLINE;
@@ -105,7 +103,7 @@ Equivalente en la terminal: `cloudcr recuperacion diagnostico XE`.
 
 2. Escribir el nombre en «Aprobado por», marcar la confirmación y pulsar **Aprobar el procedimiento N**. Queda
    fijada la huella SHA-256 del script.
-3. Marcar «Entiendo que la ejecución modifica la base de datos…» y pulsar **Ejecutar en PRUEBAS**. La tarjeta
+3. Marcar «Entiendo que la ejecución modifica la base de datos…» y pulsar **Ejecutar procedimiento**. La tarjeta
    muestra «RMAN está ejecutando…» y se actualiza sola; al terminar muestra **Ejecutado sin errores** y el log de
    RMAN (`Finished restore`, `media recovery complete`, `Recovery Manager complete.`).
 
@@ -135,7 +133,6 @@ es el respaldo previo del punto 0.
 | Prueba | Resultado esperado |
 |---|---|
 | Editar el `.rman` en `recuperacion\XE\` después de aprobarlo y pulsar Ejecutar | Bloqueado: «su huella SHA-256 no coincide» |
-| Ejecutar sobre una base registrada en `DESARROLLO` o `PRODUCCION` | Bloqueado: solo se ejecuta en ambiente PRUEBAS |
 | Pulsar Ejecutar dos veces | La segunda se rechaza: cada procedimiento aprobado se ejecuta una sola vez |
 | No marcar la confirmación | Se rechaza con «Falta confirmar…» |
 
@@ -146,4 +143,4 @@ En `<carpeta de trabajo>\recuperacion\XE\`:
 - `datafile_<fecha>.rman` — el script aprobado (su SHA-256 queda en `RECUPERACION_PROCEDIMIENTO`);
 - `datafile_<fecha>.log` — el log completo de RMAN;
 - `datafile_<fecha>.resultado.json` — el resultado, escrito antes de tocar el repositorio;
-- `fallas_detectadas.jsonl` — cada diagnóstico con daños; alimenta las ⚠ del calendario.
+- `fallas_detectadas.jsonl` — cada diagnóstico con daños; alimenta las ⚠ del calendario. Un diagnóstico sano agrega un registro de cierre y el calendario deja de mostrar las ⚠ anteriores.

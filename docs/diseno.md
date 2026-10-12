@@ -74,7 +74,7 @@ Ninguno de ellos escribe SQL ni invoca RMAN: toda sentencia contra `BKPCAT` sigu
 │   ├── <escenario>_<fecha>.rman          (script; su SHA-256 queda en RECUPERACION_PROCEDIMIENTO)
 │   ├── <escenario>_<fecha>.log           (log de RMAN, si se ejecutó)
 │   ├── <escenario>_<fecha>.resultado.json (resultado, escrito antes del repositorio)
-│   └── fallas_detectadas.jsonl           (fallas que marca el calendario semanal)
+│   └── fallas_detectadas.jsonl           (fallas que marca el calendario semanal; un diagnóstico sano agrega un cierre)
 ├── buzon/<timestamp>_<id>.json
 └── logs/cloudcr.log
 ```
@@ -105,7 +105,7 @@ El destino de los respaldos (`C:\backups\XE` por defecto, configurable con `CLOU
 | `execution/` | Pipeline de ejecución: preflight, runner (subprocess), parser de log, correlador con vistas `V$`, clasificador, evidencia, buzón | — |
 | `verification/` | `CROSSCHECK` + existencia en disco + `VALIDATE` → columna Pruebas | — |
 | `retention/` | Informe de piezas obsoletas y purga controlada, limitada a las piezas de la propia estrategia | — |
-| `recovery/` | Diagnóstico (`V$RECOVER_FILE`, `V$DATABASE_BLOCK_CORRUPTION`, `V$LOGFILE`) con escenario sugerido, puntos de recuperación, calendario semanal, generación de procedimientos para los 8 escenarios y clasificación del resultado. La ejecución la orquesta `services/recuperacion.py` con `execution/runner.py`, solo tras aprobación y en ambiente `PRUEBAS` | — |
+| `recovery/` | Diagnóstico (`V$RECOVER_FILE`, `V$DATABASE_BLOCK_CORRUPTION`, `V$LOGFILE`) con escenario sugerido, puntos de recuperación, calendario semanal, generación de procedimientos para los 8 escenarios y clasificación del resultado. La ejecución la orquesta `services/recuperacion.py` con `execution/runner.py`, solo tras aprobación y confirmación, en cualquier ambiente | — |
 | `scheduling/` | Recurrencia (`dateutil.rrule`), ventanas de respaldo, planificador de próximas ejecuciones | — |
 | `agent/` | Bucle continuo: reclama ejecuciones vencidas, las despacha, sincroniza el buzón, evalúa alertas | — |
 | `alerts/` | Motor de 11+ reglas de alerta, deduplicación por `clave_dedup`, notificadores (consola, correo) | — |
@@ -154,7 +154,7 @@ PARAMETRO (clave/valor global, sin relaciones)
 | `id` | NUMBER PK (IDENTITY) | |
 | `nombre` | VARCHAR2(30) UNIQUE NOT NULL | |
 | `oracle_home` | VARCHAR2(400) NOT NULL | |
-| `ambiente` | VARCHAR2(20) CHECK | `PRODUCCION` / `PRUEBAS` / `DESARROLLO` — las operaciones de recuperación solo se ofrecen en `PRUEBAS` |
+| `ambiente` | VARCHAR2(20) CHECK | `PRODUCCION` / `PRUEBAS` / `DESARROLLO` — informativo: las operaciones de recuperación se ofrecen en todos |
 | `activa` | CHAR(1) CHECK | `S` / `N` |
 | `creada_en` | TIMESTAMP | |
 
@@ -287,7 +287,7 @@ PARAMETRO (clave/valor global, sin relaciones)
 
 | Columna | Tipo | Notas |
 |---|---|---|
-| `bd_id` | NUMBER FK | Base a la que pertenece; la ejecución exige que su `ambiente` sea `PRUEBAS` |
+| `bd_id` | NUMBER FK | Base a la que pertenece; la ejecución no depende de su `ambiente` |
 | `escenario`, `objetivo` | VARCHAR2(30), VARCHAR2(400) | Uno de los 11 valores de `Escenario` y el objeto dañado |
 | `ruta_script`, `contenido`, `hash_sha256` | VARCHAR2(1000), CLOB, VARCHAR2(64) | El `.rman` en disco y su huella; si no coinciden, no se aprueba ni se ejecuta |
 | `estado` | VARCHAR2(15) CHECK | `BORRADOR` → `APROBADO` (mismo `EstadoScript` que `SCRIPT_RMAN`) |

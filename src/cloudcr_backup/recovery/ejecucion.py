@@ -2,6 +2,7 @@ from cloudcr_backup.domain.recuperacion import Escenario, ResultadoRecuperacion
 from cloudcr_backup.execution.apertura import ResultadoApertura
 from cloudcr_backup.execution.parser import LogAnalizado
 from cloudcr_backup.execution.runner import ResultadoRman
+from cloudcr_backup.recovery.en_linea import ResultadoEnLinea
 
 ESCENARIOS_CON_REINICIO = frozenset(
     {
@@ -35,13 +36,18 @@ def motivos_de_fallo(resultado: ResultadoRman, log: LogAnalizado) -> list[str]:
 
 
 def clasificar(
-    resultado: ResultadoRman, log: LogAnalizado, apertura: ResultadoApertura | None
+    resultado: ResultadoRman,
+    log: LogAnalizado,
+    apertura: ResultadoApertura | None,
+    en_linea: ResultadoEnLinea | None = None,
 ) -> tuple[ResultadoRecuperacion, str]:
     if resultado.error_lanzamiento:
         return ResultadoRecuperacion.NO_LANZADO, resultado.error_lanzamiento
     motivos = motivos_de_fallo(resultado, log)
     if apertura is not None and not apertura.abierta:
         motivos.append(f"La base no quedó abierta después de la recuperación: {apertura.detalle}")
+    if en_linea is not None:
+        motivos += en_linea.errores
     if motivos:
         return ResultadoRecuperacion.EJECUTADO_CON_ERRORES, " ".join(motivos)
     mensaje = "RMAN terminó sin errores."
@@ -49,4 +55,6 @@ def clasificar(
         mensaje += f" Advertencias: {log.resumen_advertencias()}"
     if apertura is not None:
         mensaje += f" {apertura.detalle}"
+    if en_linea is not None and en_linea.detalle:
+        mensaje += f" {en_linea.detalle}"
     return ResultadoRecuperacion.EJECUTADO_OK, mensaje

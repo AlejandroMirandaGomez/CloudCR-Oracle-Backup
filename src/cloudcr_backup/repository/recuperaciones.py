@@ -140,6 +140,28 @@ def obtener(conexion: oracledb.Connection, procedimiento_id: int) -> RegistroRec
         cursor.close()
 
 
+def borrador_sin_usar(
+    conexion: oracledb.Connection, bd_id: int, escenario: Escenario, hash_sha256: str
+) -> RegistroRecuperacion | None:
+    cursor = conexion.cursor()
+    try:
+        cursor.execute(
+            f"""
+            SELECT {_COLUMNAS} FROM recuperacion_procedimiento
+            WHERE bd_id = :bd_id AND escenario = :escenario AND hash_sha256 = :hash_sha256
+              AND estado = 'BORRADOR' AND resultado IS NULL
+            ORDER BY id DESC FETCH FIRST 1 ROWS ONLY
+            """,
+            bd_id=bd_id,
+            escenario=escenario.value,
+            hash_sha256=hash_sha256,
+        )
+        fila = cursor.fetchone()
+        return _desde_fila(fila) if fila is not None else None
+    finally:
+        cursor.close()
+
+
 def aprobar(conexion: oracledb.Connection, procedimiento_id: int, aprobado_por: str) -> bool:
     cursor = conexion.cursor()
     try:

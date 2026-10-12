@@ -181,7 +181,7 @@ La ventana va **en línea, dentro del comando** (`REPORT OBSOLETE RECOVERY WINDO
   archived logs ya respaldados. El script con `DELETE NOPROMPT OBSOLETE` del plan queda como referencia
   (`politica.script(..., purgar=True)`) y no se ejecuta.
 
-## 9. Recuperación (se genera; se ejecuta solo aprobada, con confirmación y en PRUEBAS)
+## 9. Recuperación (se genera; se ejecuta solo aprobada y con confirmación)
 
 | Escenario | Requiere | Script |
 |---|---|---|
@@ -203,7 +203,7 @@ tiempo de la clase §2: identificar con `V$RECOVER_FILE` qué archivo falta. Des
 los archived redo logs y al final los redo logs online.
 
 El procedimiento queda registrado en `RECUPERACION_PROCEDIMIENTO` con el SHA-256 del `.rman`. Ejecutarlo exige
-aprobarlo, confirmar y que la base esté en ambiente `PRUEBAS`; lo lanza `execution/runner.py` (la misma
+aprobarlo y confirmar, sin importar el ambiente de la base; lo lanza `execution/runner.py` (la misma
 función que usan los respaldos, sin pasar por el pipeline) y el log se clasifica con `execution/parser.py`.
 Detalle en `docs/analisis.md` §20.
 

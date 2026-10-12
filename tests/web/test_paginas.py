@@ -76,6 +76,15 @@ def test_estaticos_disponibles(cliente: TestClient) -> None:
     assert cliente.get("/estaticos/tema.js").status_code == 200
 
 
+def test_las_paginas_declaran_el_icono_del_copo(cliente: TestClient) -> None:
+    html = cliente.get("/").text
+    assert '<link rel="icon" href="/estaticos/favicon.svg" type="image/svg+xml">' in html
+    icono = cliente.get("/estaticos/favicon.svg")
+    assert icono.status_code == 200
+    assert icono.headers["content-type"].startswith("image/svg+xml")
+    assert icono.text.count("<g transform=") == 6
+
+
 def test_las_paginas_ofrecen_cambiar_de_tema(cliente: TestClient) -> None:
     html = cliente.get("/").text
     assert 'src="/estaticos/tema.js"' in html

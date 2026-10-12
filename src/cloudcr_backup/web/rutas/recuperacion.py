@@ -23,6 +23,7 @@ router = APIRouter()
 
 FORMATOS_MOMENTO = ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S")
 FORMATO_FECHA = "%Y-%m-%d"
+EVENTO_CALENDARIO_ACTUALIZADO = "calendario-actualizado"
 Texto = Annotated[str | None, Query(max_length=130)]
 Semana = Annotated[str | None, Query(max_length=10)]
 OrigenConfiable = [Depends(exigir_origen_confiable)]
@@ -99,8 +100,15 @@ def calendario(request: Request, bd: str, semana: Semana = None) -> HTMLResponse
 def diagnostico(request: Request, bd: str) -> HTMLResponse:
     ajustes = _ajustes(request)
     resultado = servicio_recuperacion.diagnostico(ajustes, bd)
-    contexto = {"diagnostico": resultado, "zona": ajustes.zona_horaria, "etiquetas": ETIQUETA_ESCENARIO}
-    return renderizar(request, "parciales/_diagnostico.html", contexto)
+    contexto = {
+        "diagnostico": resultado,
+        "procedimientos": servicio_recuperacion.procedimientos_sugeridos(ajustes, resultado),
+        "zona": ajustes.zona_horaria,
+        "etiquetas": ETIQUETA_ESCENARIO,
+    }
+    respuesta = renderizar(request, "parciales/_diagnostico.html", contexto)
+    respuesta.headers["HX-Trigger"] = EVENTO_CALENDARIO_ACTUALIZADO
+    return respuesta
 
 
 @router.get("/recuperacion/{bd}/plan", response_class=HTMLResponse)

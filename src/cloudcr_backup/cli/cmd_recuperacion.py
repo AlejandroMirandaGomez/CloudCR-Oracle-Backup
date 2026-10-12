@@ -18,7 +18,7 @@ app = typer.Typer(
     add_completion=False,
     help=(
         "Puntos de recuperación, diagnóstico y procedimientos por escenario. Un procedimiento nunca se ejecuta "
-        "solo: hay que aprobarlo y confirmar, y solo se ejecuta en bases de ambiente PRUEBAS."
+        "solo: hay que aprobarlo y confirmar."
     ),
 )
 
@@ -133,7 +133,7 @@ def _hasta(texto: str | None) -> datetime | None:
 @app.command(
     help=(
         "Genera el procedimiento de recuperación de un escenario. No lo ejecuta: ejecutarlo requiere aprobarlo "
-        "('aprobar') y confirmar ('ejecutar'), y solo se permite en ambiente PRUEBAS."
+        "('aprobar') y confirmar ('ejecutar')."
     )
 )
 def plan(
@@ -214,8 +214,8 @@ def aprobar(
 
 @app.command(
     help=(
-        "Ejecuta con RMAN un procedimiento aprobado. Solo en bases de ambiente PRUEBAS, con el script intacto y "
-        "--confirmo: modifica la base de datos y no se puede deshacer."
+        "Ejecuta con RMAN un procedimiento aprobado, con el script intacto y --confirmo: modifica la base de datos "
+        "y no se puede deshacer."
     )
 )
 def ejecutar(bd: Bd, procedimiento_id: ProcedimientoId, confirmo: Confirmo = False) -> None:
