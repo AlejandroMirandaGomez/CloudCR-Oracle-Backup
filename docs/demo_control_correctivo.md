@@ -35,6 +35,8 @@ generado; el DBA aplica a mano el script ya generado (`recuperacion\XE\datafile_
    «Ejecutar ahora» su tarea de nivel 0 o completo.
 4. Comprobar en `/recuperacion` que aparece en «Puntos de recuperación» y en el **calendario semanal** con su
    símbolo (● completo, ◆ nivel 0).
+5. Si en PowerShell `sqlplus` muestra `Sesi�n modificada`, ejecutar antes `$env:NLS_LANG = "SPANISH_SPAIN.AL32UTF8"`
+   (consola en UTF-8, `chcp` = 65001); ver «Problemas comunes» en `COMO_EJECUTAR.md`.
 
 ## 1. Generar actividad posterior al respaldo
 

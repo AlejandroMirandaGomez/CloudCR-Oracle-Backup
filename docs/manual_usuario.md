@@ -412,6 +412,7 @@ Semántica de la programación:
 | `cloudcr agente estado` dice que nunca corrió | La carpeta de trabajo del agente y la de la consulta son distintas | Use el mismo `CLOUDCR_WORK_DIR` (o el mismo `cloudcr.yaml`) en ambos |
 | El semáforo queda amarillo con todo exitoso | Pruebas «Pendiente» | La verificación automática está desactivada: `cloudcr verificar <id>` |
 | Acentos o símbolos raros en la terminal | Consola sin UTF-8 | `$env:PYTHONUTF8 = "1"`; el texto del resultado siempre acompaña al símbolo |
+| Acentos rotos (`Sesi�n`) al usar `sqlplus` a mano en PowerShell | El `NLS_LANG` del registro de Oracle (`WE8MSWIN1252`) no coincide con la página de códigos de la consola | Con la consola en UTF-8 (`chcp` = 65001): `$env:NLS_LANG = "SPANISH_SPAIN.AL32UTF8"` antes de `sqlplus`; detalle en `COMO_EJECUTAR.md` («Problemas comunes») |
 | El correo no llega | Clave o parámetros SMTP | Revise `logs\cloudcr.log`; `cloudcr alertas evaluar` muestra los avisos de configuración |
 
 ---
