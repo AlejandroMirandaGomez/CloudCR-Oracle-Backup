@@ -343,8 +343,8 @@ input[type="datetime-local"] {
 }
 
 .advertencia-ejecucion {
-  background: var(--peligro-fondo);
-  color: var(--peligro);
+  background: var(--advertencia-fondo);
+  color: var(--advertencia);
   border-radius: var(--radio);
   padding: 0.6rem 0.9rem;
   margin: 0.8rem 0;

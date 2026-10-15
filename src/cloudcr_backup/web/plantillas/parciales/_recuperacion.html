@@ -46,7 +46,7 @@
 <section class="panel" id="diagnostico">
   <div class="encabezado-seccion">
     <h2>Diagnóstico</h2>
-    <button class="boton" type="button" hx-get="/recuperacion/{{ puntos.bd | urlencode }}/diagnostico" hx-target="#zona-diagnostico" hx-disabled-elt="this" hx-indicator="#diagnosticando">Diagnosticar ahora</button>
+    <button class="boton resaltado" type="button" hx-get="/recuperacion/{{ puntos.bd | urlencode }}/diagnostico" hx-target="#zona-diagnostico" hx-disabled-elt="this" hx-indicator="#diagnosticando">Diagnosticar ahora</button>
   </div>
   <p class="nota">Consulta <code>V$RECOVER_FILE</code>, <code>V$DATAFILE</code>, <code>V$DATABASE_BLOCK_CORRUPTION</code> y <code>V$LOGFILE</code> en la instancia para decir qué archivo concreto falta o está dañado y sugerir el escenario: es el primer paso de la línea de tiempo de una falla. Si encuentra una falla, la anota en el calendario y abre una alerta (que llega por correo si ese canal está configurado). Si la base ya está sana, quita del calendario las fallas anotadas y resuelve la alerta.</p>
   <p id="diagnosticando" class="htmx-indicator">Consultando la instancia…</p>
