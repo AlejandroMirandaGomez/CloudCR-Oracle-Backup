@@ -1,3 +1,14 @@
+{% if instancia_no_disponible %}
+<section class="error" role="alert">
+  <h2>Algo sucedió con la instancia Oracle{% if sid %} {{ sid }}{% endif %}</h2>
+  <p>La instancia no está disponible para consultas en este momento. Puede ir a Recuperación para diagnosticar qué ocurrió o volver al menú.</p>
+  <p class="sugerencia">{{ mensaje }}</p>
+  <p class="grupo-botones">
+    <a class="boton primario" href="/recuperacion{% if sid %}?bd={{ sid | urlencode }}{% endif %}">Ir a Recuperación</a>
+    <a class="boton" href="/">Volver al menú</a>
+  </p>
+</section>
+{% else %}
 <section class="error" role="alert">
   <h2>No se pudo inspeccionar{% if sid %} la instancia {{ sid }}{% endif %}</h2>
   <p>{{ mensaje }}</p>
@@ -9,3 +20,4 @@
     <a class="boton" href="/sistema#entorno">Diagnóstico del entorno</a>
   </p>
 </section>
+{% endif %}

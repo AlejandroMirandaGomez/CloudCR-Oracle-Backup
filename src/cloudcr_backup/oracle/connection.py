@@ -11,6 +11,18 @@ ORA_ADAPTADOR_PROTOCOLO = 12560
 ORA_USUARIO_CLAVE_INVALIDOS = 1017
 ORA_SIN_LISTENER = 12541
 ORA_SERVICIO_DESCONOCIDO = 12514
+ORA_BASE_SIN_MONTAR = 1507
+ORA_INICIO_O_APAGADO_EN_CURSO = 1033
+ORA_SIN_MEMORIA_COMPARTIDA = 27101
+CODIGOS_INSTANCIA_NO_DISPONIBLE = frozenset(
+    {
+        ORA_INSTANCIA_NO_DISPONIBLE,
+        ORA_ADAPTADOR_PROTOCOLO,
+        ORA_BASE_SIN_MONTAR,
+        ORA_INICIO_O_APAGADO_EN_CURSO,
+        ORA_SIN_MEMORIA_COMPARTIDA,
+    }
+)
 
 _cliente_thick_iniciado: Path | None = None
 
@@ -19,6 +31,10 @@ class ErrorConexionOracle(RuntimeError):
     def __init__(self, mensaje: str, sugerencia: str | None = None) -> None:
         super().__init__(mensaje)
         self.sugerencia = sugerencia
+
+
+class ErrorInstanciaNoDisponible(ErrorConexionOracle):
+    """La instancia existe, pero no está abierta para consultas (apagada, sin montar o en transición)."""
 
 
 @dataclass(frozen=True)
@@ -90,6 +106,21 @@ def _codigo_error(error: oracledb.Error) -> int | None:
     return codigo if isinstance(codigo, int) else None
 
 
+def traducir_instancia_no_disponible(error: oracledb.Error, destino: str) -> ErrorInstanciaNoDisponible | None:
+    codigo = _codigo_error(error)
+    if codigo not in CODIGOS_INSTANCIA_NO_DISPONIBLE:
+        return None
+    if codigo == ORA_BASE_SIN_MONTAR:
+        return ErrorInstanciaNoDisponible(
+            f"La instancia {destino} está iniciada, pero su base de datos no está montada (ORA-01507).",
+            "Revise la causa en el alert log de la instancia; Recuperación ayuda a diagnosticarla.",
+        )
+    return ErrorInstanciaNoDisponible(
+        f"La instancia {destino} no está disponible (ORA-{codigo:05d}).",
+        "Verifique que el servicio o la instancia estén iniciados y que el SID sea correcto.",
+    )
+
+
 def _traducir_error(error: oracledb.Error, destino: str) -> ErrorConexionOracle:
     codigo = _codigo_error(error)
     if codigo == ORA_PRIVILEGIOS_INSUFICIENTES:
@@ -98,11 +129,9 @@ def _traducir_error(error: oracledb.Error, destino: str) -> ErrorConexionOracle:
             "En Windows agregue su usuario al grupo local ORA_DBA; en Linux, al grupo dba. "
             "Luego cierre sesión y vuelva a entrar.",
         )
-    if codigo in (ORA_INSTANCIA_NO_DISPONIBLE, ORA_ADAPTADOR_PROTOCOLO):
-        return ErrorConexionOracle(
-            f"La instancia {destino} no está disponible (ORA-{codigo:05d}).",
-            "Verifique que el servicio o la instancia estén iniciados y que el SID sea correcto.",
-        )
+    instancia_no_disponible = traducir_instancia_no_disponible(error, destino)
+    if instancia_no_disponible is not None:
+        return instancia_no_disponible
     if codigo == ORA_USUARIO_CLAVE_INVALIDOS:
         return ErrorConexionOracle("Usuario o contraseña inválidos (ORA-01017).")
     if codigo in (ORA_SIN_LISTENER, ORA_SERVICIO_DESCONOCIDO):

@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from cloudcr_backup.domain.enums import EstadoEstrategia
 from cloudcr_backup.domain.errores import ErrorServicio
 from cloudcr_backup.domain.monitoreo import ResumenEstrategia
-from cloudcr_backup.oracle.connection import ErrorConexionOracle
+from cloudcr_backup.oracle.connection import ErrorConexionOracle, ErrorInstanciaNoDisponible
 from cloudcr_backup.oracle.explorador import InstanciaNoEncontrada
 
 ErroresRepositorio = (ErrorServicio, NotImplementedError)
@@ -65,6 +65,7 @@ def renderizar_error(request: Request, error: Exception, sid: str | None) -> HTM
         "mensaje": str(error),
         "sugerencia": getattr(error, "sugerencia", None),
         "sid": sid,
+        "instancia_no_disponible": isinstance(error, ErrorInstanciaNoDisponible),
     }
     if es_htmx(request):
         return renderizar(request, "parciales/_error.html", contexto)

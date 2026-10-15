@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+import oracledb
+
 from cloudcr_backup.domain.hallazgos import Hallazgo
 from cloudcr_backup.domain.perfil_bd import PerfilBD
 from cloudcr_backup.oracle.connection import (
@@ -9,6 +11,7 @@ from cloudcr_backup.oracle.connection import (
     ParametrosConexionRemota,
     conectar_local,
     conectar_remota,
+    traducir_instancia_no_disponible,
 )
 from cloudcr_backup.oracle.discovery import InstanciaDescubierta
 from cloudcr_backup.oracle.inspector import inspeccionar
@@ -51,6 +54,16 @@ def _con_home(instancia: InstanciaDescubierta, oracle_home: Path | None) -> Inst
     )
 
 
+def _inspeccionar(conexion: oracledb.Connection, oracle_home: str | None, destino: str) -> PerfilBD:
+    try:
+        return inspeccionar(conexion, oracle_home)
+    except oracledb.Error as error:
+        traducido = traducir_instancia_no_disponible(error, destino)
+        if traducido is None:
+            raise
+        raise traducido from error
+
+
 def explorar_local(instancia: InstanciaDescubierta) -> Exploracion:
     if instancia.oracle_home is None:
         raise ErrorConexionOracle(
@@ -59,7 +72,7 @@ def explorar_local(instancia: InstanciaDescubierta) -> Exploracion:
         )
     conexion = conectar_local(ParametrosConexionLocal(oracle_home=instancia.oracle_home, sid=instancia.sid))
     try:
-        perfil = inspeccionar(conexion, str(instancia.oracle_home))
+        perfil = _inspeccionar(conexion, str(instancia.oracle_home), instancia.sid)
     finally:
         conexion.close()
     return Exploracion(perfil=perfil, hallazgos=observar(perfil))
@@ -68,7 +81,7 @@ def explorar_local(instancia: InstanciaDescubierta) -> Exploracion:
 def explorar_remota(parametros: ParametrosConexionRemota) -> Exploracion:
     conexion = conectar_remota(parametros)
     try:
-        perfil = inspeccionar(conexion, None)
+        perfil = _inspeccionar(conexion, None, parametros.dsn)
     finally:
         conexion.close()
     return Exploracion(perfil=perfil, hallazgos=observar(perfil))
