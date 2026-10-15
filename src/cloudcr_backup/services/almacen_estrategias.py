@@ -2,14 +2,13 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-import oracledb
-
 from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.enums import EstadoEstrategia
 from cloudcr_backup.domain.estrategia import Estrategia
 from cloudcr_backup.domain.perfil_bd import PerfilBD
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository import conexion as repositorio_conexion
+from cloudcr_backup.repository.conexion import Conexion
 from cloudcr_backup.strategy import servicio
 from cloudcr_backup.strategy.yaml_io import estrategia_a_yaml
 
@@ -83,7 +82,7 @@ def guardar_archivo(ajustes: Ajustes, sid: str, estrategia: Estrategia) -> Path:
 
 
 def _obtener_o_registrar(
-    conexion: oracledb.Connection, perfil: PerfilBD
+    conexion: Conexion, perfil: PerfilBD
 ) -> tuple[repositorio_bases_datos.BaseDatosRegistrada | None, bool]:
     bd = repositorio_bases_datos.obtener(conexion, perfil.nombre)
     if bd is not None or perfil.oracle_home is None:

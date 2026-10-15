@@ -1,7 +1,5 @@
 from datetime import datetime, time
 
-import oracledb
-
 from cloudcr_backup.domain.enums import (
     Compresion,
     DiaSemana,
@@ -25,13 +23,14 @@ from cloudcr_backup.domain.estrategia import (
     Ventana,
     tareas_con_script_afectado,
 )
+from cloudcr_backup.repository.conexion import Conexion, Cursor
 
 
 class TareaConHistorial(ValueError):
     pass
 
 
-def _cargar_alcance(cursor: oracledb.Cursor, estrategia_id: int) -> list[ObjetoAlcance]:
+def _cargar_alcance(cursor: Cursor, estrategia_id: int) -> list[ObjetoAlcance]:
     cursor.execute(
         "SELECT tipo_objeto, identificador, prioridad FROM estrategia_objeto WHERE estrategia_id = :id ORDER BY id",
         id=estrategia_id,
@@ -42,7 +41,7 @@ def _cargar_alcance(cursor: oracledb.Cursor, estrategia_id: int) -> list[ObjetoA
     ]
 
 
-def _cargar_tareas(cursor: oracledb.Cursor, estrategia_id: int) -> list[Tarea]:
+def _cargar_tareas(cursor: Cursor, estrategia_id: int) -> list[Tarea]:
     cursor.execute(
         """
         SELECT t.codigo, t.tipo_respaldo, t.modo_respaldo, t.compresion, t.canales, t.destino_ruta,
@@ -94,7 +93,7 @@ def _cargar_tareas(cursor: oracledb.Cursor, estrategia_id: int) -> list[Tarea]:
     return tareas
 
 
-def _guardar_alcance(cursor: oracledb.Cursor, estrategia_id: int, alcance: list[ObjetoAlcance]) -> None:
+def _guardar_alcance(cursor: Cursor, estrategia_id: int, alcance: list[ObjetoAlcance]) -> None:
     for objeto in alcance:
         cursor.execute(
             """
@@ -108,16 +107,14 @@ def _guardar_alcance(cursor: oracledb.Cursor, estrategia_id: int, alcance: list[
         )
 
 
-def _guardar_tareas(cursor: oracledb.Cursor, estrategia_id: int, tareas: list[Tarea]) -> None:
+def _guardar_tareas(cursor: Cursor, estrategia_id: int, tareas: list[Tarea]) -> None:
     for tarea in tareas:
-        tarea_id_var = cursor.var(int)
         cursor.execute(
             """
             INSERT INTO tarea (estrategia_id, codigo, tipo_respaldo, modo_respaldo, compresion, canales,
                                 destino_ruta, destino_etiqueta, omitir_solo_lectura)
             VALUES (:estrategia_id, :codigo, :tipo_respaldo, :modo_respaldo, :compresion, :canales,
                     :destino_ruta, :destino_etiqueta, :omitir_solo_lectura)
-            RETURNING id INTO :tarea_id
             """,
             estrategia_id=estrategia_id,
             codigo=tarea.codigo,
@@ -128,12 +125,11 @@ def _guardar_tareas(cursor: oracledb.Cursor, estrategia_id: int, tareas: list[Ta
             destino_ruta=tarea.destino.ruta,
             destino_etiqueta=tarea.destino.etiqueta,
             omitir_solo_lectura="S" if tarea.como.opciones.omitir_solo_lectura else "N",
-            tarea_id=tarea_id_var,
         )
-        _insertar_programacion(cursor, int(tarea_id_var.getvalue()[0]), tarea.programacion)
+        _insertar_programacion(cursor, cursor.lastrowid, tarea.programacion)
 
 
-def _insertar_programacion(cursor: oracledb.Cursor, tarea_id: int, prog: Programacion) -> None:
+def _insertar_programacion(cursor: Cursor, tarea_id: int, prog: Programacion) -> None:
     cursor.execute(
         """
         INSERT INTO programacion (tarea_id, tipo_frecuencia, horas, dias_semana, intervalo_minutos,
@@ -154,7 +150,7 @@ def _insertar_programacion(cursor: oracledb.Cursor, tarea_id: int, prog: Program
     )
 
 
-def _actualizar_tarea(cursor: oracledb.Cursor, tarea_id: int, tarea: Tarea) -> None:
+def _actualizar_tarea(cursor: Cursor, tarea_id: int, tarea: Tarea) -> None:
     cursor.execute(
         """
         UPDATE tarea
@@ -176,7 +172,7 @@ def _actualizar_tarea(cursor: oracledb.Cursor, tarea_id: int, tarea: Tarea) -> N
     _insertar_programacion(cursor, tarea_id, tarea.programacion)
 
 
-def _retirar_tarea(cursor: oracledb.Cursor, tarea_id: int, codigo: str) -> None:
+def _retirar_tarea(cursor: Cursor, tarea_id: int, codigo: str) -> None:
     cursor.execute("SELECT COUNT(*) FROM ejecucion WHERE tarea_id = :id", id=tarea_id)
     if int(cursor.fetchone()[0]) > 0:
         raise TareaConHistorial(
@@ -189,7 +185,7 @@ def _retirar_tarea(cursor: oracledb.Cursor, tarea_id: int, codigo: str) -> None:
     cursor.execute("DELETE FROM tarea WHERE id = :id", id=tarea_id)
 
 
-def _sincronizar_tareas(cursor: oracledb.Cursor, estrategia_id: int, tareas: list[Tarea]) -> None:
+def _sincronizar_tareas(cursor: Cursor, estrategia_id: int, tareas: list[Tarea]) -> None:
     cursor.execute("SELECT codigo, id FROM tarea WHERE estrategia_id = :id", id=estrategia_id)
     existentes = {str(codigo): int(tarea_id) for codigo, tarea_id in cursor.fetchall()}
     codigos_nuevos = {tarea.codigo for tarea in tareas}
@@ -203,7 +199,7 @@ def _sincronizar_tareas(cursor: oracledb.Cursor, estrategia_id: int, tareas: lis
             _guardar_tareas(cursor, estrategia_id, [tarea])
 
 
-def _obsoletar_scripts(cursor: oracledb.Cursor, estrategia_id: int, codigos_tarea: list[str]) -> None:
+def _obsoletar_scripts(cursor: Cursor, estrategia_id: int, codigos_tarea: list[str]) -> None:
     for codigo in codigos_tarea:
         cursor.execute(
             """
@@ -216,7 +212,7 @@ def _obsoletar_scripts(cursor: oracledb.Cursor, estrategia_id: int, codigos_tare
         )
 
 
-def _ensamblar(cursor: oracledb.Cursor, bd_id: int, fila: tuple[object, ...]) -> Estrategia:
+def _ensamblar(cursor: Cursor, bd_id: int, fila: tuple[object, ...]) -> Estrategia:
     (
         id_, codigo, nombre, descripcion, prioridad, estado, version, creada_por, creada_en,
         ventana_dias, redundancia, archivelog_dias, purga,
@@ -250,10 +246,9 @@ _COLUMNAS = (
 )
 
 
-def crear(conexion: oracledb.Connection, estrategia: Estrategia) -> Estrategia:
+def crear(conexion: Conexion, estrategia: Estrategia) -> Estrategia:
     cursor = conexion.cursor()
     try:
-        id_var = cursor.var(int)
         cursor.execute(
             """
             INSERT INTO estrategia (bd_id, codigo, nombre, descripcion, prioridad, estado, version, creada_por,
@@ -261,7 +256,6 @@ def crear(conexion: oracledb.Connection, estrategia: Estrategia) -> Estrategia:
                                      retencion_purga_automatica)
             VALUES (:bd_id, :codigo, :nombre, :descripcion, :prioridad, :estado, :version, :creada_por,
                     :ventana_dias, :redundancia, :archivelog_dias, :purga)
-            RETURNING id INTO :id
             """,
             bd_id=estrategia.bd_id,
             codigo=estrategia.codigo,
@@ -275,9 +269,8 @@ def crear(conexion: oracledb.Connection, estrategia: Estrategia) -> Estrategia:
             redundancia=estrategia.retencion.redundancia,
             archivelog_dias=estrategia.retencion.archived_logs_dias,
             purga="S" if estrategia.retencion.purga_automatica else "N",
-            id=id_var,
         )
-        estrategia_id = int(id_var.getvalue()[0])
+        estrategia_id = cursor.lastrowid
         _guardar_alcance(cursor, estrategia_id, estrategia.alcance)
         _guardar_tareas(cursor, estrategia_id, estrategia.tareas)
         conexion.commit()
@@ -286,7 +279,7 @@ def crear(conexion: oracledb.Connection, estrategia: Estrategia) -> Estrategia:
         cursor.close()
 
 
-def actualizar(conexion: oracledb.Connection, estrategia: Estrategia) -> Estrategia:
+def actualizar(conexion: Conexion, estrategia: Estrategia) -> Estrategia:
     anterior = obtener(conexion, estrategia.bd_id, estrategia.codigo)
     if anterior is None:
         raise ValueError(f"No existe la estrategia {estrategia.codigo} en la base {estrategia.bd_id}.")
@@ -331,7 +324,7 @@ def actualizar(conexion: oracledb.Connection, estrategia: Estrategia) -> Estrate
         cursor.close()
 
 
-def listar(conexion: oracledb.Connection, bd_id: int) -> list[Estrategia]:
+def listar(conexion: Conexion, bd_id: int) -> list[Estrategia]:
     cursor = conexion.cursor()
     try:
         cursor.execute(f"SELECT {_COLUMNAS} FROM estrategia WHERE bd_id = :bd_id ORDER BY codigo", bd_id=bd_id)
@@ -340,7 +333,7 @@ def listar(conexion: oracledb.Connection, bd_id: int) -> list[Estrategia]:
         cursor.close()
 
 
-def obtener(conexion: oracledb.Connection, bd_id: int, codigo: str) -> Estrategia | None:
+def obtener(conexion: Conexion, bd_id: int, codigo: str) -> Estrategia | None:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -354,7 +347,7 @@ def obtener(conexion: oracledb.Connection, bd_id: int, codigo: str) -> Estrategi
         cursor.close()
 
 
-def _cambiar_estado(conexion: oracledb.Connection, bd_id: int, codigo: str, estado: EstadoEstrategia) -> None:
+def _cambiar_estado(conexion: Conexion, bd_id: int, codigo: str, estado: EstadoEstrategia) -> None:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -368,16 +361,16 @@ def _cambiar_estado(conexion: oracledb.Connection, bd_id: int, codigo: str, esta
         cursor.close()
 
 
-def activar(conexion: oracledb.Connection, bd_id: int, codigo: str) -> None:
+def activar(conexion: Conexion, bd_id: int, codigo: str) -> None:
     _cambiar_estado(conexion, bd_id, codigo, EstadoEstrategia.ACTIVA)
 
 
-def desactivar(conexion: oracledb.Connection, bd_id: int, codigo: str) -> None:
+def desactivar(conexion: Conexion, bd_id: int, codigo: str) -> None:
     _cambiar_estado(conexion, bd_id, codigo, EstadoEstrategia.INACTIVA)
 
 
 def obtener_tarea_id(
-    conexion: oracledb.Connection, bd_id: int, estrategia_codigo: str, tarea_codigo: str
+    conexion: Conexion, bd_id: int, estrategia_codigo: str, tarea_codigo: str
 ) -> int | None:
     cursor = conexion.cursor()
     try:
@@ -397,7 +390,7 @@ def obtener_tarea_id(
         cursor.close()
 
 
-def ids_de_tareas(conexion: oracledb.Connection, estrategia_id: int) -> dict[str, int]:
+def ids_de_tareas(conexion: Conexion, estrategia_id: int) -> dict[str, int]:
     cursor = conexion.cursor()
     try:
         cursor.execute("SELECT codigo, id FROM tarea WHERE estrategia_id = :id", id=estrategia_id)

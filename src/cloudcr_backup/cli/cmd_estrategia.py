@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Annotated
 
-import oracledb
 import typer
 from rich.table import Table
 
@@ -17,7 +16,7 @@ from cloudcr_backup.oracle.explorador import InstanciaNoEncontrada, explorar_loc
 from cloudcr_backup.presentacion.terminal import consola, tabla_hallazgos
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository import conexion as repositorio_conexion
-from cloudcr_backup.repository.conexion import RepositorioNoConfigurado
+from cloudcr_backup.repository.conexion import Conexion, ErrorConexionRepositorio, RepositorioNoConfigurado
 from cloudcr_backup.strategy import servicio
 from cloudcr_backup.strategy.prioridad import criterio_de
 from cloudcr_backup.strategy.vocabulario import etiqueta_doble
@@ -27,21 +26,21 @@ from cloudcr_backup.strategy.yaml_io import (
     guardar_estrategia_yaml,
 )
 from cloudcr_backup.validation import motor, reglas  # noqa: F401
-from cloudcr_backup.validation.contexto import ContextoValidacion, servicio_de_dsn
+from cloudcr_backup.validation.contexto import ContextoValidacion
 
 app = typer.Typer(add_completion=False, help="Administra estrategias de respaldo: qué, cómo, cuándo y su validación.")
 
 
-def _conectar_repositorio() -> oracledb.Connection:
+def _conectar_repositorio() -> Conexion:
     try:
         return repositorio_conexion.abrir_repositorio(cargar_ajustes())
     except RepositorioNoConfigurado as error:
-        terminar_con_error(str(error), "Configure CLOUDCR_REPOSITORIO_DSN y CLOUDCR_REPO_CLAVE (vea .env.example).")
-    except ErrorConexionOracle as error:
+        terminar_con_error(str(error), "Configure CLOUDCR_REPO_CLAVE (vea .env.example).")
+    except ErrorConexionRepositorio as error:
         terminar_con_error(str(error), error.sugerencia)
 
 
-def _bd_id_de(conexion: oracledb.Connection, nombre: str) -> int:
+def _bd_id_de(conexion: Conexion, nombre: str) -> int:
     bd = repositorio_bases_datos.obtener(conexion, nombre)
     if bd is None:
         terminar_con_error(
@@ -69,7 +68,7 @@ def _cargar_desde_archivo(archivo: Path) -> Estrategia:
         terminar_con_error(str(error))
 
 
-def _obtener_o_fallar(conexion: oracledb.Connection, bd_id: int, bd: str, codigo: str) -> Estrategia:
+def _obtener_o_fallar(conexion: Conexion, bd_id: int, bd: str, codigo: str) -> Estrategia:
     estrategia = servicio.obtener(conexion, bd_id, codigo)
     if estrategia is None:
         terminar_con_error(f"No existe la estrategia {codigo} en {bd}.")
@@ -104,7 +103,6 @@ def validar(
     contexto = ContextoValidacion(
         estrategia=estrategia,
         perfil=perfil,
-        repositorio_servicio=servicio_de_dsn(cargar_ajustes().repositorio_dsn),
     )
     hallazgos = motor.validar(contexto)
     salida = consola()

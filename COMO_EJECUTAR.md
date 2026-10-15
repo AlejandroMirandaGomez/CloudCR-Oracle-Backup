@@ -20,6 +20,7 @@ En los comandos, lo que aparece entre `< >` se reemplaza por el valor de tu equi
 | Python 3.11 o superior | `python --version` |
 | Git (solo para clonar) | `git --version` |
 | Oracle instalado y la instancia iniciada | `Get-Service OracleService*` debe mostrar `Running` |
+| MySQL Server 8.0 o superior (guarda el repositorio de la herramienta) | `Get-Service MySQL80` debe existir; `iniciar.cmd` lo inicia si está detenido |
 | Tu usuario de Windows pertenece al grupo `ORA_DBA` | `whoami /groups \| Select-String ORA_DBA` (el usuario que instaló Oracle ya pertenece) |
 
 ## Inicio rápido (equipo nuevo)
@@ -32,9 +33,9 @@ cd CloudCR-Oracle-Backup
 .\iniciar.cmd
 ```
 
-`iniciar.cmd` hace todo lo que falte y se puede volver a ejecutar sin riesgo: crea `.venv`, instala las dependencias (solo si cambió `pyproject.toml`), crea la PDB `BKPCAT` y el usuario `BKP_ADMIN` con los datos del archivo `.env` (solo si todavía no existen), instala las tablas del repositorio y abre la interfaz web. Cuando todo ya está listo, solo abre la web.
+`iniciar.cmd` hace todo lo que falte y se puede volver a ejecutar sin riesgo: crea `.venv`, instala las dependencias (solo si cambió `pyproject.toml`), comprueba que el servicio `MySQL80` esté en ejecución (lo inicia si está detenido; para eso la terminal debe ser de administrador), crea la base `cloudcr` y su usuario en MySQL con los datos del archivo `.env` (solo si todavía no existen; necesita `CLOUDCR_MYSQL_ADMIN_CLAVE` en `.env.local`), instala las tablas del repositorio y abre la interfaz web. Cuando todo ya está listo, solo abre la web. Oracle no tiene que estar en ejecución para iniciar la herramienta.
 
-Opciones: `.\iniciar.cmd -Puerto <PUERTO>` para usar otro puerto, `.\iniciar.cmd -NoAbrir` para no abrir el navegador y `.\iniciar.cmd -SinAgente` para que el agente de respaldos no arranque junto con la web (por defecto arranca solo y ejecuta las tareas activas con script aprobado cuando les toca; se puede detener o desactivar en Sistema → Agente). Si el `.env` ya trae otra clave para `BKP_ADMIN`, el script deja el usuario con esa clave.
+Opciones: `.\iniciar.cmd -Puerto <PUERTO>` para usar otro puerto, `.\iniciar.cmd -NoAbrir` para no abrir el navegador y `.\iniciar.cmd -SinAgente` para que el agente de respaldos no arranque junto con la web (por defecto arranca solo y ejecuta las tareas activas con script aprobado cuando les toca; se puede detener o desactivar en Sistema → Agente). Si el usuario del repositorio ya existe con otra clave, `repo preparar` lo deja con la de `CLOUDCR_REPO_CLAVE`.
 
 ## Primera vez: instalación
 
@@ -191,7 +192,7 @@ Es la secuencia que pide el enunciado: **estrategia → programación → script
 | # | Paso | Terminal | Web |
 |---|---|---|---|
 | 1 | Comprobar el entorno | `cloudcr doctor` | Sistema → Diagnóstico del entorno |
-| 2 | Instalar el repositorio | `cloudcr repo instalar` · `cloudcr repo estado` | Sistema → Repositorio BKPCAT |
+| 2 | Instalar el repositorio | `cloudcr repo instalar` · `cloudcr repo estado` | Sistema → Repositorio |
 | 3 | Registrar la base y guardar su perfil | `cloudcr db agregar XE` · `cloudcr db inspeccionar XE` | Sistema → Bases de datos |
 | 4 | Definir la estrategia (qué, cómo, cuándo, destino, retención) | `cloudcr estrategia crear` (asistente) o `cloudcr estrategia importar config\estrategias\est001.yaml --bd XE` | Instancias → «Crear estrategia de respaldo», o Estrategias → Importar |
 | 5 | Validar | `cloudcr estrategia validar --bd XE --codigo EST001` | Detalle de la estrategia → Validar |
@@ -375,45 +376,50 @@ La barra superior de la interfaz tiene **Estado · Estrategias · Historial · A
 
 Si el repositorio no está configurado o no responde, las pantallas muestran un panel con la sugerencia y la API responde `503` con el mismo mensaje.
 
-## Instalar el repositorio (PDB BKPCAT)
+## Instalar el repositorio (MySQL)
 
-El repositorio guarda estrategias, scripts RMAN, ejecuciones y alertas en una PDB propia (`BKPCAT`) dentro de la misma XE, con su propio usuario (`BKP_ADMIN`). Se crea una sola vez por instalación de Oracle, conectado como `SYSDBA` con `sqlplus`.
+El repositorio guarda estrategias, scripts RMAN, ejecuciones y alertas en una base MySQL propia (`cloudcr`), separada de Oracle. Así la herramienta sigue funcionando aunque la instancia Oracle esté detenida o dañada, que es justo cuando hace falta para recuperarla. Requiere MySQL Server 8.0 o superior; en Windows se administra como el servicio `MySQL80`.
 
-**1. Crear la PDB** (pide el nombre de la PDB, un usuario administrador temporal y su clave)
+`iniciar.cmd` hace todo esto solo. Estos son los pasos a mano:
 
-```powershell
-sqlplus / as sysdba @sql\setup\01_crear_pdb_bkpcat.sql
-```
+**1. Configurar la conexión.** En `.env`: `CLOUDCR_REPOSITORIO_HOST` (por defecto `localhost`), `CLOUDCR_REPOSITORIO_PUERTO` (`3306`), `CLOUDCR_REPOSITORIO_BASE` (`cloudcr`), `CLOUDCR_REPOSITORIO_USUARIO` (`cloudcr`) y `CLOUDCR_REPO_CLAVE`, la clave que tendrá ese usuario. Si hay que crear la base y el usuario, en `.env.local` (no versionado) van también `CLOUDCR_MYSQL_ADMIN_USUARIO` (por defecto `root`) y `CLOUDCR_MYSQL_ADMIN_CLAVE`.
 
-**2. Crear el usuario del repositorio dentro de esa PDB** (pide el nombre de la PDB, el usuario del repositorio, su clave y la cuota)
+**2. Crear la base y el usuario**
 
 ```powershell
-sqlplus / as sysdba @sql\setup\02_crear_usuario_repositorio.sql
+cloudcr repo preparar
 ```
 
-**3. Crear las 12 tablas**, conectado ya como el usuario del repositorio en la PDB (reemplazando `<PDB>` y `<USUARIO>`)
+Crea la base `cloudcr` (utf8mb4, distingue mayúsculas) y el usuario con permisos solo sobre esa base. Si ya existen y el usuario puede conectarse, no hace nada y no pide la clave del administrador. Alternativa manual, conectado a MySQL como administrador:
+
+```sql
+CREATE DATABASE cloudcr CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+CREATE USER 'cloudcr'@'localhost' IDENTIFIED BY '<CLAVE>';
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, INDEX, REFERENCES ON cloudcr.* TO 'cloudcr'@'localhost';
+```
+
+**3. Crear las tablas y cargar los parámetros iniciales**
 
 ```powershell
-sqlplus <USUARIO>/<CLAVE>@localhost:1521/<PDB> @sql\setup\03_esquema_bkp_admin.sql
+cloudcr repo instalar
+cloudcr repo estado
 ```
 
-Este script es idempotente: si las tablas ya existen las elimina primero, así que se puede ejecutar de nuevo sin dejar el esquema a medias.
+`repo instalar` elimina las tablas del repositorio si ya existían y las vuelve a crear: no lo ejecute sobre un repositorio con datos.
 
-**4. Cargar los parámetros iniciales** (mismo usuario y conexión que el paso 3)
+**4. (Solo si venía de la versión con el repositorio en Oracle) Migrar los datos**
 
 ```powershell
-sqlplus <USUARIO>/<CLAVE>@localhost:1521/<PDB> @sql\setup\04_parametros_iniciales.sql
+cloudcr repo migrar-oracle --dsn localhost:1521/BKPCAT --usuario BKP_ADMIN
 ```
 
-**5. (Opcional) Usuario común de solo lectura para inspección sin SYSDBA**
+Pide la clave del usuario de Oracle (o léala de `CLOUDCR_ORIGEN_CLAVE`; el DSN y el usuario también pueden ir en `CLOUDCR_ORIGEN_DSN` y `CLOUDCR_ORIGEN_USUARIO`). Solo lee de Oracle: copia las 13 tablas a MySQL conservando los identificadores, comprueba que cada tabla quedó con las mismas filas y, si algo falla, revierte todo. Exige que MySQL no tenga estrategias ni ejecuciones (los parámetros iniciales no cuentan; los de Oracle los reemplazan); con `--reemplazar` borra lo que haya antes de copiar. Cuando termine, la PDB `BKPCAT` ya no se usa y se puede conservar como respaldo o eliminar.
+
+**5. (Opcional) Usuario común de solo lectura en Oracle para inspección sin SYSDBA**
 
 ```powershell
 sqlplus / as sysdba @sql\setup\05_usuario_monitor.sql
 ```
-
-**6. Configurar las credenciales del repositorio**
-
-Copiar `.env.example` a `.env` (o exportar las variables en la sesión de PowerShell) y completar al menos `CLOUDCR_REPO_CLAVE` con la clave del usuario del repositorio. Esta clave **nunca** va en `cloudcr.yaml` ni en el código.
 
 > **Atención:** en este repositorio el archivo `.env` está versionado en git (se compartió como configuración de desarrollo del equipo), así que `.gitignore` no lo protege. **No escribas en él contraseñas.** La contraseña del correo de alertas va en `.env.local`, que no se versiona (ver la sección «Correo de alertas»).
 
@@ -467,7 +473,7 @@ Corre las pruebas que no necesitan Oracle (la gran mayoría). Además:
 .\.venv\Scripts\python.exe -m mypy src
 ```
 
-> **Cuidado con las pruebas marcadas `oracle`** (`pytest -m oracle`). Instalan el esquema en el repositorio y lo **desinstalan al terminar**: si se corren contra el repositorio real, se pierden estrategias, ejecuciones y evidencias. Solo se deben correr contra un repositorio de pruebas.
+> **Cuidado con las pruebas marcadas `mysql`** (`pytest -m mysql`). Instalan el esquema en el repositorio y lo **desinstalan al terminar**. Por eso solo corren si `CLOUDCR_REPOSITORIO_BASE` contiene «prueba» o «test» (por ejemplo `cloudcr_prueba`); contra la base real se omiten. Las marcadas `oracle` necesitan una instancia Oracle local.
 
 ## Problemas comunes
 
@@ -477,6 +483,9 @@ Corre las pruebas que no necesitan Oracle (la gran mayoría). Además:
 | `No se encontró ninguna instancia Oracle` | No hay Oracle en el equipo o no se detectó | Revisar `Get-Service OracleService*`; indicar la instancia a mano: `cloudcr explorar <SID> --oracle-home <ORACLE_HOME>` |
 | `ORA-01031` / "no tiene privilegios de administrador" | Tu usuario no está en `ORA_DBA` | Agregarlo (Administración de equipos → Usuarios y grupos locales → Grupos → ORA_DBA), cerrar sesión y volver a entrar |
 | `ORA-01034` / `ORA-12560` / "la instancia no está disponible" | La instancia está detenida | `Start-Service OracleService<SID>` (PowerShell como administrador) |
+| `No se pudo llegar a MySQL en localhost:3306` | El servicio de MySQL está detenido o el puerto es otro | `Start-Service MySQL80` (PowerShell como administrador) y revisar `CLOUDCR_REPOSITORIO_PUERTO` |
+| `MySQL rechazó el usuario ... o su clave` | La clave de `CLOUDCR_REPO_CLAVE` no es la del usuario del repositorio | Corregir el `.env` o ejecutar `cloudcr repo preparar` para fijar la clave del usuario |
+| `La base cloudcr no existe` | Todavía no se creó la base del repositorio | `cloudcr repo preparar` (necesita `CLOUDCR_MYSQL_ADMIN_CLAVE` en `.env.local`) |
 | El árbol se corta o se ve apretado | La ventana es angosta | Agrandar la ventana o usar Windows Terminal; también se puede exportar a HTML |
 | Tildes o líneas del árbol se ven mal | Consola antigua con otra página de códigos | Usar Windows Terminal, o ejecutar `chcp 65001` antes |
 | `cloudcr` no se reconoce | No se activó el entorno | Usar `.\.venv\Scripts\cloudcr.exe` o activar con `.\.venv\Scripts\Activate.ps1` |

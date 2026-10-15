@@ -13,8 +13,8 @@ TRANSICIONES: dict[EstadoScript, frozenset[EstadoScript]] = {
 }
 
 MENSAJE_CAIDA = (
-    "El script hace un respaldo CONSISTENTE: ejecuta SHUTDOWN IMMEDIATE y la base de datos (y todas sus PDB, "
-    "incluido el repositorio BKPCAT si vive en la misma CDB) queda fuera de servicio mientras dura el respaldo."
+    "El script hace un respaldo CONSISTENTE: ejecuta SHUTDOWN IMMEDIATE y la base de datos (y todas sus PDB) "
+    "queda fuera de servicio mientras dura el respaldo."
 )
 SUGERENCIA_CAIDA = "Si acepta la caída del servicio, apruebe de nuevo con --acepto-caida."
 

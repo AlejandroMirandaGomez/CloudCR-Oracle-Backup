@@ -8,7 +8,6 @@ from types import SimpleNamespace
 from typing import Any
 from zoneinfo import ZoneInfo
 
-import oracledb
 import pytest
 
 from cloudcr_backup.config.ajustes import Ajustes
@@ -514,10 +513,7 @@ def test_repositorio_crea_la_tabla_solo_si_falta_y_usa_binds_coherentes() -> Non
     assert len(existente.ejecutados) == 1
     nueva = ConexionFalsa([(0,)])
     repositorio_recuperaciones.asegurar_tabla(nueva)  # type: ignore[arg-type]
-    assert "CREATE TABLE recuperacion_procedimiento" in nueva.sql(1)
-    carrera = ConexionFalsa([(0,)])
-    carrera.errores.extend([None, oracledb.DatabaseError(SimpleNamespace(code=955))])
-    repositorio_recuperaciones.asegurar_tabla(carrera)  # type: ignore[arg-type]
+    assert "CREATE TABLE IF NOT EXISTS recuperacion_procedimiento" in nueva.sql(1)
     conexion = ConexionFalsa()
     conexion.siguiente_id = 8
     registro = repositorio_recuperaciones.registrar(
@@ -537,19 +533,19 @@ def test_repositorio_crea_la_tabla_solo_si_falta_y_usa_binds_coherentes() -> Non
     repositorio_recuperaciones.registrar_resultado(conexion, 8, ResultadoRecuperacion.EJECUTADO_OK, "x" * 5000)  # type: ignore[arg-type]
     assert len(conexion.ejecutados[-1][1]["mensaje"]) == repositorio_recuperaciones.LARGO_MAXIMO_MENSAJE
     assert repositorio_recuperaciones.obtener(conexion, 8) is None  # type: ignore[arg-type]
-    assert "SYSTIMESTAMP" not in conexion.sql(0)
+    assert "UTC_TIMESTAMP" not in conexion.sql(0)
 
 
 def test_el_esquema_instala_la_tabla_de_recuperacion_sin_exigirla_en_repositorios_existentes() -> None:
     conexion = ConexionFalsa()
     esquema.instalar(conexion)  # type: ignore[arg-type]
     sentencias = [sql for sql, _ in conexion.ejecutados]
-    assert sentencias[0].startswith("DROP TABLE RECUPERACION_PROCEDIMIENTO")
-    assert sentencias[-1].startswith("CREATE TABLE recuperacion_procedimiento")
+    assert sentencias[0].startswith("DROP TABLE IF EXISTS recuperacion_procedimiento")
+    assert sentencias[-1].startswith("CREATE TABLE IF NOT EXISTS recuperacion_procedimiento")
     assert "RECUPERACION_PROCEDIMIENTO" not in esquema.TABLAS
     desinstalada = ConexionFalsa()
     esquema.desinstalar(desinstalada)  # type: ignore[arg-type]
-    assert desinstalada.sql(0).startswith("DROP TABLE RECUPERACION_PROCEDIMIENTO")
+    assert desinstalada.sql(0).startswith("DROP TABLE IF EXISTS recuperacion_procedimiento")
 
 
 def test_una_falla_inesperada_no_deja_el_procedimiento_en_curso(entorno: Entorno) -> None:

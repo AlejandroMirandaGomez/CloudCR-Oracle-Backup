@@ -4,7 +4,7 @@ import sys
 from importlib import import_module
 from pathlib import Path
 
-from cloudcr_backup.config.ajustes import Ajustes
+from cloudcr_backup.config.ajustes import Ajustes, obtener_clave_repositorio
 from cloudcr_backup.domain.administracion import (
     ComprobacionEntorno,
     EstadoRepositorio,
@@ -18,7 +18,17 @@ from cloudcr_backup.repository import esquema as repositorio_esquema
 from cloudcr_backup.repository import parametros as repositorio_parametros
 from cloudcr_backup.services.sesion import conexion_repositorio
 
-MODULOS_REQUERIDOS = ("oracledb", "pydantic", "typer", "fastapi", "yaml", "dateutil", "questionary", "dotenv")
+MODULOS_REQUERIDOS = (
+    "oracledb",
+    "pymysql",
+    "pydantic",
+    "typer",
+    "fastapi",
+    "yaml",
+    "dateutil",
+    "questionary",
+    "dotenv",
+)
 LARGO_MAXIMO_CLAVE = 100
 LARGO_MAXIMO_VALOR = 4000
 FRASE_REINICIO = "BORRAR TODO"
@@ -78,15 +88,20 @@ def comprobar_dependencias() -> ComprobacionEntorno:
 
 
 def comprobar_configuracion(ajustes: Ajustes) -> ComprobacionEntorno:
-    if not ajustes.repositorio_dsn:
+    if not obtener_clave_repositorio():
         return ComprobacionEntorno(
             nombre="Configuración",
             ok=False,
-            detalle="No hay CLOUDCR_REPOSITORIO_DSN configurado",
+            detalle="No hay CLOUDCR_REPO_CLAVE configurada",
             sugerencia="Copie .env.example a .env y complételo.",
         )
     return ComprobacionEntorno(
-        nombre="Configuración", ok=True, detalle=f"DSN del repositorio: {ajustes.repositorio_dsn}"
+        nombre="Configuración",
+        ok=True,
+        detalle=(
+            f"Repositorio MySQL: {ajustes.repositorio_usuario}@{ajustes.repositorio_host}:"
+            f"{ajustes.repositorio_puerto}/{ajustes.repositorio_base}"
+        ),
     )
 
 

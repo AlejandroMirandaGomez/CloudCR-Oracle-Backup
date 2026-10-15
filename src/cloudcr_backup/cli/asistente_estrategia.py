@@ -34,7 +34,7 @@ from cloudcr_backup.oracle.explorador import InstanciaNoEncontrada, explorar_loc
 from cloudcr_backup.presentacion.terminal import consola, tabla_hallazgos
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository import conexion as repositorio_conexion
-from cloudcr_backup.repository.conexion import RepositorioNoConfigurado
+from cloudcr_backup.repository.conexion import ErrorConexionRepositorio, RepositorioNoConfigurado
 from cloudcr_backup.services.catalogo_estrategia import destino_sugerido
 from cloudcr_backup.strategy import servicio
 from cloudcr_backup.strategy.alcance import identificador_tablespace
@@ -43,7 +43,7 @@ from cloudcr_backup.strategy.plantillas_esquema import ParametrosEsquema, tareas
 from cloudcr_backup.strategy.prioridad import criterio_de
 from cloudcr_backup.strategy.yaml_io import estrategia_a_yaml, guardar_estrategia_yaml
 from cloudcr_backup.validation import motor, reglas  # noqa: F401
-from cloudcr_backup.validation.contexto import ContextoValidacion, servicio_de_dsn
+from cloudcr_backup.validation.contexto import ContextoValidacion
 
 
 def construir_opciones_alcance(perfil: PerfilBD) -> list[tuple[str, TipoObjeto, str]]:
@@ -103,7 +103,7 @@ def _preguntar_hora(mensaje: str, por_defecto: time) -> time:
 def _codigos_existentes(bd_nombre: str) -> list[str]:
     try:
         conexion = repositorio_conexion.abrir_repositorio(cargar_ajustes())
-    except (RepositorioNoConfigurado, ErrorConexionOracle):
+    except (RepositorioNoConfigurado, ErrorConexionRepositorio):
         return []
     bd = repositorio_bases_datos.obtener(conexion, bd_nombre)
     if bd is None:
@@ -197,7 +197,6 @@ def _paso_validacion(estrategia: Estrategia, perfil: PerfilBD) -> list[Hallazgo]
     contexto = ContextoValidacion(
         estrategia=estrategia,
         perfil=perfil,
-        repositorio_servicio=servicio_de_dsn(cargar_ajustes().repositorio_dsn),
     )
     hallazgos = motor.validar(contexto)
     salida = consola()
@@ -244,7 +243,7 @@ def _paso_guardar_y_activar(estrategia: Estrategia, bd_nombre: str) -> None:
         return
     try:
         conexion = repositorio_conexion.abrir_repositorio(cargar_ajustes())
-    except (RepositorioNoConfigurado, ErrorConexionOracle) as error:
+    except (RepositorioNoConfigurado, ErrorConexionRepositorio) as error:
         salida.print(
             f"No se pudo conectar al repositorio ({error}); quedó guardada solo en el archivo.", style="yellow"
         )

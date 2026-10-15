@@ -2,8 +2,6 @@ import logging
 from collections.abc import Callable
 from pathlib import Path
 
-import oracledb
-
 from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.enums import EstadoScript, Severidad
 from cloudcr_backup.domain.errores import OperacionNoPermitida, RecursoNoEncontrado
@@ -14,6 +12,7 @@ from cloudcr_backup.execution.destino import BaseDestino, perfil_actual
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository import parametros as repositorio_parametros
 from cloudcr_backup.repository import scripts as repositorio_scripts
+from cloudcr_backup.repository.conexion import Conexion
 from cloudcr_backup.repository.scripts import ScriptRman
 from cloudcr_backup.rman import aprobacion, nombres
 from cloudcr_backup.rman.aprobacion import AprobacionRechazada
@@ -52,7 +51,7 @@ def _intacto(ruta: Path, hash_sha256: str) -> bool | None:
 
 
 def _perfil(
-    conexion: oracledb.Connection, resuelta: TareaResuelta, obtener: ObtenerPerfil, avisos: list[str]
+    conexion: Conexion, resuelta: TareaResuelta, obtener: ObtenerPerfil, avisos: list[str]
 ) -> PerfilBD:
     base = BaseDestino(oracle_home=Path(resuelta.base.oracle_home), sid=resuelta.base.nombre)
     try:
@@ -77,14 +76,13 @@ def _hallazgos_de_tarea(
     ajustes: Ajustes, resuelta: TareaResuelta, perfil: PerfilBD, parametros: dict[str, str]
 ) -> list[Hallazgo]:
     from cloudcr_backup.validation import motor, reglas  # noqa: F401
-    from cloudcr_backup.validation.contexto import ContextoValidacion, servicio_de_dsn
+    from cloudcr_backup.validation.contexto import ContextoValidacion
 
     otras = {t.codigo for t in resuelta.estrategia.tareas if t.codigo != resuelta.tarea.codigo}
     contexto = ContextoValidacion(
         estrategia=resuelta.estrategia,
         perfil=perfil,
         parametros=parametros,
-        repositorio_servicio=servicio_de_dsn(ajustes.repositorio_dsn),
     )
     hallazgos = motor.validar(contexto)
     return [h for h in hallazgos if h.sujeto not in otras]
@@ -142,7 +140,7 @@ def vista(
 
 def _generar_tarea(
     ajustes: Ajustes,
-    conexion: oracledb.Connection,
+    conexion: Conexion,
     resuelta: TareaResuelta,
     perfil: PerfilBD,
     parametros: dict[str, str],
@@ -212,7 +210,7 @@ def generar(
     return [v.model_copy(update={"avisos": [*v.avisos, *extra]}) for v in vistas]
 
 
-def _elegir(conexion: oracledb.Connection, resuelta: TareaResuelta, version: int | None) -> ScriptRman:
+def _elegir(conexion: Conexion, resuelta: TareaResuelta, version: int | None) -> ScriptRman:
     existentes = repositorio_scripts.listar(conexion, resuelta.tarea_id)
     if not existentes:
         raise RecursoNoEncontrado(

@@ -41,7 +41,7 @@ $env:PYTHONUTF8 = "1"
 .\.venv\Scripts\cloudcr.exe --version
 ```
 
-Luego instale el repositorio de la herramienta (PDB `BKPCAT`, usuario `BKP_ADMIN`, 12 tablas y parámetros iniciales) siguiendo la sección «Instalar el repositorio» de `COMO_EJECUTAR.md`, o con `cloudcr repo instalar` si la PDB y el usuario ya existen.
+Luego instale el repositorio de la herramienta (base `cloudcr` en MySQL, su usuario, 12 tablas y parámetros iniciales) siguiendo la sección «Instalar el repositorio» de `COMO_EJECUTAR.md`, o con `cloudcr repo preparar` y `cloudcr repo instalar`. El repositorio vive fuera de Oracle a propósito: la herramienta tiene que seguir funcionando cuando Oracle no arranca.
 
 Verifique todo con:
 
@@ -61,9 +61,12 @@ Copie `.env.example` a `.env` y complete:
 
 | Variable | Para qué | Ejemplo |
 |---|---|---|
-| `CLOUDCR_REPOSITORIO_DSN` | Conexión al repositorio | `localhost:1521/BKPCAT` |
-| `CLOUDCR_REPOSITORIO_USUARIO` | Usuario del repositorio | `BKP_ADMIN` |
-| `CLOUDCR_REPO_CLAVE` | Clave del repositorio | *(la suya; nunca se versiona)* |
+| `CLOUDCR_REPOSITORIO_HOST` | Servidor MySQL del repositorio | `localhost` |
+| `CLOUDCR_REPOSITORIO_PUERTO` | Puerto de MySQL | `3306` |
+| `CLOUDCR_REPOSITORIO_BASE` | Base del repositorio | `cloudcr` |
+| `CLOUDCR_REPOSITORIO_USUARIO` | Usuario del repositorio | `cloudcr` |
+| `CLOUDCR_REPO_CLAVE` | Clave del usuario del repositorio | *(la suya; nunca se versiona)* |
+| `CLOUDCR_MYSQL_SERVICIO` | Servicio de Windows de MySQL que `iniciar.cmd` comprueba | `MySQL80` |
 | `CLOUDCR_WORK_DIR` | Carpeta de trabajo (scripts, ejecuciones, latido, logs) | vacío = `%LOCALAPPDATA%\cloudcr` |
 | `CLOUDCR_DESTINO_DEFECTO` | Destino sugerido para respaldos | `C:\backups\XE` |
 | `CLOUDCR_SMTP_CLAVE` | Clave de la cuenta de correo para las alertas (ver §8) | *(contraseña de aplicación)* |
@@ -72,7 +75,7 @@ Copie `.env.example` a `.env` y complete:
 
 ### 3.2 `cloudcr.yaml` (opcional)
 
-Mismos campos que las variables, sin el prefijo: `repositorio_dsn`, `repositorio_usuario`, `work_dir`, `destino_defecto`, `zona_horaria` (por defecto `America/Costa_Rica`). Se busca en `%USERPROFILE%\cloudcr.yaml` o donde indique `CLOUDCR_CONFIG`.
+Mismos campos que las variables, sin el prefijo: `repositorio_host`, `repositorio_puerto`, `repositorio_base`, `repositorio_usuario`, `work_dir`, `destino_defecto`, `zona_horaria` (por defecto `America/Costa_Rica`). Se busca en `%USERPROFILE%\cloudcr.yaml` o donde indique `CLOUDCR_CONFIG`.
 
 ### 3.3 Parámetros del repositorio
 
@@ -146,7 +149,7 @@ Desde «Script RMAN» de cada tarea (`/estrategias/{bd}/{codigo}/scripts/{tarea}
 - Con el script aprobado: **Simular la ejecución** (preflight y comando, sin RMAN) y **Ejecutar ahora** (corre en segundo plano; el enlace lleva al detalle del historial, que se actualiza solo).
 - **Regenerar** y la lista de versiones.
 
-> Un respaldo CONSISTENTE apaga la base, y con ella el repositorio `BKPCAT` si vive en la misma CDB: la web deja de responder unos minutos y vuelve sola. La evidencia queda primero en disco y en el buzón.
+> Un respaldo CONSISTENTE apaga la base respaldada, pero no el repositorio: vive en MySQL, así que la web y el agente siguen respondiendo y registran el resultado al terminar. La evidencia queda primero en disco.
 
 ### 4.3 Estado
 
@@ -392,8 +395,8 @@ Semántica de la programación:
 | **Ritmo de log switch (`RED_003`)** | Se mide con `V$LOG_HISTORY` de las últimas 24 h; con menos de 4 cambios se informa que no hay datos suficientes. Los perfiles guardados antes de esta versión no traen el dato. |
 | **Pruebas «Pendiente»** | Solo queda así si `verificacion.automatica` está en `false`; en ese caso use `cloudcr verificar <id>` (CROSSCHECK + existencia + `VALIDATE BACKUPSET`). |
 | **Hora de la falla en el calendario** | Es la hora en que un diagnóstico la detectó, no el instante exacto de la caída (ese solo está en el alert log de Oracle). |
-| **Recuperación con el repositorio en la misma CDB** | Los escenarios que reinician la instancia (`datafile-critico`, `controlfile`, `grupo-redolog-actual`, `spfile`, `total-noarchivelog`, `punto-en-tiempo`) apagan también `BKPCAT`: la web deja de responder hasta que la base se reabre. El resultado se escribe primero en disco (`*.resultado.json`) y la tarjeta lo toma al volver. Si la CDB queda montada (por ejemplo, tras borrar un datafile con la base apagada), CloudCR no puede conectarse al repositorio y el DBA aplica el script a mano. |
-| **Horas en UTC** | El repositorio guarda horas en UTC (`SYS_EXTRACT_UTC(SYSTIMESTAMP)`); la web y la CLI las muestran en la zona de cada tarea. `perfil_bd.capturado_en` y `script_rman.creado_en` siguen usando el valor por defecto del DDL (hora del servidor); solo se comparan entre sí. |
+| **Recuperación con Oracle apagado o montado** | El repositorio vive en MySQL, así que los escenarios que reinician la instancia (`datafile-critico`, `controlfile`, `grupo-redolog-actual`, `spfile`, `total-noarchivelog`, `punto-en-tiempo`) no cortan la web ni el registro del resultado. Aun así el resultado se escribe primero en disco (`*.resultado.json`) y la tarjeta lo toma al volver. Si la instancia queda montada (por ejemplo, tras borrar un datafile con la base apagada), CloudCR sigue mostrando el procedimiento y el DBA decide si lo aplica desde la herramienta o a mano. |
+| **Horas en UTC** | El repositorio guarda horas en UTC (`UTC_TIMESTAMP(6)`); la web y la CLI las muestran en la zona de cada tarea. `perfil_bd.capturado_en` y `script_rman.creado_en` siguen usando el valor por defecto del DDL (hora del servidor); solo se comparan entre sí. |
 
 ---
 
@@ -401,12 +404,13 @@ Semántica de la programación:
 
 | Síntoma | Causa | Solución |
 |---|---|---|
-| `Error: No hay un DSN configurado…` / web: «El repositorio no está disponible» (503) | Falta `.env` o está incompleto | §3.1 y `cloudcr doctor` |
+| `Error: No hay clave configurada para el repositorio…` / web: «El repositorio no está disponible» (503) | Falta `.env` o está incompleto | §3.1 y `cloudcr doctor` |
+| `No se pudo llegar a MySQL en …` | El servicio de MySQL está detenido o el host/puerto no coinciden | `Start-Service MySQL80` (como administrador) y revise `CLOUDCR_REPOSITORIO_HOST` / `CLOUDCR_REPOSITORIO_PUERTO` |
+| `MySQL rechazó el usuario …` / `La base cloudcr no existe` | La clave o el usuario del `.env` no coinciden, o la base no se creó | `cloudcr repo preparar` |
 | `ORA-12541` / `ORA-12514` | Listener detenido o PDB no registrada | `lsnrctl status`; `ALTER SYSTEM REGISTER;` |
 | La ejecución queda BLOQUEADA | El preflight encontró un problema (script alterado, modo de archivado distinto, destino, validación) | `cloudcr historial mostrar <id>` muestra el motivo; `cloudcr ejecutar EST T1 --simular` lo revisa sin ejecutar |
 | `cloudcr agente estado` dice que nunca corrió | La carpeta de trabajo del agente y la de la consulta son distintas | Use el mismo `CLOUDCR_WORK_DIR` (o el mismo `cloudcr.yaml`) en ambos |
 | El semáforo queda amarillo con todo exitoso | Pruebas «Pendiente» | La verificación automática está desactivada: `cloudcr verificar <id>` |
-| `DPY-2019` (thin/thick) | Se abrió el repositorio antes que una conexión SYSDBA local | El agente y `cloudcr web` ya inician el cliente thick primero; reporte el comando exacto si reaparece |
 | Acentos o símbolos raros en la terminal | Consola sin UTF-8 | `$env:PYTHONUTF8 = "1"`; el texto del resultado siempre acompaña al símbolo |
 | El correo no llega | Clave o parámetros SMTP | Revise `logs\cloudcr.log`; `cloudcr alertas evaluar` muestra los avisos de configuración |
 
@@ -439,7 +443,7 @@ cloudcr historial mostrar 41                   # evidencia, log de RMAN, piezas 
   `Recovery Manager complete.` no basta para declarar éxito.
 - **Pruebas** queda en OK solo si las piezas existen, `CROSSCHECK` las encuentra `AVAILABLE` y
   `VALIDATE BACKUPSET` las lee sin errores.
-- Si el repositorio no responde al terminar (por ejemplo, `BKPCAT` apagada por un respaldo consistente), la
+- Si el repositorio no responde al terminar (por ejemplo, el servicio de MySQL detenido), la
   evidencia queda en `buzon\` y el agente la sincroniza en el siguiente tick.
 
 ### 13.2 Retención

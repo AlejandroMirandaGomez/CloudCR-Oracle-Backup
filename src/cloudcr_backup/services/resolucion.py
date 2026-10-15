@@ -1,12 +1,11 @@
 from dataclasses import dataclass
 
-import oracledb
-
 from cloudcr_backup.domain.errores import OperacionNoPermitida, RecursoNoEncontrado
 from cloudcr_backup.domain.estrategia import Estrategia, Tarea
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository import estrategias as repositorio_estrategias
 from cloudcr_backup.repository.bases_datos import BaseDatosRegistrada
+from cloudcr_backup.repository.conexion import Conexion
 
 SUGERENCIA_BASES = "Use 'cloudcr db listar' para ver las bases registradas."
 SUGERENCIA_ESTRATEGIAS = "Use 'cloudcr estrategia listar' o la pantalla de estrategias para ver las registradas."
@@ -20,7 +19,7 @@ class TareaResuelta:
     tarea_id: int
 
 
-def base_por_nombre(conexion: oracledb.Connection, nombre: str) -> BaseDatosRegistrada:
+def base_por_nombre(conexion: Conexion, nombre: str) -> BaseDatosRegistrada:
     base = repositorio_bases_datos.obtener(conexion, nombre.strip().upper())
     if base is None:
         raise RecursoNoEncontrado(
@@ -29,7 +28,7 @@ def base_por_nombre(conexion: oracledb.Connection, nombre: str) -> BaseDatosRegi
     return base
 
 
-def estrategia(conexion: oracledb.Connection, bd: str | None, codigo: str) -> tuple[BaseDatosRegistrada, Estrategia]:
+def estrategia(conexion: Conexion, bd: str | None, codigo: str) -> tuple[BaseDatosRegistrada, Estrategia]:
     codigo_normal = codigo.strip().upper()
     bases = [base_por_nombre(conexion, bd)] if bd else repositorio_bases_datos.listar(conexion)
     encontradas = [
@@ -48,7 +47,7 @@ def estrategia(conexion: oracledb.Connection, bd: str | None, codigo: str) -> tu
     return encontradas[0]
 
 
-def tareas(conexion: oracledb.Connection, bd: str | None, codigo: str, tarea: str | None) -> list[TareaResuelta]:
+def tareas(conexion: Conexion, bd: str | None, codigo: str, tarea: str | None) -> list[TareaResuelta]:
     base, encontrada = estrategia(conexion, bd, codigo)
     assert encontrada.id is not None
     ids = repositorio_estrategias.ids_de_tareas(conexion, encontrada.id)
@@ -63,5 +62,5 @@ def tareas(conexion: oracledb.Connection, bd: str | None, codigo: str, tarea: st
     return [TareaResuelta(base, encontrada, t, ids[t.codigo]) for t in elegidas]
 
 
-def una_tarea(conexion: oracledb.Connection, bd: str | None, codigo: str, tarea: str) -> TareaResuelta:
+def una_tarea(conexion: Conexion, bd: str | None, codigo: str, tarea: str) -> TareaResuelta:
     return tareas(conexion, bd, codigo, tarea)[0]

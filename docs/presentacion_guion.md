@@ -52,7 +52,7 @@ Estructura que marca el enunciado: **qué se configuró → cómo → cuándo �
 | ¿Por qué RMAN y no Data Pump? | El export es frágil si falla a mitad y solo se descubre al importar; RMAN permite verificar sin restaurar (`docs/analisis.md`, sec. 12) |
 | ¿Por qué `SHUTDOWN IMMEDIATE` y no `ABORT`? | Cierra ordenado, sin *instance recovery* al abrir, y sin esperar a los usuarios (sec. 14) |
 | ¿Dónde está el redo log en el respaldo? | RMAN no copia los redo logs online; se protegen multiplexados y archivados (sec. 11) |
-| ¿Qué pasa si se apaga el repositorio durante un respaldo consistente? | La evidencia se escribe primero a disco y queda en el buzón; `ARCH_009` lo avisa de antemano |
+| ¿Qué pasa si el repositorio no responde durante un respaldo? | El repositorio vive en MySQL, fuera de Oracle, así que un respaldo consistente no lo apaga; si MySQL cae, la evidencia se escribe primero a disco y queda en el buzón |
 | ¿La herramienta borra respaldos? | Solo con `purga_automatica` activa y confirmación; si no, solo informa |
 | ¿Qué diferencia hay entre diferencial y acumulativo? | Diferencial: cambios desde el último respaldo de cualquier nivel; acumulativo: desde el último nivel 0 |
 | ¿Por qué CLI y web? | Ambas llaman a la misma capa de servicios, así que muestran lo mismo |

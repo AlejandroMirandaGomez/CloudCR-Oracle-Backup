@@ -2,9 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
-import oracledb
-
 from cloudcr_backup.domain.enums import EstadoEjecucion, EstadoPrueba
+from cloudcr_backup.repository.conexion import Conexion, ErrorIntegridad
 
 _COLUMNAS_RESULTADO = {
     "estado",
@@ -63,7 +62,7 @@ def _normalizar(valor: object) -> object:
     return valor.value if isinstance(valor, StrEnum) else valor
 
 
-def reclamar(conexion: oracledb.Connection, tarea_id: int, programada_para: datetime) -> Ejecucion | None:
+def reclamar(conexion: Conexion, tarea_id: int, programada_para: datetime) -> Ejecucion | None:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -81,27 +80,24 @@ def reclamar(conexion: oracledb.Connection, tarea_id: int, programada_para: date
         bd_id, tipo_respaldo, script_id = fila
         if script_id is None:
             raise ValueError(f"La tarea {tarea_id} no tiene un script aprobado.")
-        id_var = cursor.var(int)
         try:
             cursor.execute(
                 """
                 INSERT INTO ejecucion (tarea_id, script_id, bd_id, programada_para, estado, tipo_respaldo)
                 VALUES (:tarea_id, :script_id, :bd_id, :programada_para, 'PROGRAMADA', :tipo_respaldo)
-                RETURNING id INTO :id
                 """,
                 tarea_id=tarea_id,
                 script_id=script_id,
                 bd_id=bd_id,
                 programada_para=programada_para,
                 tipo_respaldo=tipo_respaldo,
-                id=id_var,
             )
-        except oracledb.IntegrityError:
+        except ErrorIntegridad:
             conexion.rollback()
             return None
         conexion.commit()
         return Ejecucion(
-            id=int(id_var.getvalue()[0]),
+            id=cursor.lastrowid,
             tarea_id=tarea_id,
             script_id=int(script_id),
             estado=EstadoEjecucion.PROGRAMADA,
@@ -113,11 +109,11 @@ def reclamar(conexion: oracledb.Connection, tarea_id: int, programada_para: date
         cursor.close()
 
 
-def marcar_en_curso(conexion: oracledb.Connection, ejecucion_id: int, agente: str) -> None:
+def marcar_en_curso(conexion: Conexion, ejecucion_id: int, agente: str) -> None:
     cursor = conexion.cursor()
     try:
         cursor.execute(
-            "UPDATE ejecucion SET estado = 'EN_CURSO', inicio = SYS_EXTRACT_UTC(SYSTIMESTAMP), agente = :agente "
+            "UPDATE ejecucion SET estado = 'EN_CURSO', inicio = UTC_TIMESTAMP(6), agente = :agente "
             "WHERE id = :id",
             agente=agente,
             id=ejecucion_id,
@@ -127,7 +123,7 @@ def marcar_en_curso(conexion: oracledb.Connection, ejecucion_id: int, agente: st
         cursor.close()
 
 
-def registrar_resultado(conexion: oracledb.Connection, ejecucion_id: int, resultado: dict[str, object]) -> None:
+def registrar_resultado(conexion: Conexion, ejecucion_id: int, resultado: dict[str, object]) -> None:
     columnas = [c for c in resultado if c in _COLUMNAS_RESULTADO]
     if not columnas:
         return
@@ -142,7 +138,7 @@ def registrar_resultado(conexion: oracledb.Connection, ejecucion_id: int, result
         cursor.close()
 
 
-def historial(conexion: oracledb.Connection, filtros: FiltrosHistorial) -> list[Ejecucion]:
+def historial(conexion: Conexion, filtros: FiltrosHistorial) -> list[Ejecucion]:
     condiciones = []
     parametros: dict[str, object] = {}
     if filtros.bd_id is not None:
@@ -177,15 +173,13 @@ def historial(conexion: oracledb.Connection, filtros: FiltrosHistorial) -> list[
         cursor.close()
 
 
-def ultimas(conexion: oracledb.Connection, tarea_id: int, n: int) -> list[Ejecucion]:
+def ultimas(conexion: Conexion, tarea_id: int, n: int) -> list[Ejecucion]:
     cursor = conexion.cursor()
     try:
         cursor.execute(
             """
-            SELECT id, tarea_id, script_id, estado, programada_para, inicio, fin FROM (
-                SELECT id, tarea_id, script_id, estado, programada_para, inicio, fin
-                FROM ejecucion WHERE tarea_id = :tarea_id ORDER BY programada_para DESC
-            ) WHERE ROWNUM <= :n
+            SELECT id, tarea_id, script_id, estado, programada_para, inicio, fin
+            FROM ejecucion WHERE tarea_id = :tarea_id ORDER BY programada_para DESC LIMIT :n
             """,
             tarea_id=tarea_id,
             n=n,
@@ -264,7 +258,7 @@ _COLUMNAS_DETALLADAS = """
     t.modo_respaldo modo_respaldo, ej.estado estado, ej.estado_prueba estado_prueba,
     ej.programada_para programada_para, ej.inicio inicio, ej.fin fin, ej.duracion_segundos duracion_segundos,
     ej.tamano_bytes tamano_bytes, ej.archivos_generados archivos_generados, ej.ubicacion ubicacion,
-    NVL(p.zona_horaria, 'America/Costa_Rica') zona_horaria, ej.mensaje_rman mensaje_rman, ej.agente agente,
+    IFNULL(p.zona_horaria, 'America/Costa_Rica') zona_horaria, ej.mensaje_rman mensaje_rman, ej.agente agente,
     ej.script_id script_id
 """
 
@@ -348,13 +342,13 @@ def _condiciones_historial(filtros: FiltrosHistorial) -> tuple[str, dict[str, ob
 
 
 def historial_detallado(
-    conexion: oracledb.Connection, filtros: FiltrosHistorial, limite: int = 200, desplazamiento: int = 0
+    conexion: Conexion, filtros: FiltrosHistorial, limite: int = 200, desplazamiento: int = 0
 ) -> list[EjecucionDetallada]:
     where, parametros = _condiciones_historial(filtros)
     sql = f"""
         SELECT {_COLUMNAS_DETALLADAS} {_ORIGEN_DETALLADO} {where}
         ORDER BY ej.programada_para DESC, ej.id DESC
-        OFFSET :desplazamiento ROWS FETCH NEXT :limite ROWS ONLY
+        LIMIT :limite OFFSET :desplazamiento
     """
     cursor = conexion.cursor()
     try:
@@ -364,7 +358,7 @@ def historial_detallado(
         cursor.close()
 
 
-def contar_historial(conexion: oracledb.Connection, filtros: FiltrosHistorial) -> int:
+def contar_historial(conexion: Conexion, filtros: FiltrosHistorial) -> int:
     where, parametros = _condiciones_historial(filtros)
     cursor = conexion.cursor()
     try:
@@ -375,7 +369,7 @@ def contar_historial(conexion: oracledb.Connection, filtros: FiltrosHistorial) -
         cursor.close()
 
 
-def detalle(conexion: oracledb.Connection, ejecucion_id: int) -> DetalleEjecucionRepositorio | None:
+def detalle(conexion: Conexion, ejecucion_id: int) -> DetalleEjecucionRepositorio | None:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -405,7 +399,7 @@ def detalle(conexion: oracledb.Connection, ejecucion_id: int) -> DetalleEjecucio
         cursor.close()
 
 
-def piezas(conexion: oracledb.Connection, ejecucion_id: int) -> list[PiezaEjecucion]:
+def piezas(conexion: Conexion, ejecucion_id: int) -> list[PiezaEjecucion]:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -429,7 +423,7 @@ def piezas(conexion: oracledb.Connection, ejecucion_id: int) -> list[PiezaEjecuc
         cursor.close()
 
 
-def verificaciones(conexion: oracledb.Connection, ejecucion_id: int) -> list[VerificacionRegistrada]:
+def verificaciones(conexion: Conexion, ejecucion_id: int) -> list[VerificacionRegistrada]:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -452,7 +446,7 @@ def verificaciones(conexion: oracledb.Connection, ejecucion_id: int) -> list[Ver
         cursor.close()
 
 
-def ultimas_por_tarea(conexion: oracledb.Connection, n: int) -> dict[int, list[EjecucionDetallada]]:
+def ultimas_por_tarea(conexion: Conexion, n: int) -> dict[int, list[EjecucionDetallada]]:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -461,7 +455,7 @@ def ultimas_por_tarea(conexion: oracledb.Connection, n: int) -> dict[int, list[E
                 SELECT {_COLUMNAS_DETALLADAS},
                        ROW_NUMBER() OVER (PARTITION BY ej.tarea_id ORDER BY ej.programada_para DESC, ej.id DESC) orden
                 {_ORIGEN_DETALLADO}
-            ) WHERE orden <= :n
+            ) ordenadas WHERE orden <= :n
             ORDER BY tarea_id, orden
             """,
             n=n,
@@ -475,7 +469,7 @@ def ultimas_por_tarea(conexion: oracledb.Connection, n: int) -> dict[int, list[E
         cursor.close()
 
 
-def contar_en_curso(conexion: oracledb.Connection) -> int:
+def contar_en_curso(conexion: Conexion) -> int:
     cursor = conexion.cursor()
     try:
         cursor.execute("SELECT COUNT(*) FROM ejecucion WHERE estado = 'EN_CURSO'")
@@ -484,7 +478,7 @@ def contar_en_curso(conexion: oracledb.Connection) -> int:
         cursor.close()
 
 
-def en_curso(conexion: oracledb.Connection) -> list[EjecucionDetallada]:
+def en_curso(conexion: Conexion) -> list[EjecucionDetallada]:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -499,7 +493,7 @@ def en_curso(conexion: oracledb.Connection) -> list[EjecucionDetallada]:
         cursor.close()
 
 
-def ultima_programada_por_tarea(conexion: oracledb.Connection) -> dict[int, datetime]:
+def ultima_programada_por_tarea(conexion: Conexion) -> dict[int, datetime]:
     cursor = conexion.cursor()
     try:
         cursor.execute("SELECT tarea_id, MAX(programada_para) FROM ejecucion GROUP BY tarea_id")
@@ -508,12 +502,12 @@ def ultima_programada_por_tarea(conexion: oracledb.Connection) -> dict[int, date
         cursor.close()
 
 
-def ultimo_exito_por_estrategia(conexion: oracledb.Connection) -> dict[int, datetime]:
+def ultimo_exito_por_estrategia(conexion: Conexion) -> dict[int, datetime]:
     cursor = conexion.cursor()
     try:
         cursor.execute(
             f"""
-            SELECT t.estrategia_id, MAX(NVL(ej.fin, ej.programada_para))
+            SELECT t.estrategia_id, MAX(IFNULL(ej.fin, ej.programada_para))
             FROM ejecucion ej JOIN tarea t ON t.id = ej.tarea_id
             WHERE ej.estado IN {ESTADOS_CORRECTOS_SQL}
             GROUP BY t.estrategia_id
@@ -524,7 +518,7 @@ def ultimo_exito_por_estrategia(conexion: oracledb.Connection) -> dict[int, date
         cursor.close()
 
 
-def tamano_ultimo_exito_por_tarea(conexion: oracledb.Connection) -> dict[int, int]:
+def tamano_ultimo_exito_por_tarea(conexion: Conexion) -> dict[int, int]:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -534,7 +528,7 @@ def tamano_ultimo_exito_por_tarea(conexion: oracledb.Connection) -> dict[int, in
                        ROW_NUMBER() OVER (PARTITION BY tarea_id ORDER BY programada_para DESC) orden
                 FROM ejecucion
                 WHERE estado IN {ESTADOS_CORRECTOS_SQL} AND tamano_bytes IS NOT NULL
-            ) WHERE orden = 1
+            ) ultimas WHERE orden = 1
             """
         )
         return {int(tarea_id): int(tamano) for tarea_id, tamano in cursor.fetchall()}
@@ -542,7 +536,7 @@ def tamano_ultimo_exito_por_tarea(conexion: oracledb.Connection) -> dict[int, in
         cursor.close()
 
 
-def piezas_vencidas_por_estrategia(conexion: oracledb.Connection, ahora: datetime) -> dict[int, int]:
+def piezas_vencidas_por_estrategia(conexion: Conexion, ahora: datetime) -> dict[int, int]:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -562,7 +556,7 @@ def piezas_vencidas_por_estrategia(conexion: oracledb.Connection, ahora: datetim
 
 
 def registrar_no_ejecutada(
-    conexion: oracledb.Connection, tarea_id: int, programada_para: datetime, motivo: str
+    conexion: Conexion, tarea_id: int, programada_para: datetime, motivo: str
 ) -> Ejecucion | None:
     cursor = conexion.cursor()
     try:
@@ -581,7 +575,6 @@ def registrar_no_ejecutada(
         bd_id, tipo_respaldo, script_id = fila
         if script_id is None:
             raise ValueError(f"La tarea {tarea_id} no tiene un script aprobado.")
-        id_var = cursor.var(int)
         try:
             cursor.execute(
                 """
@@ -589,7 +582,6 @@ def registrar_no_ejecutada(
                                        mensaje_rman, estado_prueba)
                 VALUES (:tarea_id, :script_id, :bd_id, :programada_para, 'NO_EJECUTADA', :tipo_respaldo,
                         :motivo, 'NO_APLICA')
-                RETURNING id INTO :id
                 """,
                 tarea_id=tarea_id,
                 script_id=script_id,
@@ -597,14 +589,13 @@ def registrar_no_ejecutada(
                 programada_para=programada_para,
                 tipo_respaldo=tipo_respaldo,
                 motivo=motivo[:4000],
-                id=id_var,
             )
-        except oracledb.IntegrityError:
+        except ErrorIntegridad:
             conexion.rollback()
             return None
         conexion.commit()
         return Ejecucion(
-            id=int(id_var.getvalue()[0]),
+            id=cursor.lastrowid,
             tarea_id=tarea_id,
             script_id=int(script_id),
             estado=EstadoEjecucion.NO_EJECUTADA,
@@ -616,7 +607,7 @@ def registrar_no_ejecutada(
         cursor.close()
 
 
-def programadas_sin_iniciar(conexion: oracledb.Connection, antes_de: datetime) -> list[Ejecucion]:
+def programadas_sin_iniciar(conexion: Conexion, antes_de: datetime) -> list[Ejecucion]:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -632,7 +623,7 @@ def programadas_sin_iniciar(conexion: oracledb.Connection, antes_de: datetime) -
         cursor.close()
 
 
-def marcar_no_ejecutada(conexion: oracledb.Connection, ejecucion_id: int, motivo: str) -> bool:
+def marcar_no_ejecutada(conexion: Conexion, ejecucion_id: int, motivo: str) -> bool:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -649,7 +640,7 @@ def marcar_no_ejecutada(conexion: oracledb.Connection, ejecucion_id: int, motivo
         cursor.close()
 
 
-def en_curso_de_agente(conexion: oracledb.Connection, agente: str) -> list[EjecucionInterrumpida]:
+def en_curso_de_agente(conexion: Conexion, agente: str) -> list[EjecucionInterrumpida]:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -671,12 +662,12 @@ def en_curso_de_agente(conexion: oracledb.Connection, agente: str) -> list[Ejecu
         cursor.close()
 
 
-def marcar_interrumpida(conexion: oracledb.Connection, ejecucion_id: int, motivo: str) -> bool:
+def marcar_interrumpida(conexion: Conexion, ejecucion_id: int, motivo: str) -> bool:
     cursor = conexion.cursor()
     try:
         cursor.execute(
             """
-            UPDATE ejecucion SET estado = 'FALLIDA', fin = SYS_EXTRACT_UTC(SYSTIMESTAMP), mensaje_rman = :motivo,
+            UPDATE ejecucion SET estado = 'FALLIDA', fin = UTC_TIMESTAMP(6), mensaje_rman = :motivo,
                    estado_prueba = 'NO_APLICA'
             WHERE id = :id AND estado = 'EN_CURSO'
             """,

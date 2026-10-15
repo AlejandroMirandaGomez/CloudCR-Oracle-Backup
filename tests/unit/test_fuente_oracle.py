@@ -13,11 +13,10 @@ from cloudcr_backup.domain.enums import (
     ModoRespaldo,
 )
 from cloudcr_backup.domain.errores import OperacionNoPermitida, RecursoNoEncontrado, RepositorioNoDisponible
-from cloudcr_backup.oracle.connection import ErrorConexionOracle
 from cloudcr_backup.repository import alertas as repositorio_alertas
 from cloudcr_backup.repository import conexion as repositorio_conexion
 from cloudcr_backup.repository.alertas import AlertaDetallada
-from cloudcr_backup.repository.conexion import RepositorioNoConfigurado
+from cloudcr_backup.repository.conexion import ErrorConexionRepositorio, RepositorioNoConfigurado
 from cloudcr_backup.services import alertas as servicio_alertas
 from cloudcr_backup.services.fuente_oracle import FuenteOracle
 from cloudcr_backup.services.sesion import conexion_repositorio
@@ -126,27 +125,27 @@ def test_filtros_de_listado(ajustes: Ajustes, monkeypatch: pytest.MonkeyPatch) -
 
 def test_repositorio_sin_configurar_da_error_con_sugerencia(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     def sin_configurar(a: Ajustes) -> None:
-        raise RepositorioNoConfigurado("No hay un DSN configurado.")
+        raise RepositorioNoConfigurado("No hay clave configurada.")
 
     monkeypatch.setattr(repositorio_conexion, "abrir_repositorio", sin_configurar)
     with pytest.raises(RepositorioNoDisponible) as error, conexion_repositorio(Ajustes(work_dir=tmp_path)):
         pass
-    assert "CLOUDCR_REPOSITORIO_DSN" in (error.value.sugerencia or "")
+    assert "CLOUDCR_REPO_CLAVE" in (error.value.sugerencia or "")
 
 
 def test_repositorio_caido_da_error_con_sugerencia(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     def caido(a: Ajustes) -> None:
-        raise ErrorConexionOracle("No se pudo llegar a localhost (ORA-12541).", "Verifique el listener.")
+        raise ErrorConexionRepositorio("No se pudo llegar a MySQL en localhost:3306.", "Verifique el servicio.")
 
     monkeypatch.setattr(repositorio_conexion, "abrir_repositorio", caido)
     with pytest.raises(RepositorioNoDisponible) as error, conexion_repositorio(Ajustes(work_dir=tmp_path)):
         pass
-    assert error.value.sugerencia == "Verifique el listener."
+    assert error.value.sugerencia == "Verifique el servicio."
 
 
-def test_error_de_oracle_en_una_consulta_se_traduce(ajustes: Ajustes) -> None:
-    import oracledb
+def test_error_de_mysql_en_una_consulta_se_traduce(ajustes: Ajustes) -> None:
+    import pymysql
 
     with pytest.raises(RepositorioNoDisponible) as error, conexion_repositorio(ajustes):
-        raise oracledb.DatabaseError("ORA-00942: table or view does not exist")
+        raise pymysql.ProgrammingError(1146, "Table 'cloudcr.parametro' doesn't exist")
     assert "repo instalar" in (error.value.sugerencia or "")

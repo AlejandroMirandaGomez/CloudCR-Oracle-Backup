@@ -132,7 +132,7 @@ Estados: `BORRADOR → APROBADO | RECHAZADO → OBSOLETO`.
 9. Comprobación de que cada pieza existe en disco y no está vacía.
 10. Clasificación (sección 6).
 11. `evidencia.json` **primero a disco**, después al repositorio. Si el repositorio no responde (por ejemplo,
-    `BKPCAT` cerrada por el respaldo consistente), la evidencia va al **buzón** y el agente la sincroniza en
+    el servicio de MySQL detenido), la evidencia va al **buzón** y el agente la sincroniza en
     el siguiente tick.
 12. Si el respaldo fue correcto y `verificacion.automatica` está activo: verificación → columna **Pruebas**.
 13. Evaluación de alertas (`services.alertas.evaluar_tras_ejecucion`).
@@ -230,9 +230,9 @@ rechaza el respaldo en línea (`RMAN-06817`/`ORA-19602`, evidencia E4).
   archived y online redo logs hasta llevar el archivo al presente (o a un punto en el tiempo). Es la que
   necesita ARCHIVELOG.
 
-Como el apagado detiene toda la CDB, incluida la PDB `BKPCAT` del repositorio, la aprobación exige
-`--acepto-caida`. Además, la evidencia se escribe primero a disco y el buzón cubre el caso en que el
-repositorio no esté disponible al terminar.
+Como el apagado deja la base de datos fuera de servicio, la aprobación exige `--acepto-caida`. El
+repositorio vive en MySQL y no se apaga con ella; aun así la evidencia se escribe primero a disco y el buzón
+cubre el caso en que el repositorio no esté disponible al terminar.
 
 ## 11. Reglas que se cumplen siempre
 
@@ -240,7 +240,5 @@ repositorio no esté disponible al terminar.
 - Scripts en ASCII, `\n`, sin BOM (`rman/render.py`). Un carácter no ASCII en el destino se rechaza antes de
   generar.
 - `NLS_LANG=AMERICAN_AMERICA.AL32UTF8` en el entorno de cada RMAN, para que los mensajes se puedan leer.
-- El cliente thick se inicia antes de abrir el repositorio (`preparar_cliente_oracle`), así no se mezcla con
-  thin en el mismo proceso (`DPY-2019`).
 - La herramienta recomienda, no impone: no cambia el modo de archivado, no borra respaldos sin
   `purga_automatica` y `--purgar`, y no restaura nada.

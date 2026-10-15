@@ -1,9 +1,6 @@
-from pathlib import Path
-
 from cloudcr_backup.domain.enums import LogMode, ModoRespaldo, Severidad, TipoObjeto
-from cloudcr_backup.domain.perfil_bd import ContenedorInfo
 from cloudcr_backup.validation import motor, reglas  # noqa: F401
-from cloudcr_backup.validation.contexto import ContextoValidacion, servicio_de_dsn
+from cloudcr_backup.validation.contexto import ContextoValidacion
 from tests.unit.test_validacion import _estrategia, _perfil
 
 
@@ -65,60 +62,3 @@ def test_arch_007_resuelve_el_modo_auto_y_no_se_dispara_en_linea() -> None:
     en_linea = ContextoValidacion(estrategia=_estrategia(ModoRespaldo.EN_LINEA), perfil=_perfil(LogMode.ARCHIVELOG))
     assert "ARCH_007" in _codigos(auto_sin_archivelog)
     assert "ARCH_007" not in _codigos(en_linea)
-
-
-def _perfil_con_bkpcat(log_mode: LogMode):
-    perfil = _perfil(log_mode)
-    perfil.contenedores = [ContenedorInfo(con_id=4, nombre="BKPCAT", open_mode="READ WRITE")]
-    return perfil
-
-
-def test_arch_009_avisa_si_el_repositorio_vive_en_la_cdb_respaldada() -> None:
-    contexto = ContextoValidacion(
-        estrategia=_estrategia(ModoRespaldo.CONSISTENTE),
-        perfil=_perfil_con_bkpcat(LogMode.NOARCHIVELOG),
-        repositorio_servicio="bkpcat",
-    )
-    hallazgos = motor.validar(contexto)
-    assert any(h.codigo == "ARCH_009" and h.severidad is Severidad.ADVERTENCIA for h in hallazgos)
-
-
-def test_arch_009_no_se_dispara_en_linea_ni_con_repositorio_externo_o_sin_dato() -> None:
-    en_linea = ContextoValidacion(
-        estrategia=_estrategia(ModoRespaldo.EN_LINEA),
-        perfil=_perfil_con_bkpcat(LogMode.ARCHIVELOG),
-        repositorio_servicio="BKPCAT",
-    )
-    externo = ContextoValidacion(
-        estrategia=_estrategia(ModoRespaldo.CONSISTENTE),
-        perfil=_perfil_con_bkpcat(LogMode.NOARCHIVELOG),
-        repositorio_servicio="OTRO",
-    )
-    sin_dato = ContextoValidacion(
-        estrategia=_estrategia(ModoRespaldo.CONSISTENTE), perfil=_perfil_con_bkpcat(LogMode.NOARCHIVELOG)
-    )
-    assert "ARCH_009" not in _codigos(en_linea)
-    assert "ARCH_009" not in _codigos(externo)
-    assert "ARCH_009" not in _codigos(sin_dato)
-
-
-def test_servicio_de_dsn() -> None:
-    assert servicio_de_dsn("localhost:1521/BKPCAT") == "BKPCAT"
-    assert servicio_de_dsn("localhost:1521") is None
-    assert servicio_de_dsn(None) is None
-
-
-def test_script_generar_tambien_evalua_arch_009(tmp_path: Path) -> None:
-    from cloudcr_backup.config.ajustes import Ajustes
-    from cloudcr_backup.services import scripts
-    from cloudcr_backup.services.resolucion import TareaResuelta
-
-    estrategia = _estrategia(ModoRespaldo.CONSISTENTE)
-    resuelta = TareaResuelta(base=None, estrategia=estrategia, tarea=estrategia.tareas[0], tarea_id=1)  # type: ignore[arg-type]
-    perfil = _perfil_con_bkpcat(LogMode.NOARCHIVELOG)
-    con_repositorio = Ajustes(work_dir=tmp_path, repositorio_dsn="localhost:1521/BKPCAT")
-    sin_repositorio = Ajustes(work_dir=tmp_path)
-    con = scripts._hallazgos_de_tarea(con_repositorio, resuelta, perfil, {})
-    sin = scripts._hallazgos_de_tarea(sin_repositorio, resuelta, perfil, {})
-    assert any(h.codigo == "ARCH_009" for h in con)
-    assert not any(h.codigo == "ARCH_009" for h in sin)

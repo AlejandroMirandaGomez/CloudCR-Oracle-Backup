@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import TypeVar
 from zoneinfo import ZoneInfo
 
-import oracledb
 from pydantic import TypeAdapter, ValidationError
 
 from cloudcr_backup.config.ajustes import Ajustes
@@ -52,6 +51,7 @@ from cloudcr_backup.repository import parametros as repositorio_parametros
 from cloudcr_backup.repository import piezas as repositorio_piezas
 from cloudcr_backup.repository import recuperaciones as repositorio_recuperaciones
 from cloudcr_backup.repository.bases_datos import BaseDatosRegistrada
+from cloudcr_backup.repository.conexion import Conexion, ErrorRepositorio
 from cloudcr_backup.repository.ejecuciones import FiltrosHistorial
 from cloudcr_backup.rman import nombres
 from cloudcr_backup.rman.aprobacion import AprobacionRechazada, hash_de_bytes, script_intacto, validar_transicion
@@ -341,7 +341,7 @@ def _borrador_reutilizable(
         with conexion_repositorio(ajustes) as conexion:
             repositorio_recuperaciones.asegurar_tabla(conexion)
             registro = repositorio_recuperaciones.borrador_sin_usar(conexion, base.id, escenario, huella)
-    except (ErrorServicio, oracledb.Error):
+    except (ErrorServicio, ErrorRepositorio):
         REGISTRO.exception("No se pudo buscar un borrador reutilizable de %s", base.nombre)
         return None
     if registro is None or _archivo_intacto(registro) is not True:
@@ -421,7 +421,7 @@ def plan(
                 utc_ingenuo(diagnosticado.generado_en),
             )
         cambios.update({"id": registro.id, "estado": registro.estado})
-    except (ErrorServicio, oracledb.Error) as error:
+    except (ErrorServicio, ErrorRepositorio) as error:
         REGISTRO.exception("No se pudo registrar el procedimiento de %s", base.nombre)
         avisos.append(f"El procedimiento no quedó registrado para aprobarlo desde la herramienta: {error}")
     return procedimiento.model_copy(update={**cambios, "avisos": avisos})
@@ -483,7 +483,7 @@ def _vista(base: BaseDatosRegistrada, registro: RegistroRecuperacion, aviso: str
     )
 
 
-def _registro(conexion: oracledb.Connection, base: BaseDatosRegistrada, procedimiento_id: int) -> RegistroRecuperacion:
+def _registro(conexion: Conexion, base: BaseDatosRegistrada, procedimiento_id: int) -> RegistroRecuperacion:
     repositorio_recuperaciones.asegurar_tabla(conexion)
     registro = repositorio_recuperaciones.obtener(conexion, procedimiento_id)
     if registro is None or registro.bd_id != base.id:
@@ -497,7 +497,7 @@ def _resultado_en_disco(registro: RegistroRecuperacion) -> Path:
     return Path(registro.ruta_script).with_suffix(".resultado.json")
 
 
-def _reconciliar(conexion: oracledb.Connection, registro: RegistroRecuperacion) -> RegistroRecuperacion:
+def _reconciliar(conexion: Conexion, registro: RegistroRecuperacion) -> RegistroRecuperacion:
     if registro.resultado is not ResultadoRecuperacion.EN_CURSO:
         return registro
     try:
@@ -646,7 +646,7 @@ def completar_ejecucion(
         with conexion_repositorio(ajustes) as conexion:
             repositorio_recuperaciones.registrar_resultado(conexion, procedimiento_id, resultado, mensaje)
             registro = repositorio_recuperaciones.obtener(conexion, procedimiento_id) or registro
-    except (ErrorServicio, oracledb.Error):
+    except (ErrorServicio, ErrorRepositorio):
         REGISTRO.exception("No se pudo registrar el resultado del procedimiento %s", procedimiento_id)
         registro = registro.model_copy(update={"resultado": resultado, "mensaje": mensaje})
     return _vista(base, registro)

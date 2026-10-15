@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-import oracledb
-
 from cloudcr_backup.domain.enums import EstadoPrueba
+from cloudcr_backup.repository.conexion import Conexion
 
 LARGO_MAXIMO_NOMBRE = 400
 LARGO_MAXIMO_TAG = 30
@@ -39,7 +38,7 @@ class PiezaRegistrada:
     fin: datetime | None
 
 
-def reemplazar(conexion: oracledb.Connection, ejecucion_id: int, piezas: list[PiezaNueva]) -> None:
+def reemplazar(conexion: Conexion, ejecucion_id: int, piezas: list[PiezaNueva]) -> None:
     cursor = conexion.cursor()
     try:
         cursor.execute("DELETE FROM ejecucion_pieza WHERE ejecucion_id = :ejecucion_id", ejecucion_id=ejecucion_id)
@@ -61,7 +60,7 @@ def reemplazar(conexion: oracledb.Connection, ejecucion_id: int, piezas: list[Pi
 
 
 def reemplazar_verificaciones(
-    conexion: oracledb.Connection, ejecucion_id: int, verificaciones: list[VerificacionNueva]
+    conexion: Conexion, ejecucion_id: int, verificaciones: list[VerificacionNueva]
 ) -> None:
     cursor = conexion.cursor()
     try:
@@ -70,7 +69,7 @@ def reemplazar_verificaciones(
             cursor.execute(
                 """
                 INSERT INTO verificacion (ejecucion_id, tipo_prueba, resultado, detalle, ejecutada_en)
-                VALUES (:ejecucion_id, :tipo_prueba, :resultado, :detalle, SYS_EXTRACT_UTC(SYSTIMESTAMP))
+                VALUES (:ejecucion_id, :tipo_prueba, :resultado, :detalle, UTC_TIMESTAMP(6))
                 """,
                 ejecucion_id=ejecucion_id,
                 tipo_prueba=verificacion.tipo_prueba[:30],
@@ -82,7 +81,7 @@ def reemplazar_verificaciones(
         cursor.close()
 
 
-def de_base(conexion: oracledb.Connection, bd_id: int) -> list[PiezaRegistrada]:
+def de_base(conexion: Conexion, bd_id: int) -> list[PiezaRegistrada]:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -94,7 +93,7 @@ def de_base(conexion: oracledb.Connection, bd_id: int) -> list[PiezaRegistrada]:
             JOIN tarea t ON t.id = ej.tarea_id
             JOIN estrategia es ON es.id = t.estrategia_id
             WHERE ej.bd_id = :bd_id
-            ORDER BY ej.fin DESC NULLS LAST, pz.id
+            ORDER BY ej.fin IS NULL, ej.fin DESC, pz.id
             """,
             bd_id=bd_id,
         )
@@ -121,7 +120,7 @@ def de_base(conexion: oracledb.Connection, bd_id: int) -> list[PiezaRegistrada]:
         cursor.close()
 
 
-def marcar_obsoletas(conexion: oracledb.Connection, ids: list[int]) -> int:
+def marcar_obsoletas(conexion: Conexion, ids: list[int]) -> int:
     if not ids:
         return 0
     cursor = conexion.cursor()

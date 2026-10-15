@@ -3,8 +3,6 @@ from datetime import datetime, time
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-import oracledb
-
 from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.errores import FiltroInvalido, OperacionNoPermitida, RecursoNoEncontrado
 from cloudcr_backup.domain.historial import (
@@ -22,6 +20,7 @@ from cloudcr_backup.reports import historial as reporte_historial
 from cloudcr_backup.reports.historial import TIPO_CONTENIDO, FormatoHistorial
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository import ejecuciones as repositorio_ejecuciones
+from cloudcr_backup.repository.conexion import Conexion
 from cloudcr_backup.repository.ejecuciones import FiltrosHistorial
 from cloudcr_backup.scheduling.reloj import RelojSistema, utc_ingenuo
 from cloudcr_backup.services.conversiones import fila_historial, momento_utc
@@ -41,7 +40,7 @@ def formato_de(texto: str) -> FormatoHistorial:
         raise FiltroInvalido(f"El formato {texto!r} no existe.", "Use csv, md o html.") from error
 
 
-def _filtros(conexion: oracledb.Connection, ajustes: Ajustes, consulta: ConsultaHistorial) -> FiltrosHistorial:
+def _filtros(conexion: Conexion, ajustes: Ajustes, consulta: ConsultaHistorial) -> FiltrosHistorial:
     bd_id = None
     if consulta.bd:
         bd = repositorio_bases_datos.obtener(conexion, consulta.bd.strip().upper())

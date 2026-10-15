@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -6,10 +7,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-import oracledb
 import pytest
 
-from cloudcr_backup.config.ajustes import cargar_ajustes
 from cloudcr_backup.domain.alertas import Condicion, SeveridadAlerta
 from cloudcr_backup.domain.enums import (
     EstadoAlerta,
@@ -27,19 +26,20 @@ from cloudcr_backup.domain.perfil_bd import PerfilBD
 from cloudcr_backup.domain.planificacion import EjecucionPendiente, TareaProgramable
 from cloudcr_backup.repository import alertas, bases_datos, ejecuciones, esquema, estrategias, scripts
 from cloudcr_backup.repository.bases_datos import Ambiente
-from cloudcr_backup.repository.conexion import abrir_repositorio
+from cloudcr_backup.repository.conexion import Conexion
 from cloudcr_backup.repository.ejecuciones import FiltrosHistorial
 from cloudcr_backup.scheduling.planificador import Planificador
 from cloudcr_backup.services.fuente_oracle import FuenteOracle
+from tests.integration.repositorio_de_prueba import abrir_repositorio_de_prueba
 
-pytestmark = pytest.mark.oracle
+pytestmark = pytest.mark.mysql
 
 RAIZ = Path(__file__).resolve().parents[2]
 TOLERANCIA_RELOJ = timedelta(minutes=2)
 
 
 class FuenteAcotada(FuenteOracle):
-    def __init__(self, conexion: oracledb.Connection, tarea_id: int) -> None:
+    def __init__(self, conexion: Conexion, tarea_id: int) -> None:
         super().__init__(conexion)
         self._tarea_id = tarea_id
 
@@ -59,15 +59,20 @@ class Escenario:
 
 
 @pytest.fixture(scope="module")
-def conexion() -> Iterator[oracledb.Connection]:
-    conexion = abrir_repositorio(cargar_ajustes())
+def entorno_repositorio() -> dict[str, str]:
+    return {nombre: valor for nombre, valor in os.environ.items() if nombre.startswith("CLOUDCR_")}
+
+
+@pytest.fixture(scope="module")
+def conexion(entorno_repositorio: dict[str, str]) -> Iterator[Conexion]:
+    conexion = abrir_repositorio_de_prueba()
     if not esquema.estado(conexion).instalado:
         esquema.instalar(conexion)
     yield conexion
     conexion.close()
 
 
-def _borrar(conexion: oracledb.Connection, bd_id: int) -> None:
+def _borrar(conexion: Conexion, bd_id: int) -> None:
     sentencias = (
         "DELETE FROM alerta WHERE bd_id = :bd_id",
         "DELETE FROM ejecucion_pieza WHERE ejecucion_id IN (SELECT id FROM ejecucion WHERE bd_id = :bd_id)",
@@ -93,7 +98,7 @@ def _borrar(conexion: oracledb.Connection, bd_id: int) -> None:
 
 
 @pytest.fixture
-def escenario(conexion: oracledb.Connection) -> Iterator[Escenario]:
+def escenario(conexion: Conexion) -> Iterator[Escenario]:
     nombre = f"PYT{datetime.now():%H%M%S%f}"[:30]
     bd = bases_datos.registrar(conexion, nombre, r"C:\oracle", Ambiente.PRUEBAS)
     try:
@@ -125,14 +130,14 @@ def escenario(conexion: oracledb.Connection) -> Iterator[Escenario]:
 
 
 def test_g8_hora_del_servidor_y_horas_guardadas_en_utc(
-    conexion: oracledb.Connection, escenario: Escenario, capsys: pytest.CaptureFixture[str]
+    conexion: Conexion, escenario: Escenario, capsys: pytest.CaptureFixture[str]
 ) -> None:
     cursor = conexion.cursor()
-    cursor.execute("SELECT SYSTIMESTAMP, SYS_EXTRACT_UTC(SYSTIMESTAMP) FROM dual")
+    cursor.execute("SELECT NOW(6), UTC_TIMESTAMP(6)")
     local, utc = cursor.fetchone()
     cursor.close()
     with capsys.disabled():
-        print(f"\nG8: SYSTIMESTAMP={local} SYS_EXTRACT_UTC={utc}")
+        print(f"\nG8: NOW={local} UTC_TIMESTAMP={utc}")
     reclamada = ejecuciones.reclamar(conexion, escenario.tarea_id, datetime(2026, 1, 1, 19, 0))
     assert reclamada is not None
     ejecuciones.marcar_en_curso(conexion, reclamada.id, "pytest")
@@ -145,7 +150,7 @@ def test_g8_hora_del_servidor_y_horas_guardadas_en_utc(
     assert abs(vigente.aprobado_en - ahora_utc) < TOLERANCIA_RELOJ
 
 
-def test_reclamar_dos_veces_la_misma_ocurrencia(conexion: oracledb.Connection, escenario: Escenario) -> None:
+def test_reclamar_dos_veces_la_misma_ocurrencia(conexion: Conexion, escenario: Escenario) -> None:
     fuente = FuenteOracle(conexion)
     momento = datetime(2026, 1, 2, 19, 0, tzinfo=UTC)
     assert fuente.reclamar(escenario.tarea_id, momento) is not None
@@ -153,7 +158,7 @@ def test_reclamar_dos_veces_la_misma_ocurrencia(conexion: oracledb.Connection, e
     assert not fuente.registrar_no_ejecutada(escenario.tarea_id, momento, "duplicada")
 
 
-def test_registrar_y_marcar_no_ejecutadas(conexion: oracledb.Connection, escenario: Escenario) -> None:
+def test_registrar_y_marcar_no_ejecutadas(conexion: Conexion, escenario: Escenario) -> None:
     fuente = FuenteOracle(conexion)
     momento = datetime(2026, 1, 3, 19, 0, tzinfo=UTC)
     assert fuente.registrar_no_ejecutada(escenario.tarea_id, momento, "agente detenido")
@@ -171,7 +176,7 @@ def test_registrar_y_marcar_no_ejecutadas(conexion: oracledb.Connection, escenar
     assert filas[0].zona_horaria == "America/Costa_Rica"
 
 
-def test_interrumpidas_del_agente(conexion: oracledb.Connection, escenario: Escenario) -> None:
+def test_interrumpidas_del_agente(conexion: Conexion, escenario: Escenario) -> None:
     fuente = FuenteOracle(conexion)
     reclamada = fuente.reclamar(escenario.tarea_id, datetime(2026, 1, 4, 19, 0, tzinfo=UTC))
     assert reclamada is not None
@@ -184,7 +189,7 @@ def test_interrumpidas_del_agente(conexion: oracledb.Connection, escenario: Esce
     assert ejecuciones.ultimas_por_tarea(conexion, 5)[escenario.tarea_id][0].id == reclamada
 
 
-def test_alertas_vigentes_no_se_duplican_y_se_resuelven(conexion: oracledb.Connection, escenario: Escenario) -> None:
+def test_alertas_vigentes_no_se_duplican_y_se_resuelven(conexion: Conexion, escenario: Escenario) -> None:
     condicion = Condicion(
         codigo_regla="EJECUCION_FALLIDA",
         sujeto=f"{escenario.bd_nombre}/ESTAG/T1",
@@ -205,7 +210,7 @@ def test_alertas_vigentes_no_se_duplican_y_se_resuelven(conexion: oracledb.Conne
 
 
 def test_perfil_y_modo_de_archivado_del_script(
-    conexion: oracledb.Connection, escenario: Escenario, perfil_xe: PerfilBD
+    conexion: Conexion, escenario: Escenario, perfil_xe: PerfilBD
 ) -> None:
     assert bases_datos.ultimo_perfil(conexion, escenario.bd_id) is None
     bases_datos.guardar_perfil(conexion, escenario.bd_id, perfil_xe)
@@ -219,20 +224,19 @@ def test_perfil_y_modo_de_archivado_del_script(
 PROGRAMA_AGENTE = """
 import json, sys
 from datetime import datetime
-from cloudcr_backup.config.ajustes import cargar_ajustes
-from cloudcr_backup.repository.conexion import abrir_repositorio
 from cloudcr_backup.scheduling.planificador import Planificador
-from tests.integration.test_agente_oracle import FuenteAcotada
+from tests.integration.repositorio_de_prueba import abrir_repositorio_de_prueba
+from tests.integration.test_agente_repositorio import FuenteAcotada
 
 tarea_id, momento = int(sys.argv[1]), datetime.fromisoformat(sys.argv[2])
-conexion = abrir_repositorio(cargar_ajustes())
+conexion = abrir_repositorio_de_prueba()
 resultado = Planificador(FuenteAcotada(conexion, tarea_id)).reclamar_vencidas(momento)
 print(json.dumps({"reclamadas": len(resultado.reclamadas), "no_ejecutadas": len(resultado.no_ejecutadas)}))
 """
 
 
 def test_dos_agentes_contra_el_mismo_repositorio_no_duplican(
-    conexion: oracledb.Connection, escenario: Escenario
+    conexion: Conexion, escenario: Escenario, entorno_repositorio: dict[str, str]
 ) -> None:
     aprobado = scripts.vigentes_por_tarea(conexion)[escenario.tarea_id].aprobado_en
     assert aprobado is not None
@@ -241,6 +245,7 @@ def test_dos_agentes_contra_el_mismo_repositorio_no_duplican(
         subprocess.Popen(
             [sys.executable, "-c", PROGRAMA_AGENTE, str(escenario.tarea_id), momento.isoformat()],
             cwd=RAIZ,
+            env={**os.environ, **entorno_repositorio},
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -260,7 +265,7 @@ def test_dos_agentes_contra_el_mismo_repositorio_no_duplican(
     assert sum(s["no_ejecutadas"] for s in salidas) == len(filas) - 1
 
 
-def test_proxima_ejecucion_de_una_tarea_del_repositorio(conexion: oracledb.Connection, escenario: Escenario) -> None:
+def test_proxima_ejecucion_de_una_tarea_del_repositorio(conexion: Conexion, escenario: Escenario) -> None:
     tareas = [t for t in FuenteOracle(conexion).tareas_programables() if t.tarea_id == escenario.tarea_id]
     assert len(tareas) == 1
     planificador = Planificador(FuenteAcotada(conexion, escenario.tarea_id))

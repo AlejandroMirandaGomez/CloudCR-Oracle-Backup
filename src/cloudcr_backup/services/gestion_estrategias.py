@@ -1,8 +1,6 @@
 from datetime import time
 from pathlib import Path
 
-import oracledb
-
 from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.administracion import (
     BorradorEdicion,
@@ -30,6 +28,7 @@ from cloudcr_backup.execution.destino import BaseDestino, perfil_actual
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository import parametros as repositorio_parametros
 from cloudcr_backup.repository.bases_datos import BaseDatosRegistrada
+from cloudcr_backup.repository.conexion import Conexion
 from cloudcr_backup.repository.estrategias import TareaConHistorial
 from cloudcr_backup.services import resolucion
 from cloudcr_backup.services.cliente_oracle import preparar_cliente_oracle
@@ -38,7 +37,7 @@ from cloudcr_backup.services.sesion import conexion_repositorio
 from cloudcr_backup.strategy import servicio
 from cloudcr_backup.strategy.yaml_io import EstrategiaYamlInvalida, estrategia_a_yaml, estrategia_desde_yaml
 from cloudcr_backup.validation import motor, reglas  # noqa: F401
-from cloudcr_backup.validation.contexto import ContextoValidacion, servicio_de_dsn
+from cloudcr_backup.validation.contexto import ContextoValidacion
 
 LARGO_MAXIMO_YAML = 200_000
 EXTENSION_YAML = ".yaml"
@@ -98,7 +97,7 @@ def _leer_yaml(contenido: str) -> Estrategia:
         raise OperacionNoPermitida(str(error), "Corrija el YAML y vuelva a intentarlo.") from error
 
 
-def _editar(conexion: oracledb.Connection, nueva: Estrategia) -> Estrategia:
+def _editar(conexion: Conexion, nueva: Estrategia) -> Estrategia:
     try:
         return servicio.editar(conexion, nueva)
     except TareaConHistorial as error:
@@ -167,7 +166,6 @@ def _contexto(
         perfil=perfil,
         parametros=parametros,
         codigos_estrategia_existentes=otras,
-        repositorio_servicio=servicio_de_dsn(ajustes.repositorio_dsn),
         destinos_escribibles=escribibles,
         espacio_libre_destino_bytes=libres,
         espacio_total_destino_bytes=totales,

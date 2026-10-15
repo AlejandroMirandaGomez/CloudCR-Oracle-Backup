@@ -2,9 +2,8 @@ import hashlib
 from dataclasses import dataclass
 from datetime import datetime
 
-import oracledb
-
 from cloudcr_backup.domain.enums import EstadoScript
+from cloudcr_backup.repository.conexion import Conexion, Cursor
 
 
 @dataclass(frozen=True)
@@ -36,34 +35,31 @@ def _desde_fila(tarea_id: int, fila: tuple[object, ...]) -> ScriptRman:
     )
 
 
-def _siguiente_version(cursor: oracledb.Cursor, tarea_id: int) -> int:
+def _siguiente_version(cursor: Cursor, tarea_id: int) -> int:
     cursor.execute("SELECT MAX(version) FROM script_rman WHERE tarea_id = :tarea_id", tarea_id=tarea_id)
     fila = cursor.fetchone()
     maximo = fila[0] if fila is not None else None
     return int(maximo) + 1 if maximo is not None else 1
 
 
-def guardar_borrador(conexion: oracledb.Connection, tarea_id: int, contenido: str) -> ScriptRman:
+def guardar_borrador(conexion: Conexion, tarea_id: int, contenido: str) -> ScriptRman:
     cursor = conexion.cursor()
     try:
         version = _siguiente_version(cursor, tarea_id)
         hash_sha256 = hashlib.sha256(contenido.encode("utf-8")).hexdigest()
-        id_var = cursor.var(int)
         cursor.execute(
             """
             INSERT INTO script_rman (tarea_id, version, contenido, hash_sha256, estado)
             VALUES (:tarea_id, :version, :contenido, :hash_sha256, 'BORRADOR')
-            RETURNING id INTO :id
             """,
             tarea_id=tarea_id,
             version=version,
             contenido=contenido,
             hash_sha256=hash_sha256,
-            id=id_var,
         )
         conexion.commit()
         return ScriptRman(
-            id=int(id_var.getvalue()[0]),
+            id=cursor.lastrowid,
             tarea_id=tarea_id,
             version=version,
             contenido=contenido,
@@ -74,7 +70,7 @@ def guardar_borrador(conexion: oracledb.Connection, tarea_id: int, contenido: st
         cursor.close()
 
 
-def obtener_vigente(conexion: oracledb.Connection, tarea_id: int) -> ScriptRman | None:
+def obtener_vigente(conexion: Conexion, tarea_id: int) -> ScriptRman | None:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -90,7 +86,7 @@ def obtener_vigente(conexion: oracledb.Connection, tarea_id: int) -> ScriptRman 
         cursor.close()
 
 
-def _obtener_por_id(cursor: oracledb.Cursor, script_id: int) -> tuple[int, tuple[object, ...]]:
+def _obtener_por_id(cursor: Cursor, script_id: int) -> tuple[int, tuple[object, ...]]:
     cursor.execute(
         "SELECT tarea_id, id, version, contenido, hash_sha256, estado FROM script_rman WHERE id = :id",
         id=script_id,
@@ -104,7 +100,7 @@ def _obtener_por_id(cursor: oracledb.Cursor, script_id: int) -> tuple[int, tuple
 
 
 def aprobar(
-    conexion: oracledb.Connection, script_id: int, aprobado_por: str, acepto_caida: bool = False
+    conexion: Conexion, script_id: int, aprobado_por: str, acepto_caida: bool = False
 ) -> ScriptRman:
     cursor = conexion.cursor()
     try:
@@ -112,7 +108,7 @@ def aprobar(
         cursor.execute(
             """
             UPDATE script_rman SET estado = 'APROBADO', aprobado_por = :aprobado_por,
-                   aprobado_en = SYS_EXTRACT_UTC(SYSTIMESTAMP), acepto_caida = :acepto_caida
+                   aprobado_en = UTC_TIMESTAMP(6), acepto_caida = :acepto_caida
             WHERE id = :id
             """,
             aprobado_por=aprobado_por,
@@ -126,7 +122,7 @@ def aprobar(
         cursor.close()
 
 
-def rechazar(conexion: oracledb.Connection, script_id: int, motivo: str) -> ScriptRman:
+def rechazar(conexion: Conexion, script_id: int, motivo: str) -> ScriptRman:
     cursor = conexion.cursor()
     try:
         tarea_id, _ = _obtener_por_id(cursor, script_id)
@@ -142,7 +138,7 @@ def rechazar(conexion: oracledb.Connection, script_id: int, motivo: str) -> Scri
         cursor.close()
 
 
-def marcar_obsoleto(conexion: oracledb.Connection, script_id: int) -> None:
+def marcar_obsoleto(conexion: Conexion, script_id: int) -> None:
     cursor = conexion.cursor()
     try:
         cursor.execute("UPDATE script_rman SET estado = 'OBSOLETO' WHERE id = :id", id=script_id)
@@ -151,7 +147,7 @@ def marcar_obsoleto(conexion: oracledb.Connection, script_id: int) -> None:
         cursor.close()
 
 
-def vigentes_por_tarea(conexion: oracledb.Connection) -> dict[int, ScriptRman]:
+def vigentes_por_tarea(conexion: Conexion) -> dict[int, ScriptRman]:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -204,7 +200,7 @@ def _completo_desde_fila(fila: tuple[object, ...]) -> ScriptRman:
     )
 
 
-def obtener(conexion: oracledb.Connection, script_id: int) -> ScriptRman | None:
+def obtener(conexion: Conexion, script_id: int) -> ScriptRman | None:
     cursor = conexion.cursor()
     try:
         cursor.execute(f"SELECT {_COLUMNAS_COMPLETAS} FROM script_rman WHERE id = :id", id=script_id)
@@ -214,7 +210,7 @@ def obtener(conexion: oracledb.Connection, script_id: int) -> ScriptRman | None:
         cursor.close()
 
 
-def listar(conexion: oracledb.Connection, tarea_id: int) -> list[ScriptRman]:
+def listar(conexion: Conexion, tarea_id: int) -> list[ScriptRman]:
     cursor = conexion.cursor()
     try:
         cursor.execute(

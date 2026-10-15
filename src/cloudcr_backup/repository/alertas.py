@@ -1,10 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-import oracledb
-
 from cloudcr_backup.domain.alertas import Condicion
 from cloudcr_backup.domain.enums import EstadoAlerta
+from cloudcr_backup.repository.conexion import Conexion
 
 LARGO_MAXIMO_MENSAJE = 2000
 ESTADOS_VIGENTES_SQL = "('ABIERTA', 'RECONOCIDA')"
@@ -85,7 +84,7 @@ def _detallada_desde_fila(fila: tuple[object, ...]) -> AlertaDetallada:
     )
 
 
-def obtener(conexion: oracledb.Connection, alerta_id: int) -> AlertaDetallada | None:
+def obtener(conexion: Conexion, alerta_id: int) -> AlertaDetallada | None:
     cursor = conexion.cursor()
     try:
         cursor.execute(f"{_SELECT_DETALLADA} WHERE a.id = :id", id=alerta_id)
@@ -95,14 +94,14 @@ def obtener(conexion: oracledb.Connection, alerta_id: int) -> AlertaDetallada | 
         cursor.close()
 
 
-def abrir(conexion: oracledb.Connection, condicion: Condicion) -> tuple[AlertaDetallada, bool]:
+def abrir(conexion: Conexion, condicion: Condicion) -> tuple[AlertaDetallada, bool]:
     mensaje = condicion.mensaje[:LARGO_MAXIMO_MENSAJE]
     cursor = conexion.cursor()
     try:
         cursor.execute(
             f"""
             SELECT id FROM alerta WHERE clave_dedup = :clave_dedup AND estado IN {ESTADOS_VIGENTES_SQL}
-            ORDER BY abierta_en DESC FETCH FIRST 1 ROWS ONLY
+            ORDER BY abierta_en DESC LIMIT 1
             """,
             clave_dedup=condicion.clave_dedup,
         )
@@ -117,14 +116,12 @@ def abrir(conexion: oracledb.Connection, condicion: Condicion) -> tuple[AlertaDe
                 valores["ejecucion_id"] = condicion.ejecucion_id
             cursor.execute(f"UPDATE alerta SET {asignaciones} WHERE id = :id", **valores)
         else:
-            id_var = cursor.var(int)
             cursor.execute(
                 """
                 INSERT INTO alerta (codigo, clave_dedup, severidad, estado, mensaje, bd_id, estrategia_id, tarea_id,
                                     ejecucion_id, abierta_en)
                 VALUES (:codigo, :clave_dedup, :severidad, 'ABIERTA', :mensaje, :bd_id, :estrategia_id, :tarea_id,
-                        :ejecucion_id, SYS_EXTRACT_UTC(SYSTIMESTAMP))
-                RETURNING id INTO :id
+                        :ejecucion_id, UTC_TIMESTAMP(6))
                 """,
                 codigo=condicion.codigo_regla,
                 clave_dedup=condicion.clave_dedup,
@@ -134,9 +131,8 @@ def abrir(conexion: oracledb.Connection, condicion: Condicion) -> tuple[AlertaDe
                 estrategia_id=condicion.estrategia_id,
                 tarea_id=condicion.tarea_id,
                 ejecucion_id=condicion.ejecucion_id,
-                id=id_var,
             )
-            alerta_id = int(id_var.getvalue()[0])
+            alerta_id = cursor.lastrowid
         conexion.commit()
     finally:
         cursor.close()
@@ -145,7 +141,7 @@ def abrir(conexion: oracledb.Connection, condicion: Condicion) -> tuple[AlertaDe
     return alerta, es_nueva
 
 
-def vigentes(conexion: oracledb.Connection) -> list[AlertaDetallada]:
+def vigentes(conexion: Conexion) -> list[AlertaDetallada]:
     cursor = conexion.cursor()
     try:
         cursor.execute(f"{_SELECT_DETALLADA} WHERE a.estado IN {ESTADOS_VIGENTES_SQL} ORDER BY a.abierta_en DESC")
@@ -155,7 +151,7 @@ def vigentes(conexion: oracledb.Connection) -> list[AlertaDetallada]:
 
 
 def listar(
-    conexion: oracledb.Connection,
+    conexion: Conexion,
     estados: list[EstadoAlerta] | None = None,
     severidad: str | None = None,
     limite: int = LIMITE_LISTADO_POR_DEFECTO,
@@ -173,14 +169,14 @@ def listar(
     cursor = conexion.cursor()
     try:
         cursor.execute(
-            f"{_SELECT_DETALLADA} {where} ORDER BY a.abierta_en DESC FETCH FIRST :limite ROWS ONLY", **parametros
+            f"{_SELECT_DETALLADA} {where} ORDER BY a.abierta_en DESC LIMIT :limite", **parametros
         )
         return [_detallada_desde_fila(fila) for fila in cursor.fetchall()]
     finally:
         cursor.close()
 
 
-def reconocer_abierta(conexion: oracledb.Connection, alerta_id: int) -> bool:
+def reconocer_abierta(conexion: Conexion, alerta_id: int) -> bool:
     cursor = conexion.cursor()
     try:
         cursor.execute("UPDATE alerta SET estado = 'RECONOCIDA' WHERE id = :id AND estado = 'ABIERTA'", id=alerta_id)
@@ -190,12 +186,12 @@ def reconocer_abierta(conexion: oracledb.Connection, alerta_id: int) -> bool:
         cursor.close()
 
 
-def resolver_vigente(conexion: oracledb.Connection, alerta_id: int) -> bool:
+def resolver_vigente(conexion: Conexion, alerta_id: int) -> bool:
     cursor = conexion.cursor()
     try:
         cursor.execute(
             f"""
-            UPDATE alerta SET estado = 'RESUELTA', resuelta_en = SYS_EXTRACT_UTC(SYSTIMESTAMP)
+            UPDATE alerta SET estado = 'RESUELTA', resuelta_en = UTC_TIMESTAMP(6)
             WHERE id = :id AND estado IN {ESTADOS_VIGENTES_SQL}
             """,
             id=alerta_id,
@@ -218,7 +214,7 @@ def _desde_fila(fila: tuple[object, ...]) -> Alerta:
     )
 
 
-def upsert_abierta(conexion: oracledb.Connection, codigo: str, clave_dedup: str, mensaje: str) -> Alerta:
+def upsert_abierta(conexion: Conexion, codigo: str, clave_dedup: str, mensaje: str) -> Alerta:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -230,19 +226,16 @@ def upsert_abierta(conexion: oracledb.Connection, codigo: str, clave_dedup: str,
             alerta_id = fila[0]
             cursor.execute("UPDATE alerta SET mensaje = :mensaje WHERE id = :id", mensaje=mensaje, id=alerta_id)
         else:
-            id_var = cursor.var(int)
             cursor.execute(
                 """
                 INSERT INTO alerta (codigo, clave_dedup, severidad, mensaje)
                 VALUES (:codigo, :clave_dedup, 'ADVERTENCIA', :mensaje)
-                RETURNING id INTO :id
                 """,
                 codigo=codigo,
                 clave_dedup=clave_dedup,
                 mensaje=mensaje,
-                id=id_var,
             )
-            alerta_id = int(id_var.getvalue()[0])
+            alerta_id = cursor.lastrowid
         conexion.commit()
         cursor.execute(
             "SELECT id, codigo, clave_dedup, estado, mensaje FROM alerta WHERE id = :id", id=alerta_id
@@ -252,7 +245,7 @@ def upsert_abierta(conexion: oracledb.Connection, codigo: str, clave_dedup: str,
         cursor.close()
 
 
-def abiertas(conexion: oracledb.Connection, codigos: list[str] | None = None) -> list[Alerta]:
+def abiertas(conexion: Conexion, codigos: list[str] | None = None) -> list[Alerta]:
     cursor = conexion.cursor()
     try:
         if codigos:
@@ -276,11 +269,11 @@ def abiertas(conexion: oracledb.Connection, codigos: list[str] | None = None) ->
         cursor.close()
 
 
-def resolver(conexion: oracledb.Connection, alerta_id: int) -> None:
+def resolver(conexion: Conexion, alerta_id: int) -> None:
     cursor = conexion.cursor()
     try:
         cursor.execute(
-            "UPDATE alerta SET estado = 'RESUELTA', resuelta_en = SYS_EXTRACT_UTC(SYSTIMESTAMP) WHERE id = :id",
+            "UPDATE alerta SET estado = 'RESUELTA', resuelta_en = UTC_TIMESTAMP(6) WHERE id = :id",
             id=alerta_id,
         )
         conexion.commit()
@@ -288,7 +281,7 @@ def resolver(conexion: oracledb.Connection, alerta_id: int) -> None:
         cursor.close()
 
 
-def reconocer(conexion: oracledb.Connection, alerta_id: int) -> None:
+def reconocer(conexion: Conexion, alerta_id: int) -> None:
     cursor = conexion.cursor()
     try:
         cursor.execute("UPDATE alerta SET estado = 'RECONOCIDA' WHERE id = :id", id=alerta_id)

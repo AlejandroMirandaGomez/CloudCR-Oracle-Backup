@@ -11,17 +11,17 @@ Ensáyelo completo al menos dos veces antes de presentar y anote los tiempos rea
 
 ## Por qué este escenario y no otro
 
-En Oracle XE el repositorio de CloudCR (`BKPCAT`) es una PDB de la **misma** CDB que se respalda
-(`docs/diseno.md` §1.3). Si la CDB se apaga, la web y la CLI pierden el repositorio. Por eso la demo usa el
-escenario **1 · `PERDIDA_DATAFILE_NO_CRITICO`** sobre el datafile del tablespace `USERS` del contenedor raíz:
+El repositorio de CloudCR vive en MySQL, fuera de la CDB que se respalda (`docs/diseno.md` §1.3), así que
+la web y la CLI siguen funcionando aunque Oracle se apague. La demo usa el escenario
+**1 · `PERDIDA_DATAFILE_NO_CRITICO`** sobre el datafile del tablespace `USERS` del contenedor raíz:
 
-- la CDB sigue abierta todo el tiempo, igual que `BKPCAT`;
+- la CDB sigue abierta todo el tiempo, así que se puede mostrar la recuperación en línea;
 - se recupera con el escenario `datafile`: `OFFLINE → RESTORE → RECOVER → ONLINE`;
 - en Windows no se puede borrar un datafile abierto, así que primero se deja `OFFLINE` (Oracle cierra el archivo).
 
 La variante de la clase (§3.2: apagar, borrar el archivo y ver que `STARTUP` se queda en `MOUNT`) también es
-válida, pero en XE deja montada la CDB entera, `BKPCAT` incluida: CloudCR no podría registrar nada. En ese caso
-el DBA aplica a mano el script ya generado (`recuperacion\XE\datafile_*.rman`) con `rman target /` y termina con
+válida, pero en XE deja montada la CDB entera. CloudCR sigue disponible y conserva el procedimiento
+generado; el DBA aplica a mano el script ya generado (`recuperacion\XE\datafile_*.rman`) con `rman target /` y termina con
 `ALTER DATABASE OPEN;`. Se puede contar en la presentación como contraste.
 
 ## 0. Requisitos (una sola vez)

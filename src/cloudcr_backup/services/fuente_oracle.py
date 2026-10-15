@@ -2,8 +2,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-import oracledb
-
 from cloudcr_backup.agent.bucle import ParametrosAgente
 from cloudcr_backup.alerts.instantanea import (
     BaseMonitoreada,
@@ -24,6 +22,7 @@ from cloudcr_backup.repository import estrategias as repositorio_estrategias
 from cloudcr_backup.repository import parametros as repositorio_parametros
 from cloudcr_backup.repository import scripts as repositorio_scripts
 from cloudcr_backup.repository.bases_datos import BaseDatosRegistrada
+from cloudcr_backup.repository.conexion import Conexion
 from cloudcr_backup.repository.scripts import ScriptRman
 from cloudcr_backup.scheduling.planificador import Planificador
 from cloudcr_backup.scheduling.reloj import utc_consciente, utc_ingenuo
@@ -52,7 +51,7 @@ class EstrategiaRegistrada:
 
 class FuenteOracle:
     def __init__(
-        self, conexion: oracledb.Connection, medir_disco: Callable[[str], UsoDisco | None] = uso_disco
+        self, conexion: Conexion, medir_disco: Callable[[str], UsoDisco | None] = uso_disco
     ) -> None:
         self._conexion = conexion
         self._medir_disco = medir_disco
@@ -61,7 +60,7 @@ class FuenteOracle:
         self._scripts: dict[int, ScriptRman] | None = None
 
     @property
-    def conexion(self) -> oracledb.Connection:
+    def conexion(self) -> Conexion:
         return self._conexion
 
     def parametros(self) -> dict[str, str]:

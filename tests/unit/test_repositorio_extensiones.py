@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import oracledb
+import pymysql
 import pytest
 
 from cloudcr_backup.domain.alertas import Condicion, SeveridadAlerta
@@ -60,7 +60,7 @@ def test_abrir_alerta_nueva_inserta_con_severidad_y_llaves() -> None:
     assert insercion[0].startswith("INSERT INTO alerta")
     assert insercion[1]["severidad"] == "ALERTA"
     assert insercion[1]["tarea_id"] == 3
-    assert "SYS_EXTRACT_UTC(SYSTIMESTAMP)" in insercion[0]
+    assert "UTC_TIMESTAMP(6)" in insercion[0]
 
 
 def test_abrir_alerta_reconocida_vigente_no_duplica() -> None:
@@ -104,7 +104,7 @@ def test_resolver_vigente_incluye_reconocidas() -> None:
     conexion = ConexionFalsa()
     assert alertas.resolver_vigente(conexion, 7)  # type: ignore[arg-type]
     assert "estado IN ('ABIERTA', 'RECONOCIDA')" in conexion.sql(0)
-    assert "SYS_EXTRACT_UTC(SYSTIMESTAMP)" in conexion.sql(0)
+    assert "UTC_TIMESTAMP(6)" in conexion.sql(0)
 
 
 def test_registrar_no_ejecutada_inserta_con_motivo() -> None:
@@ -121,7 +121,7 @@ def test_registrar_no_ejecutada_inserta_con_motivo() -> None:
 
 def test_registrar_no_ejecutada_devuelve_none_si_ya_existe() -> None:
     conexion = ConexionFalsa([(1, "COMPLETO", 9)])
-    conexion.errores.extend([None, oracledb.IntegrityError("ORA-00001")])
+    conexion.errores.extend([None, pymysql.IntegrityError(1062, "Duplicate entry")])
     assert ejecuciones.registrar_no_ejecutada(conexion, 3, PROGRAMADA, "x") is None  # type: ignore[arg-type]
     assert conexion.rollbacks == 1
 
@@ -223,11 +223,11 @@ def test_consultas_nuevas_usan_binds_coherentes(funcion: Any) -> None:
 
 
 def test_el_repositorio_guarda_horas_en_utc() -> None:
-    sin_convertir = re.compile(r"(?<!SYS_EXTRACT_UTC\()SYSTIMESTAMP")
+    hora_local = re.compile(r"\b(NOW\(\)|CURRENT_TIMESTAMP|LOCALTIMESTAMP|SYSDATE|SYSTIMESTAMP)")
     for archivo in REPOSITORIO.glob("*.py"):
         if archivo.name == "esquema.py":
             continue
-        assert not sin_convertir.search(archivo.read_text(encoding="utf-8")), archivo.name
+        assert not hora_local.search(archivo.read_text(encoding="utf-8")), archivo.name
 
 
 def test_abrir_alerta_existente_sin_ejecucion_no_toca_la_columna() -> None:

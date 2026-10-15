@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Annotated
 
-import oracledb
 import typer
 from rich.table import Table
 
@@ -13,21 +12,26 @@ from cloudcr_backup.oracle.explorador import InstanciaNoEncontrada, explorar_loc
 from cloudcr_backup.presentacion.terminal import consola
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository.bases_datos import Ambiente, BaseDatosRegistrada
-from cloudcr_backup.repository.conexion import RepositorioNoConfigurado, abrir_repositorio
+from cloudcr_backup.repository.conexion import (
+    Conexion,
+    ErrorConexionRepositorio,
+    RepositorioNoConfigurado,
+    abrir_repositorio,
+)
 
 app = typer.Typer(add_completion=False, help="Registra e inspecciona bases de datos Oracle en el repositorio.")
 
 
-def _conectar() -> oracledb.Connection:
+def _conectar() -> Conexion:
     try:
         return abrir_repositorio(cargar_ajustes())
     except RepositorioNoConfigurado as error:
-        terminar_con_error(str(error), "Configure CLOUDCR_REPOSITORIO_DSN y CLOUDCR_REPO_CLAVE (vea .env.example).")
-    except ErrorConexionOracle as error:
+        terminar_con_error(str(error), "Configure CLOUDCR_REPO_CLAVE (vea .env.example).")
+    except ErrorConexionRepositorio as error:
         terminar_con_error(str(error), error.sugerencia)
 
 
-def _obtener_o_fallar(conexion: oracledb.Connection, nombre: str) -> BaseDatosRegistrada:
+def _obtener_o_fallar(conexion: Conexion, nombre: str) -> BaseDatosRegistrada:
     bd = repositorio_bases_datos.obtener(conexion, nombre)
     if bd is None:
         terminar_con_error(

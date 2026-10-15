@@ -13,14 +13,23 @@ load_dotenv(find_dotenv(".env.local", usecwd=True), override=True)
 
 VARIABLE_RUTA_CONFIG = "CLOUDCR_CONFIG"
 VARIABLE_CLAVE_REPOSITORIO = "CLOUDCR_REPO_CLAVE"
+VARIABLE_USUARIO_ADMIN_MYSQL = "CLOUDCR_MYSQL_ADMIN_USUARIO"
+VARIABLE_CLAVE_ADMIN_MYSQL = "CLOUDCR_MYSQL_ADMIN_CLAVE"
+VARIABLE_DSN_ORIGEN_ORACLE = "CLOUDCR_ORIGEN_DSN"
+VARIABLE_USUARIO_ORIGEN_ORACLE = "CLOUDCR_ORIGEN_USUARIO"
+VARIABLE_CLAVE_ORIGEN_ORACLE = "CLOUDCR_ORIGEN_CLAVE"
+USUARIO_ADMIN_MYSQL_PREDETERMINADO = "root"
+USUARIO_ORIGEN_ORACLE_PREDETERMINADO = "BKP_ADMIN"
 RUTA_CONFIG_PREDETERMINADA = Path.home() / "cloudcr.yaml"
 NLS_LANG_PREDETERMINADO = "AMERICAN_AMERICA.AL32UTF8"
 ZONA_HORARIA_PREDETERMINADA = "America/Costa_Rica"
 
 
 class Ajustes(BaseModel):
-    repositorio_dsn: str | None = None
-    repositorio_usuario: str = "BKP_ADMIN"
+    repositorio_host: str = "localhost"
+    repositorio_puerto: int = 3306
+    repositorio_base: str = "cloudcr"
+    repositorio_usuario: str = "cloudcr"
     work_dir: Path = Field(default_factory=directorio_trabajo_predeterminado)
     destino_defecto: Path | None = None
     nls_lang: str = NLS_LANG_PREDETERMINADO
@@ -62,3 +71,15 @@ def cargar_ajustes(ruta_config: Path | None = None, **overrides: Any) -> Ajustes
 
 def obtener_clave_repositorio() -> str | None:
     return _env(VARIABLE_CLAVE_REPOSITORIO)
+
+
+def obtener_credenciales_admin_mysql() -> tuple[str, str | None]:
+    return _env(VARIABLE_USUARIO_ADMIN_MYSQL) or USUARIO_ADMIN_MYSQL_PREDETERMINADO, _env(VARIABLE_CLAVE_ADMIN_MYSQL)
+
+
+def obtener_origen_oracle() -> tuple[str | None, str, str | None]:
+    return (
+        _env(VARIABLE_DSN_ORIGEN_ORACLE),
+        _env(VARIABLE_USUARIO_ORIGEN_ORACLE) or USUARIO_ORIGEN_ORACLE_PREDETERMINADO,
+        _env(VARIABLE_CLAVE_ORIGEN_ORACLE),
+    )

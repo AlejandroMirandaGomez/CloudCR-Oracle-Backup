@@ -10,14 +10,6 @@ def binds_de(sql: str) -> set[str]:
     return {nombre.lower() for nombre in PATRON_BIND.findall(PATRON_LITERAL.sub("''", sql))}
 
 
-class VariableFalsa:
-    def __init__(self, valor: int) -> None:
-        self._valor = valor
-
-    def getvalue(self) -> list[int]:
-        return [self._valor]
-
-
 class CursorFalso:
     def __init__(self, conexion: "ConexionFalsa") -> None:
         self._conexion = conexion
@@ -33,8 +25,9 @@ class CursorFalso:
             raise error
         self.rowcount = self._conexion.filas_afectadas
 
-    def var(self, tipo: type) -> VariableFalsa:
-        return VariableFalsa(self._conexion.siguiente_id)
+    @property
+    def lastrowid(self) -> int:
+        return self._conexion.siguiente_id
 
     def fetchone(self) -> Any:
         return self._conexion.respuestas.popleft() if self._conexion.respuestas else None

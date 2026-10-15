@@ -18,7 +18,7 @@ El enunciado pide una herramienta que separe la **estrategia** (la decisión) de
 | Respaldo en frío en una base 24/7 | Hay que apagar el servicio. El modo `CONSISTENTE` lo hace con `SHUTDOWN IMMEDIATE` |
 | Respaldo que no corre a su hora | Ventana de pérdida mayor a la tolerada; lo cubre la alerta `RESPALDO_NO_EJECUTADO` |
 | Disco de destino lleno | El respaldo falla a mitad; lo cubren `DST_002`, `DST_003` y la alerta `ESPACIO_INSUFICIENTE` |
-| Repositorio dentro de la CDB que se apaga | Se pierde dónde escribir el resultado; lo cubre `ARCH_009` y el buzón de evidencia |
+| Repositorio que no responde al terminar un respaldo | Se pierde dónde escribir el resultado; lo cubre el buzón de evidencia, y el repositorio vive en MySQL, fuera de la instancia que se respalda |
 
 ### Integridad
 
@@ -63,7 +63,7 @@ RMAN es la herramienta nativa de Oracle: conoce la estructura de la base, hace r
 
 ### No funcionales
 
-- Repositorio propio en Oracle (PDB `BKPCAT`, esquema `BKP_ADMIN`), separado de la base respaldada.
+- Repositorio propio en MySQL (base `cloudcr`), fuera de Oracle: la herramienta funciona aunque la instancia respaldada esté detenida o dañada.
 - Mínimo privilegio: usuario `C##BKP_MON` de solo lectura para inspección; sin contraseñas en el código.
 - Capas: la CLI y la web solo llaman a `services/`; los resultados se definen en `domain/`.
 - Todo archivo que lee RMAN es ASCII, sin BOM, con `\n`; `NLS_LANG` fijo para que los mensajes sean parseables.
@@ -152,7 +152,6 @@ Cómo lo tratan las reglas:
 | `ARCH_005` | Error | Modo `EN_LINEA` con la base en NOARCHIVELOG |
 | `ARCH_006` | Advertencia | Alcance parcial en NOARCHIVELOG |
 | `ARCH_007` | Advertencia | Modo efectivo `CONSISTENTE`: implica caída del servicio y exige aceptarla para aprobar el script |
-| `ARCH_009` | Advertencia | El repositorio vive en la misma CDB que se respalda en modo consistente |
 
 El paso a ARCHIVELOG **nunca lo ejecuta la herramienta**: la pantalla *Sistema → Modo de archivado* muestra el procedimiento (`sql/archivelog/activar_archivelog.sql`) para que lo ejecute el administrador, con un respaldo antes y otro después. Ver `docs/afinamiento_redo_archivelog.md`.
 

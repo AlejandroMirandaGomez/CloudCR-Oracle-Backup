@@ -1,14 +1,12 @@
 from datetime import datetime
 
-import oracledb
-
 from cloudcr_backup.domain.enums import EstadoScript
 from cloudcr_backup.domain.recuperacion import Escenario, RegistroRecuperacion, ResultadoRecuperacion
+from cloudcr_backup.repository.conexion import Conexion
 from cloudcr_backup.repository.esquema import DDL_RECUPERACION, TABLA_RECUPERACION
 
 LARGO_MAXIMO_MENSAJE = 4000
 LARGO_MAXIMO_OBJETIVO = 400
-_ORA_NOMBRE_EN_USO = 955
 
 _COLUMNAS = """
     id, bd_id, escenario, objetivo, ruta_script, contenido, hash_sha256, estado, generado_en, aprobado_por,
@@ -67,25 +65,24 @@ def _desde_fila(fila: tuple[object, ...]) -> RegistroRecuperacion:
     )
 
 
-def asegurar_tabla(conexion: oracledb.Connection) -> None:
+def asegurar_tabla(conexion: Conexion) -> None:
     cursor = conexion.cursor()
     try:
-        cursor.execute("SELECT COUNT(*) FROM user_tables WHERE table_name = :tabla", tabla=TABLA_RECUPERACION)
+        cursor.execute(
+            "SELECT COUNT(*) FROM information_schema.tables "
+            "WHERE table_schema = DATABASE() AND LOWER(table_name) = :tabla",
+            tabla=TABLA_RECUPERACION.lower(),
+        )
         fila = cursor.fetchone()
         if fila is not None and int(fila[0]) > 0:
             return
-        try:
-            cursor.execute(DDL_RECUPERACION)
-        except oracledb.Error as error:
-            detalle = error.args[0] if error.args else None
-            if getattr(detalle, "code", None) != _ORA_NOMBRE_EN_USO:
-                raise
+        cursor.execute(DDL_RECUPERACION)
     finally:
         cursor.close()
 
 
 def registrar(
-    conexion: oracledb.Connection,
+    conexion: Conexion,
     bd_id: int,
     escenario: Escenario,
     objetivo: str | None,
@@ -97,13 +94,11 @@ def registrar(
     objetivo_guardado = None if objetivo is None else recortar(objetivo, LARGO_MAXIMO_OBJETIVO)
     cursor = conexion.cursor()
     try:
-        id_var = cursor.var(int)
         cursor.execute(
             """
             INSERT INTO recuperacion_procedimiento
               (bd_id, escenario, objetivo, ruta_script, contenido, hash_sha256, estado, generado_en)
             VALUES (:bd_id, :escenario, :objetivo, :ruta_script, :contenido, :hash_sha256, 'BORRADOR', :generado_en)
-            RETURNING id INTO :id
             """,
             bd_id=bd_id,
             escenario=escenario.value,
@@ -112,11 +107,10 @@ def registrar(
             contenido=contenido,
             hash_sha256=hash_sha256,
             generado_en=generado_en,
-            id=id_var,
         )
         conexion.commit()
         return RegistroRecuperacion(
-            id=int(id_var.getvalue()[0]),
+            id=cursor.lastrowid,
             bd_id=bd_id,
             escenario=escenario,
             objetivo=objetivo_guardado,
@@ -130,7 +124,7 @@ def registrar(
         cursor.close()
 
 
-def obtener(conexion: oracledb.Connection, procedimiento_id: int) -> RegistroRecuperacion | None:
+def obtener(conexion: Conexion, procedimiento_id: int) -> RegistroRecuperacion | None:
     cursor = conexion.cursor()
     try:
         cursor.execute(f"SELECT {_COLUMNAS} FROM recuperacion_procedimiento WHERE id = :id", id=procedimiento_id)
@@ -141,7 +135,7 @@ def obtener(conexion: oracledb.Connection, procedimiento_id: int) -> RegistroRec
 
 
 def borrador_sin_usar(
-    conexion: oracledb.Connection, bd_id: int, escenario: Escenario, hash_sha256: str
+    conexion: Conexion, bd_id: int, escenario: Escenario, hash_sha256: str
 ) -> RegistroRecuperacion | None:
     cursor = conexion.cursor()
     try:
@@ -150,7 +144,7 @@ def borrador_sin_usar(
             SELECT {_COLUMNAS} FROM recuperacion_procedimiento
             WHERE bd_id = :bd_id AND escenario = :escenario AND hash_sha256 = :hash_sha256
               AND estado = 'BORRADOR' AND resultado IS NULL
-            ORDER BY id DESC FETCH FIRST 1 ROWS ONLY
+            ORDER BY id DESC LIMIT 1
             """,
             bd_id=bd_id,
             escenario=escenario.value,
@@ -162,13 +156,13 @@ def borrador_sin_usar(
         cursor.close()
 
 
-def aprobar(conexion: oracledb.Connection, procedimiento_id: int, aprobado_por: str) -> bool:
+def aprobar(conexion: Conexion, procedimiento_id: int, aprobado_por: str) -> bool:
     cursor = conexion.cursor()
     try:
         cursor.execute(
             """
             UPDATE recuperacion_procedimiento
-            SET estado = 'APROBADO', aprobado_por = :aprobado_por, aprobado_en = SYS_EXTRACT_UTC(SYSTIMESTAMP)
+            SET estado = 'APROBADO', aprobado_por = :aprobado_por, aprobado_en = UTC_TIMESTAMP(6)
             WHERE id = :id AND estado = 'BORRADOR'
             """,
             aprobado_por=aprobado_por,
@@ -180,13 +174,13 @@ def aprobar(conexion: oracledb.Connection, procedimiento_id: int, aprobado_por: 
         cursor.close()
 
 
-def marcar_en_curso(conexion: oracledb.Connection, procedimiento_id: int, ruta_log: str) -> bool:
+def marcar_en_curso(conexion: Conexion, procedimiento_id: int, ruta_log: str) -> bool:
     cursor = conexion.cursor()
     try:
         cursor.execute(
             """
             UPDATE recuperacion_procedimiento
-            SET resultado = 'EN_CURSO', ejecutado_en = SYS_EXTRACT_UTC(SYSTIMESTAMP), ruta_log = :ruta_log
+            SET resultado = 'EN_CURSO', ejecutado_en = UTC_TIMESTAMP(6), ruta_log = :ruta_log
             WHERE id = :id AND estado = 'APROBADO' AND resultado IS NULL
             """,
             ruta_log=ruta_log,
@@ -199,14 +193,14 @@ def marcar_en_curso(conexion: oracledb.Connection, procedimiento_id: int, ruta_l
 
 
 def registrar_resultado(
-    conexion: oracledb.Connection, procedimiento_id: int, resultado: ResultadoRecuperacion, mensaje: str
+    conexion: Conexion, procedimiento_id: int, resultado: ResultadoRecuperacion, mensaje: str
 ) -> None:
     cursor = conexion.cursor()
     try:
         cursor.execute(
             """
             UPDATE recuperacion_procedimiento
-            SET resultado = :resultado, mensaje = :mensaje, finalizado_en = SYS_EXTRACT_UTC(SYSTIMESTAMP)
+            SET resultado = :resultado, mensaje = :mensaje, finalizado_en = UTC_TIMESTAMP(6)
             WHERE id = :id
             """,
             resultado=resultado.value,

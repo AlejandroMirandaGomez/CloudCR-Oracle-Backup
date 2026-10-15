@@ -140,26 +140,3 @@ def arch_007_respaldo_consistente_con_caida(contexto: ContextoValidacion) -> lis
         for codigo in _tareas_consistentes(contexto)
     ]
 
-
-@regla("ARCH_009")
-def arch_009_repositorio_en_la_misma_cdb(contexto: ContextoValidacion) -> list[Hallazgo]:
-    servicio = contexto.repositorio_servicio
-    if servicio is None or not contexto.perfil.es_cdb:
-        return []
-    vive_en_la_cdb = servicio.upper() in {c.nombre.upper() for c in contexto.perfil.contenedores}
-    if not vive_en_la_cdb:
-        return []
-    return [
-        Hallazgo(
-            codigo="ARCH_009",
-            severidad=Severidad.ADVERTENCIA,
-            mensaje=(
-                f"El repositorio ({servicio}) vive en la misma CDB que se respaldará en modo CONSISTENTE en la tarea "
-                f"{codigo}: el SHUTDOWN IMMEDIATE lo apagará a mitad de la ejecución. La evidencia se escribe primero "
-                "a disco y queda en el buzón hasta que el repositorio vuelva."
-            ),
-            sujeto=codigo,
-            accion_sugerida="Respalde en línea (ARCHIVELOG) o ubique el repositorio en otra instancia.",
-        )
-        for codigo in _tareas_consistentes(contexto)
-    ]

@@ -1,10 +1,9 @@
 from dataclasses import dataclass
 from enum import StrEnum
 
-import oracledb
-
 from cloudcr_backup.domain.enums import LogMode
 from cloudcr_backup.domain.perfil_bd import PerfilBD
+from cloudcr_backup.repository.conexion import Conexion, ErrorIntegridad
 
 
 class Ambiente(StrEnum):
@@ -34,33 +33,30 @@ def _desde_fila(fila: tuple[int, str, str, str, str]) -> BaseDatosRegistrada:
 
 
 def registrar(
-    conexion: oracledb.Connection, nombre: str, oracle_home: str, ambiente: Ambiente
+    conexion: Conexion, nombre: str, oracle_home: str, ambiente: Ambiente
 ) -> BaseDatosRegistrada:
     cursor = conexion.cursor()
     try:
-        id_var = cursor.var(int)
         try:
             cursor.execute(
                 """
                 INSERT INTO bd_registrada (nombre, oracle_home, ambiente)
                 VALUES (:nombre, :oracle_home, :ambiente)
-                RETURNING id INTO :id
                 """,
                 nombre=nombre,
                 oracle_home=oracle_home,
                 ambiente=ambiente.value,
-                id=id_var,
             )
-        except oracledb.IntegrityError as error:
+        except ErrorIntegridad as error:
             raise BaseDatosYaRegistrada(f"Ya existe una base de datos registrada con el nombre {nombre}.") from error
         conexion.commit()
-        return BaseDatosRegistrada(id=int(id_var.getvalue()[0]), nombre=nombre, oracle_home=oracle_home,
+        return BaseDatosRegistrada(id=cursor.lastrowid, nombre=nombre, oracle_home=oracle_home,
                                     ambiente=ambiente, activa=True)
     finally:
         cursor.close()
 
 
-def listar(conexion: oracledb.Connection) -> list[BaseDatosRegistrada]:
+def listar(conexion: Conexion) -> list[BaseDatosRegistrada]:
     cursor = conexion.cursor()
     try:
         cursor.execute("SELECT id, nombre, oracle_home, ambiente, activa FROM bd_registrada ORDER BY nombre")
@@ -69,7 +65,7 @@ def listar(conexion: oracledb.Connection) -> list[BaseDatosRegistrada]:
         cursor.close()
 
 
-def obtener(conexion: oracledb.Connection, nombre: str) -> BaseDatosRegistrada | None:
+def obtener(conexion: Conexion, nombre: str) -> BaseDatosRegistrada | None:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -82,7 +78,7 @@ def obtener(conexion: oracledb.Connection, nombre: str) -> BaseDatosRegistrada |
         cursor.close()
 
 
-def desactivar(conexion: oracledb.Connection, nombre: str) -> None:
+def desactivar(conexion: Conexion, nombre: str) -> None:
     cursor = conexion.cursor()
     try:
         cursor.execute("UPDATE bd_registrada SET activa = 'N' WHERE nombre = :nombre", nombre=nombre)
@@ -91,7 +87,7 @@ def desactivar(conexion: oracledb.Connection, nombre: str) -> None:
         cursor.close()
 
 
-def activar(conexion: oracledb.Connection, nombre: str) -> None:
+def activar(conexion: Conexion, nombre: str) -> None:
     cursor = conexion.cursor()
     try:
         cursor.execute("UPDATE bd_registrada SET activa = 'S' WHERE nombre = :nombre", nombre=nombre)
@@ -100,7 +96,7 @@ def activar(conexion: oracledb.Connection, nombre: str) -> None:
         cursor.close()
 
 
-def guardar_perfil(conexion: oracledb.Connection, bd_id: int, perfil: PerfilBD) -> None:
+def guardar_perfil(conexion: Conexion, bd_id: int, perfil: PerfilBD) -> None:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -117,13 +113,13 @@ def guardar_perfil(conexion: oracledb.Connection, bd_id: int, perfil: PerfilBD) 
         cursor.close()
 
 
-def ultimo_perfil(conexion: oracledb.Connection, bd_id: int) -> PerfilBD | None:
+def ultimo_perfil(conexion: Conexion, bd_id: int) -> PerfilBD | None:
     cursor = conexion.cursor()
     try:
         cursor.execute(
             """
             SELECT contenido_json FROM perfil_bd WHERE bd_id = :bd_id
-            ORDER BY capturado_en DESC, id DESC FETCH FIRST 1 ROWS ONLY
+            ORDER BY capturado_en DESC, id DESC LIMIT 1
             """,
             bd_id=bd_id,
         )
@@ -133,7 +129,7 @@ def ultimo_perfil(conexion: oracledb.Connection, bd_id: int) -> PerfilBD | None:
         cursor.close()
 
 
-def log_mode_al_crear_script(conexion: oracledb.Connection, bd_id: int, script_id: int) -> LogMode | None:
+def log_mode_al_crear_script(conexion: Conexion, bd_id: int, script_id: int) -> LogMode | None:
     cursor = conexion.cursor()
     try:
         cursor.execute(
@@ -141,7 +137,7 @@ def log_mode_al_crear_script(conexion: oracledb.Connection, bd_id: int, script_i
             SELECT p.log_mode FROM perfil_bd p
             WHERE p.bd_id = :bd_id
               AND p.capturado_en <= (SELECT s.creado_en FROM script_rman s WHERE s.id = :script_id)
-            ORDER BY p.capturado_en DESC, p.id DESC FETCH FIRST 1 ROWS ONLY
+            ORDER BY p.capturado_en DESC, p.id DESC LIMIT 1
             """,
             bd_id=bd_id,
             script_id=script_id,

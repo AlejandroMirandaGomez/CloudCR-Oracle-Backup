@@ -12,7 +12,7 @@ from cloudcr_backup.services.almacen_estrategias import REPOSITORIO_OMITIDO, Res
 from cloudcr_backup.services.destinos import inspeccionar_destino
 from cloudcr_backup.services.solicitud_estrategia import SolicitudEstrategia, construir_estrategia
 from cloudcr_backup.validation import motor, reglas  # noqa: F401
-from cloudcr_backup.validation.contexto import ContextoValidacion, servicio_de_dsn
+from cloudcr_backup.validation.contexto import ContextoValidacion
 from cloudcr_backup.validation.reglas.archivado import modo_efectivo
 
 
@@ -58,7 +58,6 @@ def _contexto(
         estrategia=estrategia,
         perfil=perfil,
         codigos_estrategia_existentes=codigos_existentes,
-        repositorio_servicio=servicio_de_dsn(ajustes.repositorio_dsn),
         destinos_escribibles=escribibles,
         espacio_libre_destino_bytes=libres,
         espacio_total_destino_bytes=totales,

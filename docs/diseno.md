@@ -37,28 +37,28 @@ Documento de arquitectura, modelo de datos, máquinas de estado, diagramas de se
                     ┌─────────────────────┼───────────────────────┐
                     │                     │                       │
            ┌────────┴────────┐  ┌─────────┴─────────┐  ┌──────────┴──────────┐
-           │  oracle/          │  │  BKPCAT (PDB)      │  │  execution/runner    │
-           │  oracledb thick   │  │  BKP_ADMIN, 12     │  │  subprocess → rman   │
-           │  inspector local  │  │  tablas (thin)     │  │                      │
+           │  oracle/          │  │  MySQL (cloudcr)   │  │  execution/runner    │
+           │  oracledb thick   │  │  usuario cloudcr   │  │  subprocess → rman   │
+           │  inspector local  │  │  12 tablas         │  │                      │
            └────────┬──────────┘  └────────────────────┘  └──────────┬──────────┘
                     │                                                 │
               XE (BD objetivo)                               C:\backups\XE
 ```
 
-**Regla que nadie rompe:** la CLI y la web nunca ejecutan SQL ni RMAN directamente — siempre pasan por `services/`, que a su vez llama a `repository/` (SQL) o a `rman/`/`execution/` (RMAN). `repository/` es el único paquete autorizado a escribir sentencias SQL contra `BKPCAT`.
+**Regla que nadie rompe:** la CLI y la web nunca ejecutan SQL ni RMAN directamente — siempre pasan por `services/`, que a su vez llama a `repository/` (SQL) o a `rman/`/`execution/` (RMAN). `repository/` es el único paquete autorizado a escribir sentencias SQL contra el repositorio MySQL.
 
 **Desviaciones conocidas de esa regla (decisión consciente).** Cuatro grupos de archivos de la interfaz importan `oracle/` o `repository/` directamente en lugar de pasar por `services/`:
 
 | Dónde | Qué importa | Por qué se acepta |
 |---|---|---|
 | `cli/cmd_db.py`, `cmd_repo.py`, `cmd_param.py` | `repository/` y `oracle/connection` | Son los comandos de instalación y registro más antiguos, anteriores a la capa `services/`. La web ya tiene su equivalente en `services/administracion.py` y `services/bases_datos.py` |
-| `cli/cmd_estrategia.py`, `asistente_estrategia.py` | `repository/`, `oracle/explorador` | Trabajan con un archivo YAML y con la inspección local de la instancia (modo *thick*), sin repositorio; la restricción de 1.1 obliga a ordenar esas dos conexiones dentro del mismo comando |
+| `cli/cmd_estrategia.py`, `asistente_estrategia.py` | `repository/`, `oracle/explorador` | Trabajan con un archivo YAML, con la inspección local de la instancia (modo *thick*) y, de forma opcional, con el repositorio |
 | `cli/cmd_explorar.py`, `web/dependencias.py`, `web/rutas/instancias.py`, `comun.py`, `estrategias.py` | `oracle/discovery`, `oracle/explorador`, `oracle/connection` | El explorador de instancias es el módulo original del proyecto; sus tipos de dato (`Exploracion`, errores de conexión) se usan en la presentación |
 | `web/rutas/sistema.py` | `repository.bases_datos.Ambiente` | Solo importa una enumeración, no ejecuta SQL |
 
-Ninguno de ellos escribe SQL ni invoca RMAN: toda sentencia contra `BKPCAT` sigue viviendo en `repository/` y todo RMAN en `execution/`. Mover estos comandos a `services/` es deuda técnica registrada: no cambia ningún comportamiento y sus pruebas actuales dependen de la forma en que hoy llaman a esos módulos, por lo que se dejó fuera del alcance de la entrega.
+Ninguno de ellos escribe SQL ni invoca RMAN: toda sentencia contra el repositorio sigue viviendo en `repository/` y todo RMAN en `execution/`. Mover estos comandos a `services/` es deuda técnica registrada: no cambia ningún comportamiento y sus pruebas actuales dependen de la forma en que hoy llaman a esos módulos, por lo que se dejó fuera del alcance de la entrega.
 
-**Restricción técnica real descubierta en desarrollo:** `python-oracledb` no permite mezclar modo *thin* (usuario/clave, para el repositorio) y modo *thick* (autenticación de sistema operativo, para inspeccionar la base objetivo) en el mismo proceso. Cualquier comando que necesite las dos conexiones debe completar primero toda la parte thick (inspección local) y recién después abrir la conexión al repositorio.
+**Una restricción que ya no existe:** mientras el repositorio vivía en Oracle, `python-oracledb` no permitía mezclar modo *thin* (para el repositorio) y modo *thick* (para inspeccionar la base objetivo) en el mismo proceso, y había que ordenar las dos conexiones. El repositorio ahora usa PyMySQL, así que la conexión thick a Oracle solo sirve para inspeccionar la base objetivo y convive sin orden especial con la del repositorio.
 
 ### 1.2 Carpeta de trabajo en ejecución
 
@@ -81,9 +81,11 @@ Ninguno de ellos escribe SQL ni invoca RMAN: toda sentencia contra `BKPCAT` sigu
 
 El destino de los respaldos (`C:\backups\XE` por defecto, configurable con `CLOUDCR_DESTINO_DEFECTO`) es independiente de la carpeta de trabajo.
 
-### 1.3 El repositorio dentro de la misma instancia que se respalda
+### 1.3 El repositorio fuera de la instancia que se respalda
 
-`BKPCAT` es una PDB de la misma CDB `XE` que se respalda. Un respaldo en modo `CONSISTENTE` apaga la base con `SHUTDOWN IMMEDIATE`, lo que apagaría también el repositorio a mitad de la ejecución. Tres medidas lo resuelven:
+El repositorio vive en MySQL (base `cloudcr`), no en Oracle. Es una decisión de resiliencia: la herramienta existe para recuperar Oracle, así que no puede depender de que Oracle esté en pie. Antes el repositorio era una PDB (`BKPCAT`) de la misma CDB que se respaldaba; un respaldo `CONSISTENTE` (`SHUTDOWN IMMEDIATE`) o una instancia dañada lo dejaban inaccesible justo cuando más se necesitaba. `iniciar.cmd` comprueba el servicio `MySQL80` y lo inicia si está detenido; no necesita que Oracle esté en ejecución.
+
+Ante la caída del propio repositorio (por ejemplo, MySQL detenido) siguen vigentes tres medidas:
 
 1. **Evidencia primero a disco:** `execution/evidencia.py` escribe `evidencia.json`, `script.rman` y `rman.log` en la carpeta de trabajo antes de tocar el repositorio.
 2. **Buzón:** si el `INSERT` al repositorio falla (por ejemplo porque la base está apagada), el registro queda en `<work_dir>/buzon/` y se sincroniza en el siguiente tick del agente.
@@ -97,7 +99,7 @@ El destino de los respaldos (`C:\backups\XE` por defecto, configurable con `CLOU
 |---|---|---|
 | `domain/` | Modelos pydantic puros, sin E/S: `Estrategia`, `Tarea`, `Programacion`, `Condicion` (alertas), enumerados | — (todos lo importan) |
 | `config/` | Configuración con precedencia flag → variable de entorno → YAML → valor por defecto; layout de la carpeta de trabajo | — |
-| `repository/` | Única capa con SQL contra `BKPCAT`: `conexion`, `esquema`, `parametros`, `bases_datos`, `estrategias`, `scripts`, `ejecuciones`, `piezas`, `alertas` | CLI y web, directo |
+| `repository/` | Única capa con SQL contra el repositorio MySQL: `conexion` (interfaz `Conexion` y adaptador PyMySQL), `esquema`, `preparacion`, `migracion_oracle`, `parametros`, `bases_datos`, `estrategias`, `scripts`, `ejecuciones`, `piezas`, `alertas` | CLI y web, directo |
 | `oracle/` | Descubrimiento de instancias, conexión thick/SYSDBA, inspección de la base objetivo (`PerfilBD`), 14+ reglas de observación | — |
 | `strategy/` | Servicio de estrategias (crear/editar/versionar), YAML, asistente interactivo, criterios de prioridad, plantillas de esquema | — |
 | `validation/` | Motor de reglas (34 códigos, 4 severidades) que valida una estrategia contra el perfil real de la base | — |
@@ -138,7 +140,9 @@ ALERTA N──1 (BD_REGISTRADA | ESTRATEGIA | TAREA | EJECUCION, todas opcionale
 PARAMETRO (clave/valor global, sin relaciones)
 ```
 
-### 3.2 Diccionario de datos — las 12 tablas de `BKP_ADMIN`
+### 3.2 Diccionario de datos — las 12 tablas del repositorio
+
+Los tipos se muestran en la notación original (Oracle); en MySQL son: `VARCHAR2` → `VARCHAR`, `NUMBER` → `BIGINT` (identificadores y tamaños) o `INT`, `CLOB` → `LONGTEXT`, `TIMESTAMP` → `DATETIME(6)`, `IDENTITY` → `AUTO_INCREMENT`. Las tablas usan InnoDB, `utf8mb4` y la intercalación `utf8mb4_bin`, para que los nombres distingan mayúsculas como en Oracle.
 
 **`PARAMETRO`** — configuración global clave/valor.
 
@@ -299,9 +303,9 @@ PARAMETRO (clave/valor global, sin relaciones)
 
 - **Sin tabla `AGENTE`:** un solo host en la demo; `EJECUCION.agente` guarda el hostname.
 - **Sin tabla `AUDITORIA`:** se cubre con `creada_por` en `ESTRATEGIA` y `aprobado_por` en `SCRIPT_RMAN`.
-- **`RECUPERACION_PROCEDIMIENTO` es complementaria:** se crea al instalar el repositorio y, en repositorios ya instalados, la primera vez que se usa la recuperación (`CREATE TABLE` con el privilegio que ya tiene `BKP_ADMIN`). No cuenta entre las 12 tablas que deciden si el repositorio está instalado, así que un repositorio existente sigue siendo válido sin reinstalarlo.
+- **`RECUPERACION_PROCEDIMIENTO` es complementaria:** se crea al instalar el repositorio y, en repositorios ya instalados, la primera vez que se usa la recuperación (`CREATE TABLE IF NOT EXISTS` con el privilegio que ya tiene el usuario del repositorio). No cuenta entre las 12 tablas que deciden si el repositorio está instalado, así que un repositorio existente sigue siendo válido sin reinstalarlo.
 - **La estrategia no se versiona como filas separadas:** `editar` actualiza la misma fila de `ESTRATEGIA` y sube `version`; el historial real y auditable vive en `SCRIPT_RMAN`, donde cada versión de script sí queda como fila propia y las anteriores pasan a `OBSOLETO`.
-- **`ESTRATEGIA_OBJETO.identificador` admite `NULL`:** decisión corregida durante el desarrollo — Oracle no distingue `''` de `NULL` en `VARCHAR2`, y la convención del dominio usa `identificador=""` para "toda la base".
+- **`ESTRATEGIA_OBJETO.identificador` admite `NULL`:** la convención del dominio usa `identificador=""` para "toda la base" y el repositorio lee `NULL` y `''` por igual (herencia de cuando el repositorio estaba en Oracle, que no distingue `''` de `NULL`).
 
 ---
 
@@ -365,7 +369,7 @@ ABIERTA ──reconocer──▶ RECONOCIDA ──resolver──▶ RESUELTA
 ### 5.1 Crear y aprobar una estrategia
 
 ```
-Usuario      cli/cmd_estrategia   services/estrategias   repository/estrategias   BKPCAT
+Usuario      cli/cmd_estrategia   services/estrategias   repository/estrategias   MySQL 
   │                 │                     │                        │                │
   │  estrategia crear│                     │                        │                │
   │────────────────▶│                     │                        │                │
@@ -476,7 +480,7 @@ sequenceDiagram
     participant A as Agente (agent/bucle.py)
     participant L as Latido (archivo)
     participant B as Buzón (pipeline)
-    participant R as Repositorio BKPCAT
+    participant R as Repositorio MySQL
     participant P as Planificador
     participant E as Ejecutor (pipeline)
     participant M as Motor de alertas

@@ -1,5 +1,3 @@
-import oracledb
-
 from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.administracion import PerfilGuardado, VistaBaseDatos
 from cloudcr_backup.domain.errores import FiltroInvalido, OperacionNoPermitida, RecursoNoEncontrado
@@ -8,6 +6,7 @@ from cloudcr_backup.oracle.discovery import InstanciaDescubierta, descubrir_inst
 from cloudcr_backup.oracle.explorador import InstanciaNoEncontrada, explorar_local, resolver_instancia
 from cloudcr_backup.repository import bases_datos as repositorio_bases_datos
 from cloudcr_backup.repository.bases_datos import Ambiente, BaseDatosRegistrada
+from cloudcr_backup.repository.conexion import Conexion
 from cloudcr_backup.services.cliente_oracle import preparar_cliente_oracle
 from cloudcr_backup.services.sesion import conexion_repositorio
 
@@ -49,7 +48,7 @@ def _vista(
     )
 
 
-def _resumen_perfil(conexion: oracledb.Connection, base: BaseDatosRegistrada) -> PerfilGuardado | None:
+def _resumen_perfil(conexion: Conexion, base: BaseDatosRegistrada) -> PerfilGuardado | None:
     perfil = repositorio_bases_datos.ultimo_perfil(conexion, base.id)
     if perfil is None:
         return None
