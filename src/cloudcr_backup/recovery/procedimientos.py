@@ -7,6 +7,7 @@ from cloudcr_backup.domain.recuperacion import (
     ArchivoDanado,
     BloqueCorrupto,
     Escenario,
+    GrupoRedo,
     GrupoRedoActual,
     MiembroRedoDanado,
     Procedimiento,
@@ -22,6 +23,10 @@ PATRON_PAR_NUMEROS = re.compile(r"^(\d+)\s*:\s*(\d+)$")
 CARACTERES_PROHIBIDOS_RUTA = frozenset("'\";\r\n")
 LARGO_MAXIMO_RUTA = 400
 FORMATO_HASTA = "%Y-%m-%d %H:%M:%S"
+MODO_PDB_CERRADA = "MOUNTED"
+OBJETIVO_SIN_CONTROLFILE = "controlfile"
+ESTADOS_REDO_SIN_CHECKPOINT = frozenset({"INACTIVE", "UNUSED"})
+ESTADOS_REDO_SIN_ARCHIVAR = frozenset({"CURRENT", "ACTIVE"})
 REQUIEREN_ARCHIVELOG = frozenset(
     {
         Escenario.PDB,
@@ -64,6 +69,13 @@ PASO_REDO = (
 PASO_RESPALDO_NUEVO = (
     "Abrir con RESETLOGS: se inicia una nueva encarnación y hay que hacer un respaldo completo de inmediato."
 )
+PASO_CONTROLFILE_DESDE_AUTOBACKUP = (
+    "Arrancar la instancia sin montar (STARTUP FORCE NOMOUNT, que la reinicia aunque haya quedado a medio arrancar) e "
+    "indicar el DBID de la base."
+)
+PASO_RESTAURAR_CONTROLFILE = (
+    "Restaurar el control file desde la pieza respaldada por la estrategia o desde el autobackup."
+)
 AVISO_EN_LINEA_PDB = (
     "RMAN no puede cambiar de contenedor, así que el script no pone el tablespace en línea: si había quedado "
     "OFFLINE, CloudCR lo hace al terminar la ejecución. Si aplica el script a mano, ejecute "
@@ -72,22 +84,25 @@ AVISO_EN_LINEA_PDB = (
 
 PASOS_ESCENARIO = {
     Escenario.PDB: [
-        "Cerrar solo la PDB afectada; el resto de la CDB sigue en servicio.",
+        "Cerrar solo la PDB afectada si está abierta; el resto de la CDB sigue en servicio. Si ya está cerrada "
+        "(MOUNTED, como queda al perder su SYSTEM o su UNDO), no hace falta cerrarla.",
         "Restaurar sus datafiles desde el último respaldo y recuperarla.",
         PASO_REDO,
         "Abrir la PDB.",
     ],
     Escenario.TABLESPACE: [
-        "Dejar fuera de servicio el tablespace (o cerrar su PDB si pertenece a una).",
+        "Dejar fuera de servicio el tablespace (o cerrar su PDB si pertenece a una y está abierta).",
         "Restaurar sus datafiles desde el respaldo y recuperarlo.",
         PASO_REDO,
         "Volver a ponerlo en línea.",
     ],
     Escenario.DATAFILE: [
-        "Dejar fuera de línea solo el datafile dañado (o cerrar su PDB si pertenece a una).",
+        "Dejar fuera de línea solo el datafile dañado (o cerrar su PDB si pertenece a una y está abierta). El SYSTEM "
+        "y el UNDO de una PDB se recuperan con la PDB cerrada: al perderlos la PDB queda en MOUNTED y no hace falta "
+        "cerrarla otra vez.",
         "Restaurarlo por su número de archivo (file#) y recuperarlo.",
         PASO_REDO,
-        "Volver a ponerlo en línea.",
+        "Volver a ponerlo en línea (o abrir la PDB).",
     ],
     Escenario.DATAFILE_CRITICO: [
         "Un datafile de SYSTEM o UNDO del contenedor raíz no se puede dejar OFFLINE con la base abierta: hay que "
@@ -97,15 +112,17 @@ PASOS_ESCENARIO = {
         "Abrir la base (ALTER DATABASE OPEN). No hace falta RESETLOGS: la recuperación es completa.",
     ],
     Escenario.CONTROLFILE: [
-        "Arrancar la instancia sin montar (NOMOUNT) e indicar el DBID de la base.",
-        "Restaurar el control file desde la pieza respaldada por la estrategia o desde el autobackup.",
-        "Montar la base y recuperarla con los archived y online redo logs disponibles.",
+        PASO_CONTROLFILE_DESDE_AUTOBACKUP,
+        PASO_RESTAURAR_CONTROLFILE,
+        "Montar la base, restaurar los datafiles (RESTORE DATABASE) y recuperarla con los archived y online redo "
+        "logs disponibles (RECOVER DATABASE).",
         PASO_RESPALDO_NUEVO,
     ],
     Escenario.MIEMBRO_REDOLOG: [
         "El grupo sigue funcionando con su otro miembro (multiplexación): la base no se cae y no hay que "
         "restaurar ni recuperar nada.",
-        "Si el grupo es el CURRENT, cambiar de log (SWITCH LOGFILE); luego un CHECKPOINT deja el grupo INACTIVE.",
+        "Dejar el grupo INACTIVE: si es el CURRENT, cambiar de log (SWITCH LOGFILE) y hacer un CHECKPOINT; si está "
+        "ACTIVE, basta el CHECKPOINT; si ya está INACTIVE no hace falta nada.",
         "Quitar el miembro dañado del grupo (DROP LOGFILE MEMBER).",
         "Volver a crearlo en la misma ruta (ADD LOGFILE MEMBER ... REUSE TO GROUP).",
     ],
@@ -120,10 +137,12 @@ PASOS_ESCENARIO = {
     ],
     Escenario.CORRUPCION_BLOQUE: [
         "El datafile sigue en línea: solo se reparan los bloques dañados (block media recovery).",
-        "Recuperar el bloque indicado (RECOVER DATAFILE n BLOCK b) o todos los de V$DATABASE_BLOCK_CORRUPTION "
-        "(RECOVER CORRUPTION LIST).",
+        "Con una lista de bloques, validar la base (VALIDATE DATABASE) para refrescar V$DATABASE_BLOCK_CORRUPTION y "
+        "recuperar todos los bloques de la lista (RECOVER CORRUPTION LIST); con un bloque indicado, recuperarlo "
+        "(RECOVER DATAFILE n BLOCK b).",
         "RMAN toma la copia del bloque del respaldo y le aplica el redo hasta dejarlo al día.",
-        "Volver a diagnosticar: la vista V$DATABASE_BLOCK_CORRUPTION debe quedar vacía.",
+        "Validar de nuevo (VALIDATE DATABASE, o VALIDATE DATAFILE n si se indicó el bloque) y volver a "
+        "diagnosticar: la vista V$DATABASE_BLOCK_CORRUPTION debe quedar vacía.",
     ],
     Escenario.SPFILE: [
         "Arrancar la instancia en NOMOUNT: sin SPFILE, RMAN la levanta con un archivo de parámetros mínimo.",
@@ -132,7 +151,7 @@ PASOS_ESCENARIO = {
         "Montar y abrir la base: los datafiles y el control file no se tocaron, no hay que recuperar nada.",
     ],
     Escenario.TOTAL_NOARCHIVELOG: [
-        "Apagar la base con SHUTDOWN IMMEDIATE y montarla.",
+        "Reiniciar la instancia y montarla (STARTUP FORCE MOUNT, que sirve también si ya estaba caída).",
         "Restaurar la base completa desde el último respaldo consistente (en frío).",
         "RECOVER DATABASE NOREDO: en NOARCHIVELOG no hay redo que aplicar; se pierden los cambios posteriores "
         "al respaldo.",
@@ -145,6 +164,27 @@ PASOS_ESCENARIO = {
         "Abrir con RESETLOGS y hacer un respaldo nuevo.",
     ],
 }
+PASOS_TOTAL_SIN_CONTROLFILE = [
+    "Se perdió también el control file: la instancia no monta (ORA-00205). " + PASO_CONTROLFILE_DESDE_AUTOBACKUP,
+    PASO_RESTAURAR_CONTROLFILE + " Luego montar la base.",
+    "Restaurar la base completa desde el último respaldo consistente (en frío).",
+    "RECOVER DATABASE NOREDO: en NOARCHIVELOG no hay redo que aplicar; se pierden los cambios posteriores al respaldo.",
+    "Abrir con RESETLOGS y hacer un respaldo nuevo.",
+]
+AVISO_GRUPO_ACTUAL_SIN_LIMPIAR = (
+    "Antes de aprobar, el DBA puede intentar ALTER DATABASE CLEAR UNARCHIVED LOGFILE GROUP {grupo}; con un grupo "
+    "CURRENT perdido normalmente falla con ORA-01624 y entonces este procedimiento es el camino. CloudCR no lo "
+    "incluye en el script porque un error detendría RMAN."
+)
+AVISO_GRUPO_ACTUAL_RENOMBRAR = (
+    "Si el disco de los redo ya no existe, cambie sus rutas con ALTER DATABASE RENAME FILE (con la base montada) "
+    "antes de ejecutar este procedimiento, porque abre con RESETLOGS."
+)
+AVISO_MIEMBRO_SIN_ARCHIVAR = (
+    "Con la base en ARCHIVELOG, Oracle exige que el grupo ya esté archivado (ARCHIVED = YES en V$LOG) para quitar un "
+    "miembro. El cambio de log y el checkpoint del script dejan el grupo INACTIVE, pero si RMAN se detiene en el "
+    "DROP porque el grupo aún no se archivó, espere a que se archive y genere un procedimiento nuevo."
+)
 
 
 @dataclass(frozen=True)
@@ -165,6 +205,9 @@ class SolicitudProcedimiento:
     bloques: list[BloqueCorrupto] = field(default_factory=list)
     miembros_redo: list[MiembroRedoDanado] = field(default_factory=list)
     redo_actual: GrupoRedoActual | None = None
+    grupos_redo: list[GrupoRedo] = field(default_factory=list)
+    estado_pdbs: dict[str, str] = field(default_factory=dict)
+    sin_conexion: bool = False
 
 
 @dataclass(frozen=True)
@@ -192,6 +235,25 @@ def _es_critico(solicitud: SolicitudProcedimiento, numero: int, archivo: Archivo
     return numero in solicitud.criticos or (archivo is not None and archivo.critico)
 
 
+def _pdb_abierta(solicitud: SolicitudProcedimiento, pdb: str) -> bool:
+    modos = {nombre.upper(): modo.upper() for nombre, modo in solicitud.estado_pdbs.items()}
+    return modos.get(pdb.upper()) != MODO_PDB_CERRADA
+
+
+def _avisos_de_pdb(pdb: str | None, abierta: bool, con_paso_en_linea: bool) -> list[str]:
+    avisos: list[str] = []
+    if pdb is None:
+        return avisos
+    if con_paso_en_linea:
+        avisos.append(AVISO_EN_LINEA_PDB)
+    if not abierta:
+        avisos.append(
+            f"La PDB {pdb} ya está cerrada (MOUNTED), como queda al perder su SYSTEM o su UNDO: el script no la cierra "
+            "de nuevo; restaura, recupera y abre la PDB."
+        )
+    return avisos
+
+
 def _numero_datafile(solicitud: SolicitudProcedimiento) -> int | str:
     try:
         return int(solicitud.objetivo or "")
@@ -216,9 +278,12 @@ def _objetivo_datafile(solicitud: SolicitudProcedimiento) -> Objetivo | str:
     if pdb is None and _es_critico(solicitud, numero, archivo):
         return (
             f"El datafile {numero} pertenece a SYSTEM o UNDO del contenedor raíz: Oracle no permite dejarlo OFFLINE "
-            "con la base abierta. Use el escenario datafile-critico, que lo recupera con la base montada."
+            "con la base abierta. Use el escenario datafile-critico, que lo recupera con la base montada. El SYSTEM y "
+            "el UNDO de una PDB, en cambio, se recuperan con este escenario y la PDB cerrada."
         )
-    return Objetivo({"datafile": numero, "pdb": pdb}, descripcion, [AVISO_EN_LINEA_PDB] if pdb else [])
+    abierta = _pdb_abierta(solicitud, pdb) if pdb else True
+    variables: dict[str, object] = {"datafile": numero, "pdb": pdb, "pdb_abierta": abierta}
+    return Objetivo(variables, descripcion, _avisos_de_pdb(pdb, abierta, con_paso_en_linea=True))
 
 
 def _objetivo_datafile_critico(solicitud: SolicitudProcedimiento) -> Objetivo | str:
@@ -257,7 +322,9 @@ def _objetivo_tablespace(solicitud: SolicitudProcedimiento) -> Objetivo | str:
             f"El tablespace {identificador} es SYSTEM o UNDO del contenedor raíz: Oracle no permite dejarlo OFFLINE "
             "con la base abierta. Use el escenario datafile-critico con el número de su datafile dañado."
         )
-    return Objetivo({"tablespace": identificador, "pdb": pdb}, identificador, [AVISO_EN_LINEA_PDB] if pdb else [])
+    abierta = _pdb_abierta(solicitud, pdb) if pdb else True
+    variables: dict[str, object] = {"tablespace": identificador, "pdb": pdb, "pdb_abierta": abierta}
+    return Objetivo(variables, identificador, _avisos_de_pdb(pdb, abierta, con_paso_en_linea=True))
 
 
 def _objetivo_pdb(solicitud: SolicitudProcedimiento) -> Objetivo | str:
@@ -268,7 +335,8 @@ def _objetivo_pdb(solicitud: SolicitudProcedimiento) -> Objetivo | str:
             return "El diagnóstico no encontró una PDB con archivos dañados; indique la PDB con --objetivo."
     if not _nombre_valido(pdb) or ":" in pdb:
         return f"La PDB {pdb!r} no es un nombre válido."
-    return Objetivo({"pdb": pdb}, pdb)
+    abierta = _pdb_abierta(solicitud, pdb)
+    return Objetivo({"pdb": pdb, "pdb_abierta": abierta}, pdb, _avisos_de_pdb(pdb, abierta, con_paso_en_linea=False))
 
 
 def _objetivo_autobackup(solicitud: SolicitudProcedimiento) -> Objetivo | str:
@@ -295,10 +363,20 @@ def _miembro_indicado(solicitud: SolicitudProcedimiento, texto: str) -> MiembroR
         return conocido
     if grupo is None:
         return (
-            f"El diagnóstico no informa el miembro {ruta!r} como INVALID en V$LOGFILE; indíquelo como "
+            f"El diagnóstico no informa el miembro {ruta!r} como dañado ni ausente; indíquelo como "
             "GRUPO:RUTA, por ejemplo 2:C:\\ORADATA\\XE\\REDO02B.LOG."
         )
-    return MiembroRedoDanado(grupo=grupo, miembro=ruta, estado_miembro="INVALID", estado_grupo="DESCONOCIDO")
+    del_grupo = next((g for g in solicitud.grupos_redo if g.grupo == grupo), None)
+    if del_grupo is None:
+        return MiembroRedoDanado(grupo=grupo, miembro=ruta, estado_miembro="INVALID", estado_grupo="DESCONOCIDO")
+    return MiembroRedoDanado(
+        grupo=grupo,
+        miembro=ruta,
+        estado_miembro="INVALID",
+        estado_grupo=del_grupo.estado,
+        hilo=del_grupo.hilo,
+        secuencia=del_grupo.secuencia,
+    )
 
 
 def _objetivo_miembro_redolog(solicitud: SolicitudProcedimiento) -> Objetivo | str:
@@ -309,8 +387,8 @@ def _objetivo_miembro_redolog(solicitud: SolicitudProcedimiento) -> Objetivo | s
     else:
         if not solicitud.miembros_redo:
             return (
-                "El diagnóstico no encontró miembros de redo log inválidos en V$LOGFILE; indique el miembro con "
-                "--objetivo (GRUPO:RUTA)."
+                "El diagnóstico no encontró miembros de redo log dañados ni ausentes en V$LOGFILE; indique el miembro "
+                "con --objetivo (GRUPO:RUTA)."
             )
         elegido = next((m for m in solicitud.miembros_redo if not m.grupo_perdido), solicitud.miembros_redo[0])
     if elegido.grupo_perdido:
@@ -324,13 +402,22 @@ def _objetivo_miembro_redolog(solicitud: SolicitudProcedimiento) -> Objetivo | s
             f"No se sabe si el grupo {elegido.grupo} es el CURRENT. Si lo es, RMAN se detendrá con ORA-01609: "
             "diagnostique de nuevo para que el script incluya el cambio de log."
         )
-    variables: dict[str, object] = {"grupo": elegido.grupo, "miembro": elegido.miembro, "actual": elegido.actual}
+    estado = elegido.estado_grupo.upper()
+    if solicitud.log_mode is LogMode.ARCHIVELOG and estado in ESTADOS_REDO_SIN_ARCHIVAR:
+        avisos.append(AVISO_MIEMBRO_SIN_ARCHIVAR)
+    variables: dict[str, object] = {
+        "grupo": elegido.grupo,
+        "miembro": elegido.miembro,
+        "cambiar_log": elegido.actual,
+        "punto_de_control": estado not in ESTADOS_REDO_SIN_CHECKPOINT,
+    }
     return Objetivo(variables, f"grupo {elegido.grupo}: {elegido.miembro}", avisos)
 
 
 def _objetivo_grupo_redolog_actual(solicitud: SolicitudProcedimiento) -> Objetivo | str:
     texto = (solicitud.objetivo or "").strip()
     avisos = []
+    grupo: int | None = None
     if texto:
         par = PATRON_PAR_NUMEROS.match(texto)
         if par:
@@ -339,14 +426,16 @@ def _objetivo_grupo_redolog_actual(solicitud: SolicitudProcedimiento) -> Objetiv
             hilo, secuencia = 1, int(texto)
         else:
             return f"Indique la secuencia (SEQUENCE#) del grupo perdido como número o HILO:SECUENCIA, no {texto!r}."
+        grupo = next((g.grupo for g in solicitud.grupos_redo if g.hilo == hilo and g.secuencia == secuencia), None)
     else:
         perdido = next((m for m in solicitud.miembros_redo if m.grupo_perdido and m.actual), None)
         if perdido is not None and perdido.secuencia is not None:
-            hilo, secuencia = perdido.hilo, perdido.secuencia
+            hilo, secuencia, grupo = perdido.hilo, perdido.secuencia, perdido.grupo
         elif solicitud.redo_actual is not None:
-            hilo, secuencia = solicitud.redo_actual.hilo, solicitud.redo_actual.secuencia
+            actual = solicitud.redo_actual
+            hilo, secuencia, grupo = actual.hilo, actual.secuencia, actual.grupo
             avisos.append(
-                f"V$LOGFILE no marca el grupo {solicitud.redo_actual.grupo} como perdido; se usa su secuencia porque "
+                f"El diagnóstico no marca el grupo {actual.grupo} como perdido; se usa su secuencia porque "
                 "es el grupo CURRENT según V$LOG. Confirme que es el grupo que se perdió."
             )
         else:
@@ -357,6 +446,8 @@ def _objetivo_grupo_redolog_actual(solicitud: SolicitudProcedimiento) -> Objetiv
     if secuencia < 1 or hilo < 1:
         return "La secuencia y el hilo deben ser mayores que cero."
     descripcion = f"hasta la secuencia {secuencia} (hilo {hilo}), sin aplicarla"
+    avisos.append(AVISO_GRUPO_ACTUAL_SIN_LIMPIAR.format(grupo=grupo if grupo is not None else "<número del grupo>"))
+    avisos.append(AVISO_GRUPO_ACTUAL_RENOMBRAR)
     return Objetivo({"secuencia": secuencia, "hilo": hilo}, descripcion, avisos)
 
 
@@ -379,6 +470,22 @@ def _objetivo_corrupcion_bloque(solicitud: SolicitudProcedimiento) -> Objetivo |
     return Objetivo({"datafile": None, "bloque": None}, f"{total} bloques en V$DATABASE_BLOCK_CORRUPTION")
 
 
+def _objetivo_total_noarchivelog(solicitud: SolicitudProcedimiento) -> Objetivo | str:
+    texto = (solicitud.objetivo or "").strip().lower()
+    if texto and texto != OBJETIVO_SIN_CONTROLFILE:
+        return (
+            f"El escenario total-noarchivelog solo admite {OBJETIVO_SIN_CONTROLFILE!r} como objetivo (para incluir "
+            f"también la restauración del control file), no {texto!r}."
+        )
+    if not (solicitud.sin_conexion or texto == OBJETIVO_SIN_CONTROLFILE):
+        return Objetivo({"sin_controlfile": False})
+    autobackup = _objetivo_autobackup(solicitud)
+    if isinstance(autobackup, str):
+        return "Esta variante de la pérdida total también restaura el control file. " + autobackup
+    descripcion = "incluye la restauración del control file"
+    return Objetivo({**autobackup.variables, "sin_controlfile": True}, descripcion)
+
+
 def _contexto(solicitud: SolicitudProcedimiento) -> Objetivo | str:
     escenario = solicitud.escenario
     if escenario is Escenario.DATAFILE:
@@ -397,12 +504,20 @@ def _contexto(solicitud: SolicitudProcedimiento) -> Objetivo | str:
         return _objetivo_grupo_redolog_actual(solicitud)
     if escenario is Escenario.CORRUPCION_BLOQUE:
         return _objetivo_corrupcion_bloque(solicitud)
+    if escenario is Escenario.TOTAL_NOARCHIVELOG:
+        return _objetivo_total_noarchivelog(solicitud)
     if escenario is Escenario.PUNTO_EN_TIEMPO:
         if solicitud.hasta is None:
             return "Indique el momento objetivo con --hasta 'AAAA-MM-DD HH:MM'."
         texto = solicitud.hasta.strftime(FORMATO_HASTA)
         return Objetivo({"hasta": texto}, texto)
     return Objetivo({})
+
+
+def _pasos_del_escenario(escenario: Escenario, variables: dict[str, object]) -> list[str]:
+    if escenario is Escenario.TOTAL_NOARCHIVELOG and variables.get("sin_controlfile"):
+        return PASOS_TOTAL_SIN_CONTROLFILE
+    return PASOS_ESCENARIO[escenario]
 
 
 def generar(solicitud: SolicitudProcedimiento) -> Procedimiento:
@@ -435,7 +550,7 @@ def generar(solicitud: SolicitudProcedimiento) -> Procedimiento:
         posible=True,
         motivo="Procedimiento generado; no se ejecuta automáticamente.",
         objetivo=contexto.descripcion,
-        pasos=[PASO_DIAGNOSTICO, *PASOS_ESCENARIO[escenario], PASO_REVISAR, PASO_EJECUTAR],
+        pasos=[PASO_DIAGNOSTICO, *_pasos_del_escenario(escenario, contexto.variables), PASO_REVISAR, PASO_EJECUTAR],
         script=script,
         avisos=avisos,
     )

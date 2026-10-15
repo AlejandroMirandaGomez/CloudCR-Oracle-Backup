@@ -57,15 +57,16 @@
 </div>
 {% endif %}
 {% if diagnostico.miembros_redo %}
-<h3>Miembros de redo log inválidos (V$LOGFILE)</h3>
+<h3>Miembros de redo log dañados o ausentes (V$LOGFILE y disco)</h3>
 <div class="tabla-desplazable">
   <table class="tabla compacta">
-    <thead><tr><th scope="col">Grupo</th><th scope="col">Miembro</th><th scope="col">Estado del grupo</th><th scope="col">Secuencia</th><th scope="col">¿Grupo completo perdido?</th></tr></thead>
+    <thead><tr><th scope="col">Grupo</th><th scope="col">Miembro</th><th scope="col">Estado del miembro</th><th scope="col">Estado del grupo</th><th scope="col">Secuencia</th><th scope="col">¿Grupo completo perdido?</th></tr></thead>
     <tbody>
       {% for miembro in diagnostico.miembros_redo %}
       <tr>
         <td>{{ miembro.grupo }}</td>
         <td class="envolver"><code>{{ miembro.miembro }}</code></td>
+        <td class="tono-peligro">{{ miembro.estado_miembro or '—' }}</td>
         <td>{{ miembro.estado_grupo }}</td>
         <td>{{ miembro.secuencia if miembro.secuencia is not none else '—' }}</td>
         <td>{% if miembro.grupo_perdido %}<span class="tono-peligro">Sí</span>{% else %}No: el grupo sigue con otro miembro{% endif %}</td>

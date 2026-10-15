@@ -8,26 +8,34 @@ from types import SimpleNamespace
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import oracledb
 import pytest
 
 from cloudcr_backup.config.ajustes import Ajustes
 from cloudcr_backup.domain.alertas import CodigoAlerta, Condicion
 from cloudcr_backup.domain.enums import EstadoPrueba, EstadoScript, TipoRespaldo
 from cloudcr_backup.domain.errores import OperacionNoPermitida, RecursoNoEncontrado, RepositorioNoDisponible
+from cloudcr_backup.domain.perfil_bd import PerfilBD
 from cloudcr_backup.domain.recuperacion import (
     Diagnostico,
     Escenario,
+    EstadoPdb,
     FallaDetectada,
     PuntoRecuperacion,
     RegistroRecuperacion,
     ResultadoRecuperacion,
 )
 from cloudcr_backup.execution.apertura import ResultadoApertura
-from cloudcr_backup.execution.destino import BaseDestino, EstadoApertura
+from cloudcr_backup.execution.destino import BaseDestino, EstadoApertura, consulta_de
 from cloudcr_backup.execution.parser import analizar
 from cloudcr_backup.execution.runner import InvocacionRman, ResultadoRman
 from cloudcr_backup.recovery import calendario
-from cloudcr_backup.recovery.ejecucion import clasificar
+from cloudcr_backup.recovery.ejecucion import (
+    ESCENARIOS_CON_RESETLOGS,
+    RECORDATORIO_ARCHIVELOG,
+    RECORDATORIO_RESETLOGS,
+    clasificar,
+)
 from cloudcr_backup.recovery.en_linea import ObjetoEnLinea, ResultadoEnLinea
 from cloudcr_backup.recovery.procedimientos import AVISO_EN_LINEA_PDB
 from cloudcr_backup.repository import alertas as repositorio_alertas
@@ -41,7 +49,7 @@ from cloudcr_backup.repository import piezas as repositorio_piezas
 from cloudcr_backup.repository import recuperaciones as repositorio_recuperaciones
 from cloudcr_backup.repository.bases_datos import Ambiente, BaseDatosRegistrada
 from cloudcr_backup.services import recuperacion
-from tests.unit.oracle_falso import ConexionFalsa
+from tests.unit.oracle_falso import ConexionConFallaPorTexto, ConexionFalsa
 
 BD_PRUEBAS = BaseDatosRegistrada(id=1, nombre="XE", oracle_home=r"C:\oracle", ambiente=Ambiente.PRUEBAS, activa=True)
 LOG_CORRECTO = (
@@ -156,7 +164,11 @@ def entorno(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Entorno:
     return datos
 
 
-def instancia(filas_recover: list[tuple[Any, ...]] | None = None) -> Callable[[BaseDestino], Any]:
+def instancia(
+    filas_recover: list[tuple[Any, ...]] | None = None,
+    filas_pdbs: list[tuple[Any, ...]] | None = None,
+    filas_redo: list[tuple[Any, ...]] | None = None,
+) -> Callable[[BaseDestino], Any]:
     @contextmanager
     def abrir(base: BaseDestino) -> Iterator[Callable[[str, dict[str, Any]], list[tuple[Any, ...]]]]:
         def consulta(sql: str, parametros: dict[str, Any]) -> list[tuple[Any, ...]]:
@@ -164,9 +176,21 @@ def instancia(filas_recover: list[tuple[Any, ...]] | None = None) -> Callable[[B
                 return [("ARCHIVELOG", "READ WRITE", 3114375768)]
             if "v$recover_file" in sql:
                 return filas_recover or []
+            if "v$pdbs" in sql:
+                return filas_pdbs or []
+            if "v$logfile" in sql:
+                return filas_redo or []
             return []
 
         yield consulta
+
+    return abrir
+
+
+def instancia_de(conexion: ConexionFalsa) -> Callable[[BaseDestino], Any]:
+    @contextmanager
+    def abrir(base: BaseDestino) -> Iterator[Callable[[str, dict[str, Any]], list[tuple[Any, ...]]]]:
+        yield consulta_de(conexion)
 
     return abrir
 
@@ -204,7 +228,7 @@ def test_el_plan_queda_registrado_como_borrador_con_su_huella(entorno: Entorno) 
     assert registro.ruta_script == procedimiento.archivo
     assert Path(registro.ruta_script).read_text(encoding="ascii") == procedimiento.script
     assert registro.hash_sha256 == procedimiento.hash_sha256
-    otro =recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia(DATAFILE_7))
+    otro = recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia(DATAFILE_7))
     assert otro.archivo != procedimiento.archivo
 
 
@@ -621,3 +645,235 @@ def test_el_plan_de_un_datafile_de_pdb_avisa_que_la_herramienta_lo_pone_en_linea
     assert AVISO_EN_LINEA_PDB in en_pdb.avisos
     en_la_raiz = recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia(DATAFILE_7))
     assert AVISO_EN_LINEA_PDB not in en_la_raiz.avisos
+
+
+PERFIL_XE = PerfilBD.model_validate_json(
+    (Path(__file__).resolve().parents[1] / "fixtures" / "perfiles_bd" / "xe_noarchivelog.json").read_text(
+        encoding="utf-8"
+    )
+)
+PDB_CERRADA = [(3, "CLIENTEPDB", "MOUNTED")]
+SYSTEM_DE_LA_PDB = [
+    (11, r"C:\ORADATA\XE\CLIENTEPDB\SYSTEM01.DBF", "SYSTEM", "CLIENTEPDB", "OFFLINE", "FILE NOT FOUND", 9)
+]
+REDO_SIN_INVALID = [
+    (1, r"C:\R\REDO01A.LOG", None, "INACTIVE", 1, 40),
+    (2, r"C:\R\REDO02A.LOG", None, "CURRENT", 1, 41),
+    (2, r"C:\R\REDO02B.LOG", None, "CURRENT", 1, 41),
+]
+
+
+def test_con_la_pdb_cerrada_el_plan_no_vuelve_a_cerrarla(entorno: Entorno) -> None:
+    resultado = recuperacion.diagnostico(
+        entorno.ajustes, "XE", instancia(SYSTEM_DE_LA_PDB, PDB_CERRADA), entorno.notificar
+    )
+    assert resultado.pdbs == [EstadoPdb(con_id=3, nombre="CLIENTEPDB", modo="MOUNTED")]
+    cerrada = recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia(SYSTEM_DE_LA_PDB, PDB_CERRADA))
+    assert cerrada.script == ("RESTORE DATAFILE 11;\nRECOVER DATAFILE 11;\nALTER PLUGGABLE DATABASE CLIENTEPDB OPEN;\n")
+    abierta = recuperacion.plan(
+        entorno.ajustes, "XE", "datafile", abrir=instancia(SYSTEM_DE_LA_PDB, [(3, "CLIENTEPDB", "READ WRITE")])
+    )
+    assert (abierta.script or "").startswith("ALTER PLUGGABLE DATABASE CLIENTEPDB CLOSE IMMEDIATE;\n")
+
+
+def test_si_no_se_puede_leer_v_pdbs_el_plan_conserva_el_cierre_de_la_pdb(entorno: Entorno) -> None:
+    conexion = ConexionConFallaPorTexto(
+        "v$pdbs",
+        oracledb.DatabaseError("ORA-00942: table or view does not exist"),
+        [
+            [("ARCHIVELOG", "MOUNTED", 3114375768)],
+            [(11, r"C:\ORADATA\XE\CLIENTEPDB\SYSTEM01.DBF", "SYSTEM", "CLIENTEPDB", "OFFLINE", "FILE NOT FOUND", 9)],
+            [],
+            [],
+            [],
+        ],
+    )
+    procedimiento = recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia_de(conexion))
+    assert (procedimiento.script or "").startswith("ALTER PLUGGABLE DATABASE CLIENTEPDB CLOSE IMMEDIATE;\n")
+    assert any("No se pudo consultar V$PDBS" in aviso for aviso in procedimiento.avisos)
+
+
+def test_un_datafile_de_pdb_cerrada_tambien_se_pone_en_linea_al_terminar_rman(entorno: Entorno) -> None:
+    procedimiento = recuperacion.plan(entorno.ajustes, "XE", "datafile", abrir=instancia(DATAFILE_PDB, PDB_CERRADA))
+    assert procedimiento.id is not None
+    assert "CLOSE IMMEDIATE" not in (procedimiento.script or "")
+    recuperacion.aprobar(entorno.ajustes, "XE", procedimiento.id, "Ana DBA", True)
+    ponedor = PonedorFalso(ResultadoEnLinea(detalle="Se puso en línea el tablespace CLIENTEPDB:A1."))
+    vista = recuperacion.ejecutar(entorno.ajustes, "XE", procedimiento.id, True, entorno.lanzador(), ponedor=ponedor)
+    assert ponedor.llamadas == [DATAFILE_17_DE_LA_PDB]
+    assert vista.registro.resultado is ResultadoRecuperacion.EJECUTADO_OK
+
+
+def test_un_miembro_de_redo_ausente_en_disco_se_diagnostica_y_se_planifica(entorno: Entorno) -> None:
+    def existe(ruta: str) -> bool:
+        return not ruta.endswith("REDO02B.LOG")
+
+    abrir = instancia(filas_redo=REDO_SIN_INVALID)
+    resultado = recuperacion.diagnostico(entorno.ajustes, "XE", abrir, entorno.notificar, existe=existe)
+    assert resultado.sugeridos == [Escenario.MIEMBRO_REDOLOG]
+    assert [(m.grupo, m.estado_miembro, m.grupo_perdido) for m in resultado.miembros_redo] == [(2, "FALTANTE", False)]
+    assert [(g.grupo, g.estado) for g in resultado.grupos_redo] == [(1, "INACTIVE"), (2, "CURRENT")]
+    assert not resultado.sin_danos
+    procedimiento = recuperacion.plan(entorno.ajustes, "XE", "miembro-redolog", abrir=abrir, existe=existe)
+    assert procedimiento.script == (
+        "ALTER SYSTEM SWITCH LOGFILE;\nALTER SYSTEM CHECKPOINT;\n"
+        "ALTER DATABASE DROP LOGFILE MEMBER 'C:\\R\\REDO02B.LOG';\n"
+        "ALTER DATABASE ADD LOGFILE MEMBER 'C:\\R\\REDO02B.LOG' REUSE TO GROUP 2;\n"
+    )
+
+
+def test_un_grupo_current_sin_ningun_miembro_en_disco_sugiere_el_grupo_actual(entorno: Entorno) -> None:
+    abrir = instancia(filas_redo=REDO_SIN_INVALID)
+    resultado = recuperacion.diagnostico(
+        entorno.ajustes, "XE", abrir, entorno.notificar, existe=lambda ruta: "REDO01" in ruta
+    )
+    assert resultado.sugeridos == [Escenario.GRUPO_REDOLOG_ACTUAL]
+    procedimiento = recuperacion.plan(
+        entorno.ajustes, "XE", "grupo-redolog-actual", abrir=abrir, existe=lambda ruta: "REDO01" in ruta
+    )
+    assert "SET UNTIL SEQUENCE 41 THREAD 1;" in (procedimiento.script or "")
+    assert any("CLEAR UNARCHIVED LOGFILE GROUP 2;" in aviso for aviso in procedimiento.avisos)
+    assert any("RENAME FILE" in aviso for aviso in procedimiento.avisos)
+
+
+def test_si_v_containers_falla_el_diagnostico_sigue_viendo_los_archivos_y_no_sugiere_controlfile(
+    entorno: Entorno,
+) -> None:
+    conexion = ConexionConFallaPorTexto(
+        "v$containers",
+        oracledb.DatabaseError("ORA-01219: database or pluggable database not open"),
+        [
+            [("ARCHIVELOG", "MOUNTED", 3114375768)],
+            PDB_CERRADA,
+            [(17, r"C:\ORADATA\XE\CLIENTEPDB\A1_01.DBF", "A1", 3, "OFFLINE", "FILE NOT FOUND", 9)],
+            [],
+            [],
+            [],
+        ],
+    )
+    resultado = recuperacion.diagnostico(entorno.ajustes, "XE", instancia_de(conexion), entorno.notificar)
+    assert not resultado.sin_conexion and not resultado.fallo_consulta
+    assert [(a.file_id, a.contenedor) for a in resultado.archivos] == [(17, "CLIENTEPDB")]
+    assert resultado.sugeridos == [Escenario.DATAFILE]
+    assert Escenario.CONTROLFILE not in resultado.sugeridos
+    assert any("V$CONTAINERS no respondió" in aviso for aviso in resultado.avisos)
+    assert all("v$containers" not in sql.lower() for sql, _ in conexion.ejecutados)
+    assert len(entorno.notificadas) == 1
+
+
+@pytest.mark.parametrize(
+    "texto",
+    ["ORA-01034: ORACLE not available", "ORA-12560: TNS:protocol adapter error", "ORA-01507: database not mounted"],
+)
+def test_solo_la_instancia_caida_o_sin_montar_cuenta_como_sin_conexion(entorno: Entorno, texto: str) -> None:
+    conexion = ConexionConFallaPorTexto("v$database", oracledb.DatabaseError(texto))
+    resultado = recuperacion.diagnostico(entorno.ajustes, "XE", instancia_de(conexion), entorno.notificar)
+    assert resultado.sin_conexion and not resultado.fallo_consulta
+    assert resultado.sugeridos == [Escenario.CONTROLFILE, Escenario.SPFILE]
+    assert texto.split(":")[0] in resultado.avisos[0]
+
+
+def test_otro_error_de_consulta_no_se_toma_por_instancia_caida_ni_por_base_sana(entorno: Entorno) -> None:
+    recuperacion.diagnostico(entorno.ajustes, "XE", instancia(DATAFILE_7), entorno.notificar)
+    previas = len(entorno.notificadas)
+    conexion = ConexionConFallaPorTexto(
+        "v$recover_file", oracledb.DatabaseError("ORA-00942: table or view does not exist")
+    )
+    resultado = recuperacion.diagnostico(entorno.ajustes, "XE", instancia_de(conexion), entorno.notificar)
+    assert resultado.fallo_consulta and not resultado.sin_conexion
+    assert resultado.sugeridos == []
+    assert not resultado.sin_danos
+    assert "ORA-00942" in resultado.avisos[0]
+    assert "controlfile" in resultado.avisos[1]
+    assert len(entorno.notificadas) == previas
+    assert len(recuperacion.fallas_detectadas(entorno.ajustes, "XE")) == 1
+    assert entorno.resueltas == []
+
+
+def con_perfil_y_destino(entorno: Entorno, monkeypatch: pytest.MonkeyPatch, destino: str | None) -> None:
+    monkeypatch.setattr(repositorio_bases_datos, "ultimo_perfil", lambda c, i: PERFIL_XE)
+    entorno.ajustes = entorno.ajustes.model_copy(update={"destino_defecto": None if destino is None else Path(destino)})
+
+
+def test_con_la_instancia_caida_la_perdida_total_tambien_restaura_el_control_file(
+    entorno: Entorno, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    con_perfil_y_destino(entorno, monkeypatch, "C:\\backups\\XE")
+    procedimiento = recuperacion.plan(entorno.ajustes, "XE", "total-noarchivelog", abrir=caida)
+    assert procedimiento.posible
+    assert (procedimiento.script or "").startswith(f"STARTUP FORCE NOMOUNT;\nSET DBID {PERFIL_XE.dbid};\n")
+    assert "RESTORE CONTROLFILE FROM AUTOBACKUP;" in (procedimiento.script or "")
+    assert (procedimiento.script or "").endswith("RECOVER DATABASE NOREDO;\nALTER DATABASE OPEN RESETLOGS;\n")
+
+
+def test_con_la_instancia_sana_la_perdida_total_solo_pide_el_control_file_si_se_indica(
+    entorno: Entorno, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    con_perfil_y_destino(entorno, monkeypatch, "C:\\backups\\XE")
+    normal = recuperacion.plan(entorno.ajustes, "XE", "total-noarchivelog", abrir=instancia())
+    assert (normal.script or "").startswith("STARTUP FORCE MOUNT;\nRESTORE DATABASE;")
+    forzado = recuperacion.plan(entorno.ajustes, "XE", "total-noarchivelog", "controlfile", abrir=instancia())
+    assert (forzado.script or "").startswith("STARTUP FORCE NOMOUNT;")
+
+
+def test_con_la_instancia_caida_y_sin_destino_de_autobackup_el_plan_total_no_se_genera(
+    entorno: Entorno, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    con_perfil_y_destino(entorno, monkeypatch, None)
+    procedimiento = recuperacion.plan(entorno.ajustes, "XE", "total-noarchivelog", abrir=caida)
+    assert not procedimiento.posible
+    assert procedimiento.script is None and procedimiento.id is None
+    assert "autobackup" in procedimiento.motivo
+
+
+def test_sin_perfil_ni_dbid_la_perdida_total_con_la_instancia_caida_se_explica(entorno: Entorno) -> None:
+    procedimiento = recuperacion.plan(entorno.ajustes, "XE", "total-noarchivelog", abrir=caida)
+    assert not procedimiento.posible
+    assert "DBID" in procedimiento.motivo
+
+
+def test_los_escenarios_con_resetlogs_recuerdan_el_respaldo_completo() -> None:
+    correcta = ResultadoRman(codigo_salida=0, agotado=False, duracion_segundos=1)
+    analizado = analizar(LOG_CORRECTO)
+    esperados = {
+        Escenario.CONTROLFILE,
+        Escenario.GRUPO_REDOLOG_ACTUAL,
+        Escenario.TOTAL_NOARCHIVELOG,
+        Escenario.PUNTO_EN_TIEMPO,
+    }
+    assert esperados == ESCENARIOS_CON_RESETLOGS
+    for escenario in Escenario:
+        resultado, mensaje = clasificar(correcta, analizado, None, None, escenario)
+        assert resultado is ResultadoRecuperacion.EJECUTADO_OK
+        assert (RECORDATORIO_RESETLOGS in mensaje) is (escenario in ESCENARIOS_CON_RESETLOGS), escenario
+        assert (RECORDATORIO_ARCHIVELOG in mensaje) is (escenario is Escenario.TOTAL_NOARCHIVELOG), escenario
+    assert RECORDATORIO_RESETLOGS == "Se abrió con RESETLOGS: haga un respaldo completo ahora."
+    sin_escenario = clasificar(correcta, analizado, None)[1]
+    assert RECORDATORIO_RESETLOGS not in sin_escenario
+
+
+def test_el_recordatorio_no_aparece_si_la_recuperacion_falla() -> None:
+    correcta = ResultadoRman(codigo_salida=0, agotado=False, duracion_segundos=1)
+    resultado, mensaje = clasificar(correcta, analizar(LOG_CON_ERROR), None, None, Escenario.CONTROLFILE)
+    assert resultado is ResultadoRecuperacion.EJECUTADO_CON_ERRORES
+    assert RECORDATORIO_RESETLOGS not in mensaje
+    cerrada = ResultadoApertura(abierta=False, detalle="La base de datos está en modo MOUNTED.")
+    _, sin_abrir = clasificar(correcta, analizar(LOG_CORRECTO), cerrada, None, Escenario.TOTAL_NOARCHIVELOG)
+    assert RECORDATORIO_RESETLOGS not in sin_abrir
+
+
+def test_la_ejecucion_de_la_perdida_total_recuerda_el_respaldo_y_volver_a_archivelog(
+    entorno: Entorno, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    con_perfil_y_destino(entorno, monkeypatch, "C:\\backups\\XE")
+    procedimiento = recuperacion.plan(entorno.ajustes, "XE", "total-noarchivelog", abrir=caida)
+    assert procedimiento.id is not None
+    recuperacion.aprobar(entorno.ajustes, "XE", procedimiento.id, "Ana DBA", True)
+
+    def comprobar(base: BaseDestino) -> EstadoApertura:
+        return EstadoApertura(True, "La base de datos y sus PDB están abiertas en lectura y escritura.")
+
+    vista = recuperacion.ejecutar(entorno.ajustes, "XE", procedimiento.id, True, entorno.lanzador(), comprobar)
+    assert vista.registro.resultado is ResultadoRecuperacion.EJECUTADO_OK
+    mensaje = vista.registro.mensaje or ""
+    assert RECORDATORIO_RESETLOGS in mensaje and RECORDATORIO_ARCHIVELOG in mensaje

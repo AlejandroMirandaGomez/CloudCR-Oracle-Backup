@@ -1,5 +1,8 @@
 {% if datafile %}
 RECOVER DATAFILE {{ datafile }} BLOCK {{ bloque }};
+VALIDATE DATAFILE {{ datafile }};
 {% else %}
+VALIDATE DATABASE;
 RECOVER CORRUPTION LIST;
+VALIDATE DATABASE;
 {% endif %}

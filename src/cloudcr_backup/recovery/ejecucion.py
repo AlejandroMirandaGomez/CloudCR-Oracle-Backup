@@ -14,6 +14,16 @@ ESCENARIOS_CON_REINICIO = frozenset(
         Escenario.PUNTO_EN_TIEMPO,
     }
 )
+ESCENARIOS_CON_RESETLOGS = frozenset(
+    {
+        Escenario.CONTROLFILE,
+        Escenario.GRUPO_REDOLOG_ACTUAL,
+        Escenario.TOTAL_NOARCHIVELOG,
+        Escenario.PUNTO_EN_TIEMPO,
+    }
+)
+RECORDATORIO_RESETLOGS = "Se abrió con RESETLOGS: haga un respaldo completo ahora."
+RECORDATORIO_ARCHIVELOG = "Conviene volver a poner la base en ARCHIVELOG."
 
 
 def motivos_de_fallo(resultado: ResultadoRman, log: LogAnalizado) -> list[str]:
@@ -40,6 +50,7 @@ def clasificar(
     log: LogAnalizado,
     apertura: ResultadoApertura | None,
     en_linea: ResultadoEnLinea | None = None,
+    escenario: Escenario | None = None,
 ) -> tuple[ResultadoRecuperacion, str]:
     if resultado.error_lanzamiento:
         return ResultadoRecuperacion.NO_LANZADO, resultado.error_lanzamiento
@@ -57,4 +68,8 @@ def clasificar(
         mensaje += f" {apertura.detalle}"
     if en_linea is not None and en_linea.detalle:
         mensaje += f" {en_linea.detalle}"
+    if escenario in ESCENARIOS_CON_RESETLOGS:
+        mensaje += f" {RECORDATORIO_RESETLOGS}"
+    if escenario is Escenario.TOTAL_NOARCHIVELOG:
+        mensaje += f" {RECORDATORIO_ARCHIVELOG}"
     return ResultadoRecuperacion.EJECUTADO_OK, mensaje

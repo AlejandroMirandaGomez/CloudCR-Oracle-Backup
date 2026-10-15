@@ -3,6 +3,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -28,6 +29,46 @@ DANADO = ArchivoDanado(file_id=12, ruta="X", tablespace="USERS", contenedor="XEP
 MIEMBRO = MiembroRedoDanado(
     grupo=2, miembro="C:\\ORADATA\\XE\\REDO02B.LOG", estado_miembro="INVALID", estado_grupo="CURRENT", secuencia=41
 )
+
+
+def _solicitud_de_recuperacion(escenario: Escenario, **cambios: Any) -> SolicitudProcedimiento:
+    base: dict[str, Any] = {
+        "bd": "XE",
+        "escenario": escenario,
+        "log_mode": LogMode.ARCHIVELOG,
+        "dbid": 3114375768,
+        "destino_autobackup": "C:\\backups\\XE",
+        "hasta": datetime(2026, 10, 4, 13, 0),
+        "danados": [DANADO],
+        "bloques": [BloqueCorrupto(file_id=12, bloque=131)],
+        "miembros_redo": [MIEMBRO],
+        "redo_actual": GrupoRedoActual(grupo=2, secuencia=41),
+    }
+    base.update(cambios)
+    return SolicitudProcedimiento(**base)
+
+
+VARIANTES_DE_RECUPERACION = {
+    "datafile_pdb_cerrada": _solicitud_de_recuperacion(Escenario.DATAFILE, estado_pdbs={"XEPDB1": "MOUNTED"}),
+    "tablespace_pdb_cerrada": _solicitud_de_recuperacion(Escenario.TABLESPACE, estado_pdbs={"XEPDB1": "MOUNTED"}),
+    "pdb_cerrada": _solicitud_de_recuperacion(Escenario.PDB, estado_pdbs={"XEPDB1": "MOUNTED"}),
+    "corrupcion-bloque_un_bloque": _solicitud_de_recuperacion(Escenario.CORRUPCION_BLOQUE, objetivo="12:131"),
+    "miembro-redolog_grupo_inactivo": _solicitud_de_recuperacion(
+        Escenario.MIEMBRO_REDOLOG, miembros_redo=[MIEMBRO.model_copy(update={"estado_grupo": "INACTIVE"})]
+    ),
+    "miembro-redolog_grupo_activo": _solicitud_de_recuperacion(
+        Escenario.MIEMBRO_REDOLOG, miembros_redo=[MIEMBRO.model_copy(update={"estado_grupo": "ACTIVE"})]
+    ),
+    "total-noarchivelog_sin_controlfile": _solicitud_de_recuperacion(
+        Escenario.TOTAL_NOARCHIVELOG, log_mode=LogMode.NOARCHIVELOG, sin_conexion=True
+    ),
+    "total-noarchivelog_con_pieza": _solicitud_de_recuperacion(
+        Escenario.TOTAL_NOARCHIVELOG,
+        log_mode=LogMode.NOARCHIVELOG,
+        objetivo="controlfile",
+        pieza_controlfile="C:\\backups\\XE\\C-3114375768-20261004-00",
+    ),
+}
 
 
 def _rman() -> Path:
@@ -65,22 +106,13 @@ def _scripts() -> dict[str, str]:
     scripts["retencion_redundancia"] = politica.script(Retencion(redundancia=2))
     scripts["verificacion"] = script_verificacion("EST001_T1_2610041300", [3, 4])
     for escenario in Escenario:
-        procedimiento = generar(
-            SolicitudProcedimiento(
-                bd="XE",
-                escenario=escenario,
-                log_mode=LogMode.ARCHIVELOG,
-                dbid=3114375768,
-                destino_autobackup="C:\\backups\\XE",
-                hasta=datetime(2026, 10, 4, 13, 0),
-                danados=[DANADO],
-                bloques=[BloqueCorrupto(file_id=12, bloque=131)],
-                miembros_redo=[MIEMBRO],
-                redo_actual=GrupoRedoActual(grupo=2, secuencia=41),
-            )
-        )
+        procedimiento = generar(_solicitud_de_recuperacion(escenario))
         assert procedimiento.script is not None, procedimiento.motivo
         scripts[f"recuperacion_{escenario.value}"] = procedimiento.script
+    for nombre, solicitud in VARIANTES_DE_RECUPERACION.items():
+        procedimiento = generar(solicitud)
+        assert procedimiento.script is not None, procedimiento.motivo
+        scripts[f"recuperacion_{nombre}"] = procedimiento.script
     return scripts
 
 

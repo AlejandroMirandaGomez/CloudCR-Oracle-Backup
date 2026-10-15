@@ -61,8 +61,9 @@ def puntos(bd: Bd, json_: Json = False) -> None:
 
 @app.command(
     help=(
-        "Consulta V$RECOVER_FILE, V$DATAFILE, V$DATABASE_BLOCK_CORRUPTION y V$LOGFILE para decir qué falta o está "
-        "dañado y sugerir el escenario. Si hay falla, la anota en el calendario y abre una alerta."
+        "Consulta V$RECOVER_FILE, V$DATAFILE, V$DATABASE_BLOCK_CORRUPTION, V$LOGFILE (y comprueba que sus miembros "
+        "existan en disco) para decir qué falta o está dañado y sugerir el escenario. Si hay falla, la anota en el "
+        "calendario y abre una alerta."
     )
 )
 def diagnostico(bd: Bd, json_: Json = False) -> None:
@@ -105,12 +106,16 @@ def diagnostico(bd: Bd, json_: Json = False) -> None:
             )
         salida.print(tabla)
     if resultado.miembros_redo:
-        tabla = Table(title="Miembros de redo log inválidos")
-        for columna in ("Grupo", "Miembro", "Estado del grupo", "Grupo perdido"):
+        tabla = Table(title="Miembros de redo log dañados o ausentes")
+        for columna in ("Grupo", "Miembro", "Estado del miembro", "Estado del grupo", "Grupo perdido"):
             tabla.add_column(columna)
         for miembro in resultado.miembros_redo:
             tabla.add_row(
-                str(miembro.grupo), miembro.miembro, miembro.estado_grupo, "sí" if miembro.grupo_perdido else "no"
+                str(miembro.grupo),
+                miembro.miembro,
+                miembro.estado_miembro,
+                miembro.estado_grupo,
+                "sí" if miembro.grupo_perdido else "no",
             )
         salida.print(tabla)
     for aviso in resultado.avisos:
@@ -143,7 +148,10 @@ def plan(
         str | None,
         typer.Option(
             "--objetivo",
-            help="PDB, tablespace (PDB:TS), file#, GRUPO:RUTA, secuencia o FILE#:BLOQUE. Se deduce si se omite.",
+            help=(
+                "PDB, tablespace (PDB:TS), file#, GRUPO:RUTA, secuencia, FILE#:BLOQUE o controlfile (en "
+                "total-noarchivelog). Se deduce si se omite."
+            ),
         ),
     ] = None,
     hasta: Annotated[str | None, typer.Option("--hasta", help="Momento objetivo 'AAAA-MM-DD HH:MM'.")] = None,

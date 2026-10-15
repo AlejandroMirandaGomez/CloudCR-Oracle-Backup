@@ -1,5 +1,7 @@
 {% if pdb %}
+{% if pdb_abierta %}
 ALTER PLUGGABLE DATABASE {{ pdb }} CLOSE IMMEDIATE;
+{% endif %}
 RESTORE DATAFILE {{ datafile }};
 RECOVER DATAFILE {{ datafile }};
 ALTER PLUGGABLE DATABASE {{ pdb }} OPEN;

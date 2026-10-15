@@ -7,6 +7,7 @@ from cloudcr_backup.domain.enums import DiaSemana, EstadoPrueba, EstadoScript, L
 
 TABLESPACES_CRITICOS = ("SYSTEM",)
 PREFIJO_UNDO = "UNDO"
+MODO_PDB_CERRADA = "MOUNTED"
 
 
 class Escenario(StrEnum):
@@ -86,6 +87,23 @@ class GrupoRedoActual(BaseModel):
     secuencia: int
 
 
+class GrupoRedo(BaseModel):
+    grupo: int
+    estado: str
+    hilo: int = 1
+    secuencia: int | None = None
+
+
+class EstadoPdb(BaseModel):
+    nombre: str
+    modo: str
+    con_id: int | None = None
+
+    @property
+    def cerrada(self) -> bool:
+        return self.modo.upper() == MODO_PDB_CERRADA
+
+
 class Diagnostico(BaseModel):
     bd: str
     generado_en: datetime
@@ -95,13 +113,16 @@ class Diagnostico(BaseModel):
     bloques: list[BloqueCorrupto] = Field(default_factory=list)
     miembros_redo: list[MiembroRedoDanado] = Field(default_factory=list)
     redo_actual: GrupoRedoActual | None = None
+    grupos_redo: list[GrupoRedo] = Field(default_factory=list)
+    pdbs: list[EstadoPdb] = Field(default_factory=list)
     sin_conexion: bool = False
+    fallo_consulta: bool = False
     sugeridos: list[Escenario] = Field(default_factory=list)
     avisos: list[str] = Field(default_factory=list)
 
     @property
     def sin_danos(self) -> bool:
-        return not (self.archivos or self.bloques or self.miembros_redo or self.sin_conexion)
+        return not (self.archivos or self.bloques or self.miembros_redo or self.sin_conexion or self.fallo_consulta)
 
 
 class PuntoRecuperacion(BaseModel):

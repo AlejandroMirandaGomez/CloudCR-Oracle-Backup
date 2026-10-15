@@ -10,7 +10,7 @@ from cloudcr_backup.domain.errores import ErrorServicio
 from cloudcr_backup.domain.recuperacion import Escenario
 from cloudcr_backup.execution.destino import BaseDestino, conexion_destino
 
-CIERRE_DE_PDB = re.compile(r"^ALTER PLUGGABLE DATABASE (\S+) CLOSE IMMEDIATE;[ \t\r]*$", re.MULTILINE)
+APERTURA_DE_PDB = re.compile(r"^ALTER PLUGGABLE DATABASE (\S+) OPEN;[ \t\r]*$", re.MULTILINE)
 RESTAURA_DATAFILE = re.compile(r"^RESTORE DATAFILE (\d+);[ \t\r]*$", re.MULTILINE)
 RESTAURA_TABLESPACE = re.compile(r"^RESTORE TABLESPACE [^:\s]+:(\S+);[ \t\r]*$", re.MULTILINE)
 NOMBRE_VALIDO = re.compile(r"^[A-Za-z][A-Za-z0-9_$#]{0,127}$")
@@ -51,10 +51,10 @@ PonedorEnLinea = Callable[[BaseDestino, ObjetoEnLinea], ResultadoEnLinea]
 def objetos_a_poner_en_linea(escenario: Escenario, script: str) -> list[ObjetoEnLinea]:
     if escenario not in ESCENARIOS_CON_PASO_EN_LINEA:
         return []
-    cierre = CIERRE_DE_PDB.search(script)
-    if cierre is None:
+    apertura = APERTURA_DE_PDB.search(script)
+    if apertura is None:
         return []
-    pdb = cierre.group(1)
+    pdb = apertura.group(1)
     if escenario is Escenario.DATAFILE:
         return [ObjetoEnLinea(pdb=pdb, datafile=int(numero)) for numero in RESTAURA_DATAFILE.findall(script)]
     return [ObjetoEnLinea(pdb=pdb, tablespace=nombre) for nombre in RESTAURA_TABLESPACE.findall(script)]

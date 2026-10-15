@@ -40,7 +40,7 @@ AYUDA_OBJETIVO = {
     Escenario.CONTROLFILE: "No necesita objetivo.",
     Escenario.MIEMBRO_REDOLOG: (
         "GRUPO:RUTA del miembro dañado, por ejemplo 2:C:\\ORADATA\\XE\\REDO02B.LOG. "
-        "Si se deja vacío se deduce de V$LOGFILE."
+        "Si se deja vacío se deduce de V$LOGFILE y de los archivos que faltan en disco."
     ),
     Escenario.GRUPO_REDOLOG_ACTUAL: (
         "Secuencia (SEQUENCE#) del grupo CURRENT perdido, o HILO:SECUENCIA. Si se deja vacío se deduce de V$LOG. "
@@ -52,7 +52,10 @@ AYUDA_OBJETIVO = {
         "V$DATABASE_BLOCK_CORRUPTION."
     ),
     Escenario.SPFILE: "No necesita objetivo.",
-    Escenario.TOTAL_NOARCHIVELOG: "No necesita objetivo.",
+    Escenario.TOTAL_NOARCHIVELOG: (
+        "Normalmente no necesita objetivo. Escriba controlfile si también se perdió el control file: el "
+        "procedimiento lo restaura antes con el DBID y el autobackup (se usa solo si la instancia no responde)."
+    ),
     Escenario.PUNTO_EN_TIEMPO: (
         "Indique el momento en «Hasta». Sirve para volver a una hora exacta por otro motivo, por ejemplo un "
         "DROP TABLE accidental; si se perdió el grupo de redo actual use ese escenario, que no pide hora."

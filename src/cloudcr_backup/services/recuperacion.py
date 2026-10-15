@@ -75,9 +75,14 @@ AVISO_SIN_CONEXION = (
     "No se pudo consultar la instancia (no responde o no está montada): puede indicar pérdida del control file, "
     "del SPFILE o que la instancia está caída. Revise el escenario controlfile o spfile según corresponda."
 )
+AVISO_FALLO_CONSULTA = (
+    "La instancia respondió, pero una consulta del diagnóstico falló por otra causa: no se sugiere controlfile ni "
+    "spfile. Corrija el error y vuelva a diagnosticar; mientras tanto no se anota ni se cierra ninguna falla."
+)
 SUGERENCIA_NUEVO = "Genere un procedimiento nuevo desde la pantalla Recuperación ('cloudcr recuperacion plan')."
 
 AbrirConsulta = Callable[[BaseDestino], AbstractContextManager[Consulta]]
+ExisteArchivo = Callable[[str], bool]
 Notificador = Callable[[Sequence[Condicion], Ajustes], object]
 Comprobador = Callable[[BaseDestino], EstadoApertura]
 T = TypeVar("T")
@@ -104,30 +109,44 @@ def _opcional(consultar: Callable[[], T], vista: str, avisos: list[str]) -> T | 
         return None
 
 
-def _diagnosticar(base: BaseDatosRegistrada, abrir: AbrirConsulta) -> Diagnostico:
+def _diagnostico_sin_datos(base: BaseDatosRegistrada, momento: datetime, error: Exception) -> Diagnostico:
+    detalle = f"{type(error).__name__}: {error}"
+    if not diagnostico_rman.instancia_no_disponible(error):
+        return Diagnostico(
+            bd=base.nombre,
+            generado_en=momento,
+            fallo_consulta=True,
+            avisos=[f"No se pudo completar el diagnóstico de {base.nombre}: {detalle}", AVISO_FALLO_CONSULTA],
+        )
+    sin_conexion = Diagnostico(
+        bd=base.nombre,
+        generado_en=momento,
+        sin_conexion=True,
+        avisos=[f"No se pudo consultar V$RECOVER_FILE en {base.nombre}: {detalle}", AVISO_SIN_CONEXION],
+    )
+    return sin_conexion.model_copy(update={"sugeridos": diagnostico_rman.sugerir(sin_conexion)})
+
+
+def _diagnosticar(
+    base: BaseDatosRegistrada, abrir: AbrirConsulta, existe: ExisteArchivo = diagnostico_rman.archivo_existe
+) -> Diagnostico:
     momento = RelojSistema().ahora()
     avisos: list[str] = []
     try:
         with abrir(_base(base)) as consulta:
             filas = consulta(SQL_ESTADO, {})
-            archivos = diagnostico_rman.archivos_danados(consulta)
+            pdbs = _opcional(lambda: diagnostico_rman.estado_pdbs(consulta), "V$PDBS", avisos) or []
+            archivos = diagnostico_rman.archivos_danados(consulta, pdbs, avisos)
             bloques = _opcional(
-                lambda: diagnostico_rman.bloques_corruptos(consulta), "V$DATABASE_BLOCK_CORRUPTION", avisos
+                lambda: diagnostico_rman.bloques_corruptos(consulta, pdbs, avisos),
+                "V$DATABASE_BLOCK_CORRUPTION",
+                avisos,
             )
-            redo = _opcional(lambda: diagnostico_rman.redo_logs(consulta), "V$LOG y V$LOGFILE", avisos)
+            redo = _opcional(lambda: diagnostico_rman.redo_logs(consulta, existe), "V$LOG y V$LOGFILE", avisos)
     except Exception as error:
-        sin_conexion = Diagnostico(
-            bd=base.nombre,
-            generado_en=momento,
-            sin_conexion=True,
-            avisos=[
-                f"No se pudo consultar V$RECOVER_FILE en {base.nombre}: {type(error).__name__}: {error}",
-                AVISO_SIN_CONEXION,
-            ],
-        )
-        return sin_conexion.model_copy(update={"sugeridos": diagnostico_rman.sugerir(sin_conexion)})
+        return _diagnostico_sin_datos(base, momento, error)
     log_mode, open_mode, _ = filas[0] if filas else (None, None, None)
-    miembros, actual = redo or ([], None)
+    miembros, actual, grupos = redo or ([], None, [])
     if not archivos:
         avisos.insert(0, "V$RECOVER_FILE no informa archivos que necesiten recuperación.")
     for perdido in {m.grupo: m for m in miembros if m.grupo_perdido and not m.actual}.values():
@@ -145,6 +164,8 @@ def _diagnosticar(base: BaseDatosRegistrada, abrir: AbrirConsulta) -> Diagnostic
         bloques=bloques or [],
         miembros_redo=miembros,
         redo_actual=actual,
+        grupos_redo=grupos,
+        pdbs=pdbs,
         avisos=avisos,
     )
     return resultado.model_copy(update={"sugeridos": diagnostico_rman.sugerir(resultado)})
@@ -249,12 +270,18 @@ def _resolver_alerta_de_caida(ajustes: Ajustes, base: BaseDatosRegistrada) -> No
 
 
 def diagnostico(
-    ajustes: Ajustes, bd: str, abrir: AbrirConsulta = consulta_destino, notificar: Notificador | None = None
+    ajustes: Ajustes,
+    bd: str,
+    abrir: AbrirConsulta = consulta_destino,
+    notificar: Notificador | None = None,
+    existe: ExisteArchivo = diagnostico_rman.archivo_existe,
 ) -> Diagnostico:
     preparar_cliente_oracle()
     with conexion_repositorio(ajustes) as conexion:
         base = resolucion.base_por_nombre(conexion, bd)
-    resultado = _diagnosticar(base, abrir)
+    resultado = _diagnosticar(base, abrir, existe)
+    if resultado.fallo_consulta:
+        return resultado
     if resultado.sin_danos:
         _resolver_alerta_de_caida(ajustes, base)
         avisos_de_cierre = _cerrar_fallas(ajustes, resultado)
@@ -358,6 +385,7 @@ def plan(
     guardar: bool = True,
     abrir: AbrirConsulta = consulta_destino,
     reutilizar: bool = False,
+    existe: ExisteArchivo = diagnostico_rman.archivo_existe,
 ) -> Procedimiento:
     elegido = escenario_de(escenario)
     preparar_cliente_oracle()
@@ -365,7 +393,7 @@ def plan(
         base = resolucion.base_por_nombre(conexion, bd)
         perfil = repositorio_bases_datos.ultimo_perfil(conexion, base.id)
         destinos = [t.destino.ruta for e in repositorio_estrategias.listar(conexion, base.id) for t in e.tareas]
-    diagnosticado = _diagnosticar(base, abrir)
+    diagnosticado = _diagnosticar(base, abrir, existe)
     resumen = puntos(ajustes, bd)
     log_mode = diagnosticado.log_mode or (perfil.log_mode if perfil else LogMode.NOARCHIVELOG)
     procedimiento = generar(
@@ -386,6 +414,9 @@ def plan(
             bloques=diagnosticado.bloques,
             miembros_redo=diagnosticado.miembros_redo,
             redo_actual=diagnosticado.redo_actual,
+            grupos_redo=diagnosticado.grupos_redo,
+            estado_pdbs={p.nombre.upper(): p.modo for p in diagnosticado.pdbs},
+            sin_conexion=diagnosticado.sin_conexion,
         )
     )
     avisos = [*procedimiento.avisos, *diagnosticado.avisos]
@@ -428,10 +459,14 @@ def plan(
 
 
 def procedimientos_sugeridos(
-    ajustes: Ajustes, resultado: Diagnostico, abrir: AbrirConsulta = consulta_destino
+    ajustes: Ajustes,
+    resultado: Diagnostico,
+    abrir: AbrirConsulta = consulta_destino,
+    existe: ExisteArchivo = diagnostico_rman.archivo_existe,
 ) -> list[Procedimiento]:
     return [
-        plan(ajustes, resultado.bd, escenario.value, abrir=abrir, reutilizar=True) for escenario in resultado.sugeridos
+        plan(ajustes, resultado.bd, escenario.value, abrir=abrir, reutilizar=True, existe=existe)
+        for escenario in resultado.sugeridos
     ]
 
 
@@ -602,7 +637,7 @@ def _correr(
     en_linea = None
     if corrida.lanzado and not motivos_de_fallo(corrida, analizado):
         en_linea = _poner_en_linea(base, registro, ponedor)
-    return clasificar(corrida, analizado, reapertura, en_linea)
+    return clasificar(corrida, analizado, reapertura, en_linea, registro.escenario)
 
 
 def _poner_en_linea(

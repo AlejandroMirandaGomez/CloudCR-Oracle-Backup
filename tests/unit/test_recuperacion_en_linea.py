@@ -19,6 +19,10 @@ SCRIPT_TABLESPACE_PDB = (
     "ALTER PLUGGABLE DATABASE CLIENTEPDB CLOSE IMMEDIATE;\nRESTORE TABLESPACE CLIENTEPDB:A1;\n"
     "RECOVER TABLESPACE CLIENTEPDB:A1;\nALTER PLUGGABLE DATABASE CLIENTEPDB OPEN;\n"
 )
+SCRIPT_DATAFILE_PDB_CERRADA = "RESTORE DATAFILE 17;\nRECOVER DATAFILE 17;\nALTER PLUGGABLE DATABASE CLIENTEPDB OPEN;\n"
+SCRIPT_TABLESPACE_PDB_CERRADA = (
+    "RESTORE TABLESPACE CLIENTEPDB:A1;\nRECOVER TABLESPACE CLIENTEPDB:A1;\nALTER PLUGGABLE DATABASE CLIENTEPDB OPEN;\n"
+)
 SCRIPT_DATAFILE_RAIZ = (
     "ALTER DATABASE DATAFILE 7 OFFLINE;\nRESTORE DATAFILE 7;\nRECOVER DATAFILE 7;\nALTER DATABASE DATAFILE 7 ONLINE;\n"
 )
@@ -50,6 +54,11 @@ def test_el_script_de_un_datafile_de_pdb_indica_que_datafile_poner_en_linea() ->
 
 def test_el_script_de_un_tablespace_de_pdb_indica_que_tablespace_poner_en_linea() -> None:
     assert objetos_a_poner_en_linea(Escenario.TABLESPACE, SCRIPT_TABLESPACE_PDB) == [TABLESPACE_A1]
+
+
+def test_una_pdb_que_ya_estaba_cerrada_tambien_tiene_paso_en_linea() -> None:
+    assert objetos_a_poner_en_linea(Escenario.DATAFILE, SCRIPT_DATAFILE_PDB_CERRADA) == [DATAFILE_17]
+    assert objetos_a_poner_en_linea(Escenario.TABLESPACE, SCRIPT_TABLESPACE_PDB_CERRADA) == [TABLESPACE_A1]
 
 
 def test_los_scripts_de_la_raiz_ya_se_ponen_en_linea_solos() -> None:

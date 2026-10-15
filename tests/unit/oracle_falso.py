@@ -64,3 +64,21 @@ class ConexionFalsa:
 
     def sql(self, indice: int) -> str:
         return self.ejecutados[indice][0]
+
+
+class CursorConFallaPorTexto(CursorFalso):
+    def execute(self, sql: str, **parametros: Any) -> None:
+        conexion = self._conexion
+        if isinstance(conexion, ConexionConFallaPorTexto) and conexion.texto_que_falla in sql.lower():
+            raise conexion.error_que_falla
+        super().execute(sql, **parametros)
+
+
+class ConexionConFallaPorTexto(ConexionFalsa):
+    def __init__(self, texto_que_falla: str, error_que_falla: Exception, respuestas: list[Any] | None = None) -> None:
+        super().__init__(respuestas)
+        self.texto_que_falla = texto_que_falla.lower()
+        self.error_que_falla = error_que_falla
+
+    def cursor(self) -> CursorFalso:
+        return CursorConFallaPorTexto(self)

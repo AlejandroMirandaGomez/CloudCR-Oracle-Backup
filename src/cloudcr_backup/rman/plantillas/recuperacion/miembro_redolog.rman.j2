@@ -1,6 +1,8 @@
-{% if actual %}
+{% if cambiar_log %}
 ALTER SYSTEM SWITCH LOGFILE;
 {% endif %}
+{% if punto_de_control %}
 ALTER SYSTEM CHECKPOINT;
+{% endif %}
 ALTER DATABASE DROP LOGFILE MEMBER '{{ miembro }}';
 ALTER DATABASE ADD LOGFILE MEMBER '{{ miembro }}' REUSE TO GROUP {{ grupo }};
