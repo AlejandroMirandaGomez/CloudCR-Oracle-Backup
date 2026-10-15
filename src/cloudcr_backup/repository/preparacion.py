@@ -1,4 +1,5 @@
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from cloudcr_backup.config.ajustes import Ajustes, obtener_credenciales_admin_mysql
@@ -17,7 +18,8 @@ PATRON_NOMBRE_USUARIO = re.compile(r"[A-Za-z0-9_]{1,32}")
 HOSTS_LOCALES = frozenset({"localhost", "127.0.0.1", "::1"})
 PRIVILEGIOS = "SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, INDEX, REFERENCES"
 SUGERENCIA_ADMINISTRADOR = (
-    "Defina CLOUDCR_MYSQL_ADMIN_CLAVE (y CLOUDCR_MYSQL_ADMIN_USUARIO si no es root) en .env.local, "
+    "Ejecute el comando en una terminal interactiva para que le pida la clave, defina "
+    "CLOUDCR_MYSQL_ADMIN_CLAVE (y CLOUDCR_MYSQL_ADMIN_USUARIO si no es root) en .env.local, "
     "o cree la base y el usuario a mano (vea COMO_EJECUTAR.md)."
 )
 
@@ -71,7 +73,9 @@ def _crear_base_y_usuario(administrador: Conexion, parametros: ParametrosMySql, 
         cursor.close()
 
 
-def preparar(ajustes: Ajustes) -> ResultadoPreparacion:
+def preparar(
+    ajustes: Ajustes, pedir_clave_administrador: Callable[[str], str | None] | None = None
+) -> ResultadoPreparacion:
     try:
         parametros = parametros_repositorio(ajustes)
     except RepositorioNoConfigurado as error:
@@ -80,6 +84,8 @@ def preparar(ajustes: Ajustes) -> ResultadoPreparacion:
     if _repositorio_accesible(parametros):
         return ResultadoPreparacion(base=base, usuario=parametros.usuario, ya_preparado=True)
     usuario_admin, clave_admin = obtener_credenciales_admin_mysql()
+    if not clave_admin and pedir_clave_administrador is not None:
+        clave_admin = pedir_clave_administrador(usuario_admin)
     if not clave_admin:
         raise ErrorConexionRepositorio(
             "La base o el usuario del repositorio no existen y falta la clave del administrador de MySQL "

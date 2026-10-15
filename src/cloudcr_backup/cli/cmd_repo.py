@@ -1,3 +1,4 @@
+import sys
 from typing import Annotated
 
 import typer
@@ -84,15 +85,22 @@ def desinstalar(
     consola().print("Repositorio desinstalado.", style="yellow")
 
 
+def _pedir_clave_administrador(usuario: str) -> str | None:
+    if not sys.stdin.isatty():
+        return None
+    return typer.prompt(f"Clave de {usuario} en MySQL (no se guarda)", hide_input=True) or None
+
+
 @app.command(
     help=(
-        "Crea en MySQL la base y el usuario del repositorio si no existen, usando el administrador de "
-        "CLOUDCR_MYSQL_ADMIN_USUARIO / CLOUDCR_MYSQL_ADMIN_CLAVE. Si el repositorio ya es accesible no hace nada."
+        "Crea en MySQL la base y el usuario del repositorio si no existen. Usa el administrador de "
+        "CLOUDCR_MYSQL_ADMIN_USUARIO / CLOUDCR_MYSQL_ADMIN_CLAVE y, si falta la clave, la pide en la terminal. "
+        "Si el repositorio ya es accesible no hace nada."
     )
 )
 def preparar() -> None:
     try:
-        resultado = preparar_repositorio(cargar_ajustes())
+        resultado = preparar_repositorio(cargar_ajustes(), _pedir_clave_administrador)
     except ErrorConexionRepositorio as error:
         terminar_con_error(str(error), error.sugerencia)
     if resultado.ya_preparado:

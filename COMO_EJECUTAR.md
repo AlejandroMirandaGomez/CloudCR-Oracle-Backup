@@ -33,7 +33,7 @@ cd CloudCR-Oracle-Backup
 .\iniciar.cmd
 ```
 
-`iniciar.cmd` hace todo lo que falte y se puede volver a ejecutar sin riesgo: crea `.venv`, instala las dependencias (solo si cambió `pyproject.toml`), comprueba que el servicio `MySQL80` esté en ejecución (lo inicia si está detenido; para eso la terminal debe ser de administrador), crea la base `cloudcr` y su usuario en MySQL con los datos del archivo `.env` (solo si todavía no existen; necesita `CLOUDCR_MYSQL_ADMIN_CLAVE` en `.env.local`), instala las tablas del repositorio y abre la interfaz web. Cuando todo ya está listo, solo abre la web. Oracle no tiene que estar en ejecución para iniciar la herramienta.
+`iniciar.cmd` hace todo lo que falte y se puede volver a ejecutar sin riesgo: crea `.venv`, instala las dependencias (solo si cambió `pyproject.toml`), comprueba que el servicio `MySQL80` esté en ejecución (lo inicia si está detenido; para eso la terminal debe ser de administrador), crea la base `cloudcr` y su usuario en MySQL con los datos del archivo `.env` (solo si todavía no existen; te pide la clave del administrador de MySQL en la terminal y no la guarda), instala las tablas del repositorio y abre la interfaz web. Cuando todo ya está listo, solo abre la web. Oracle no tiene que estar en ejecución para iniciar la herramienta.
 
 Opciones: `.\iniciar.cmd -Puerto <PUERTO>` para usar otro puerto, `.\iniciar.cmd -NoAbrir` para no abrir el navegador y `.\iniciar.cmd -SinAgente` para que el agente de respaldos no arranque junto con la web (por defecto arranca solo y ejecuta las tareas activas con script aprobado cuando les toca; se puede detener o desactivar en Sistema → Agente). Si el usuario del repositorio ya existe con otra clave, `repo preparar` lo deja con la de `CLOUDCR_REPO_CLAVE`.
 
@@ -382,7 +382,7 @@ El repositorio guarda estrategias, scripts RMAN, ejecuciones y alertas en una ba
 
 `iniciar.cmd` hace todo esto solo. Estos son los pasos a mano:
 
-**1. Configurar la conexión.** En `.env`: `CLOUDCR_REPOSITORIO_HOST` (por defecto `localhost`), `CLOUDCR_REPOSITORIO_PUERTO` (`3306`), `CLOUDCR_REPOSITORIO_BASE` (`cloudcr`), `CLOUDCR_REPOSITORIO_USUARIO` (`cloudcr`) y `CLOUDCR_REPO_CLAVE`, la clave que tendrá ese usuario. Si hay que crear la base y el usuario, en `.env.local` (no versionado) van también `CLOUDCR_MYSQL_ADMIN_USUARIO` (por defecto `root`) y `CLOUDCR_MYSQL_ADMIN_CLAVE`.
+**1. Configurar la conexión.** En `.env`: `CLOUDCR_REPOSITORIO_HOST` (por defecto `localhost`), `CLOUDCR_REPOSITORIO_PUERTO` (`3306`), `CLOUDCR_REPOSITORIO_BASE` (`cloudcr`), `CLOUDCR_REPOSITORIO_USUARIO` (`cloudcr`) y `CLOUDCR_REPO_CLAVE`, la clave que tendrá ese usuario. Si hay que crear la base y el usuario se usa el administrador de MySQL (`CLOUDCR_MYSQL_ADMIN_USUARIO`, por defecto `root`): `repo preparar` le pide la clave en la terminal y no la guarda. En un entorno sin terminal interactiva se puede dar en `CLOUDCR_MYSQL_ADMIN_CLAVE` dentro de `.env.local` (no versionado).
 
 **2. Crear la base y el usuario**
 
@@ -390,7 +390,7 @@ El repositorio guarda estrategias, scripts RMAN, ejecuciones y alertas en una ba
 cloudcr repo preparar
 ```
 
-Crea la base `cloudcr` (utf8mb4, distingue mayúsculas) y el usuario con permisos solo sobre esa base. Si ya existen y el usuario puede conectarse, no hace nada y no pide la clave del administrador. Alternativa manual, conectado a MySQL como administrador:
+Crea la base `cloudcr` (utf8mb4, distingue mayúsculas) y el usuario con permisos solo sobre esa base. Si ya existen y el usuario puede conectarse, no hace nada y no pide la clave del administrador. La clave del `.env` (`CLOUDCR_REPO_CLAVE`) es la que se asigna al usuario de la aplicación; la del administrador solo se usa para crearlo. Alternativa manual, conectado a MySQL como administrador:
 
 ```sql
 CREATE DATABASE cloudcr CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
@@ -485,7 +485,7 @@ Corre las pruebas que no necesitan Oracle (la gran mayoría). Además:
 | `ORA-01034` / `ORA-12560` / "la instancia no está disponible" | La instancia está detenida | `Start-Service OracleService<SID>` (PowerShell como administrador) |
 | `No se pudo llegar a MySQL en localhost:3306` | El servicio de MySQL está detenido o el puerto es otro | `Start-Service MySQL80` (PowerShell como administrador) y revisar `CLOUDCR_REPOSITORIO_PUERTO` |
 | `MySQL rechazó el usuario ... o su clave` | La clave de `CLOUDCR_REPO_CLAVE` no es la del usuario del repositorio | Corregir el `.env` o ejecutar `cloudcr repo preparar` para fijar la clave del usuario |
-| `La base cloudcr no existe` | Todavía no se creó la base del repositorio | `cloudcr repo preparar` (necesita `CLOUDCR_MYSQL_ADMIN_CLAVE` en `.env.local`) |
+| `La base cloudcr no existe` | Todavía no se creó la base del repositorio | `cloudcr repo preparar` (pide la clave del administrador de MySQL) |
 | El árbol se corta o se ve apretado | La ventana es angosta | Agrandar la ventana o usar Windows Terminal; también se puede exportar a HTML |
 | Tildes o líneas del árbol se ven mal | Consola antigua con otra página de códigos | Usar Windows Terminal, o ejecutar `chcp 65001` antes |
 | `cloudcr` no se reconoce | No se activó el entorno | Usar `.\.venv\Scripts\cloudcr.exe` o activar con `.\.venv\Scripts\Activate.ps1` |

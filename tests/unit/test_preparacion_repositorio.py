@@ -155,3 +155,44 @@ def test_si_tras_crear_el_usuario_no_puede_conectar_lo_informa(
     monkeypatch.setattr(CursorAdministrador, "execute", lambda self, sql, **p: crear_sin_efecto(sql, **p))
     with pytest.raises(ErrorConexionRepositorio, match="no pudo conectarse"):
         preparacion.preparar(Ajustes())
+
+
+def test_sin_clave_en_el_entorno_la_pide_con_el_usuario_administrador(servidor: ServidorFalso) -> None:
+    pedidos: list[str] = []
+
+    def pedir(usuario: str) -> str | None:
+        pedidos.append(usuario)
+        return "clave-escrita-en-la-terminal"
+
+    resultado = preparacion.preparar(Ajustes(), pedir)
+    assert not resultado.ya_preparado
+    assert pedidos == ["root"]
+    administrador = next(p for p in servidor.conexiones if p.base is None)
+    assert (administrador.usuario, administrador.clave) == ("root", "clave-escrita-en-la-terminal")
+
+
+def test_la_clave_del_entorno_tiene_prioridad_sobre_pedirla(
+    servidor: ServidorFalso, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CLOUDCR_MYSQL_ADMIN_CLAVE", "clave-del-admin")
+
+    def no_debe_pedirla(usuario: str) -> str | None:
+        raise AssertionError("no debería pedir la clave")
+
+    preparacion.preparar(Ajustes(), no_debe_pedirla)
+
+
+def test_si_el_repositorio_ya_es_accesible_no_pide_la_clave(servidor: ServidorFalso) -> None:
+    servidor.repositorio_creado = True
+
+    def no_debe_pedirla(usuario: str) -> str | None:
+        raise AssertionError("no debería pedir la clave")
+
+    assert preparacion.preparar(Ajustes(), no_debe_pedirla).ya_preparado
+
+
+def test_si_no_hay_terminal_para_pedirla_explica_como_seguir(servidor: ServidorFalso) -> None:
+    with pytest.raises(ErrorConexionRepositorio) as error:
+        preparacion.preparar(Ajustes(), lambda usuario: None)
+    assert "terminal interactiva" in (error.value.sugerencia or "")
+    assert servidor.sentencias == []
