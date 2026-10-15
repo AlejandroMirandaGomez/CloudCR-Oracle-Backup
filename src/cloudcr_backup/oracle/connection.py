@@ -14,15 +14,27 @@ ORA_SERVICIO_DESCONOCIDO = 12514
 ORA_BASE_SIN_MONTAR = 1507
 ORA_INICIO_O_APAGADO_EN_CURSO = 1033
 ORA_SIN_MEMORIA_COMPARTIDA = 27101
-CODIGOS_INSTANCIA_NO_DISPONIBLE = frozenset(
+CODIGOS_SERVICIO_NO_DISPONIBLE = frozenset(
     {
         ORA_INSTANCIA_NO_DISPONIBLE,
         ORA_ADAPTADOR_PROTOCOLO,
-        ORA_BASE_SIN_MONTAR,
         ORA_INICIO_O_APAGADO_EN_CURSO,
         ORA_SIN_MEMORIA_COMPARTIDA,
     }
 )
+_BASE_SIN_ABRIR = "su base de datos no está abierta"
+_ARCHIVOS_NO_UTILIZABLES = "su base de datos no abre: faltan archivos, están dañados o necesitan recuperación"
+SITUACION_BASE_NO_LISTA = {
+    ORA_BASE_SIN_MONTAR: "su base de datos no está montada",
+    1109: _BASE_SIN_ABRIR,
+    1219: _BASE_SIN_ABRIR,
+    1110: _ARCHIVOS_NO_UTILIZABLES,
+    1113: _ARCHIVOS_NO_UTILIZABLES,
+    1116: _ARCHIVOS_NO_UTILIZABLES,
+    1122: _ARCHIVOS_NO_UTILIZABLES,
+    1157: _ARCHIVOS_NO_UTILIZABLES,
+}
+CODIGOS_INSTANCIA_NO_DISPONIBLE = CODIGOS_SERVICIO_NO_DISPONIBLE | frozenset(SITUACION_BASE_NO_LISTA)
 
 _cliente_thick_iniciado: Path | None = None
 
@@ -110,9 +122,9 @@ def traducir_instancia_no_disponible(error: oracledb.Error, destino: str) -> Err
     codigo = _codigo_error(error)
     if codigo not in CODIGOS_INSTANCIA_NO_DISPONIBLE:
         return None
-    if codigo == ORA_BASE_SIN_MONTAR:
+    if codigo in SITUACION_BASE_NO_LISTA:
         return ErrorInstanciaNoDisponible(
-            f"La instancia {destino} está iniciada, pero su base de datos no está montada (ORA-01507).",
+            f"La instancia {destino} está iniciada, pero {SITUACION_BASE_NO_LISTA[codigo]} (ORA-{codigo:05d}).",
             "Revise la causa en el alert log de la instancia; Recuperación ayuda a diagnosticarla.",
         )
     return ErrorInstanciaNoDisponible(

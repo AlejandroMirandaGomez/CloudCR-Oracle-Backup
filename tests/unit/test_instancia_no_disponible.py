@@ -18,7 +18,7 @@ def error_oracle(codigo: int) -> oracledb.DatabaseError:
     return oracledb.DatabaseError(SimpleNamespace(code=codigo, message=f"ORA-{codigo:05d}"))
 
 
-@pytest.mark.parametrize("codigo", [1034, 1033, 1507, 12560, 27101])
+@pytest.mark.parametrize("codigo", [1034, 1033, 1507, 12560, 27101, 1109, 1219, 1110, 1113, 1116, 1122, 1157])
 def test_codigos_de_instancia_no_disponible_se_traducen(codigo: int) -> None:
     traducido = traducir_instancia_no_disponible(error_oracle(codigo), "XE")
     assert isinstance(traducido, ErrorInstanciaNoDisponible)
@@ -26,10 +26,15 @@ def test_codigos_de_instancia_no_disponible_se_traducen(codigo: int) -> None:
     assert "XE" in str(traducido)
 
 
-def test_base_sin_montar_explica_que_la_instancia_esta_iniciada() -> None:
-    traducido = traducir_instancia_no_disponible(error_oracle(1507), "XE")
+@pytest.mark.parametrize(
+    ("codigo", "texto"),
+    [(1507, "no está montada"), (1219, "no está abierta"), (1109, "no está abierta"), (1157, "faltan archivos")],
+)
+def test_base_que_no_abre_explica_que_la_instancia_esta_iniciada(codigo: int, texto: str) -> None:
+    traducido = traducir_instancia_no_disponible(error_oracle(codigo), "XE")
     assert traducido is not None
-    assert "no está montada" in str(traducido)
+    assert "está iniciada" in str(traducido)
+    assert texto in str(traducido)
 
 
 @pytest.mark.parametrize("codigo", [1031, 1017, 942])
@@ -79,8 +84,17 @@ def test_explorar_con_base_sin_montar_lanza_error_de_instancia_no_disponible(
     assert conexion.cerrada
 
 
-def test_explorar_deja_pasar_otros_errores_de_oracle(monkeypatch: pytest.MonkeyPatch) -> None:
-    conexion = preparar_exploracion(monkeypatch, error_oracle(942))
-    with pytest.raises(oracledb.DatabaseError):
+def test_explorar_con_base_sin_abrir_lanza_error_de_instancia_no_disponible(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    preparar_exploracion(monkeypatch, error_oracle(1219))
+    with pytest.raises(ErrorInstanciaNoDisponible, match="no está abierta"):
         explorador.explorar_local(instancia())
+
+
+def test_explorar_convierte_otros_errores_de_oracle_en_error_de_conexion(monkeypatch: pytest.MonkeyPatch) -> None:
+    conexion = preparar_exploracion(monkeypatch, error_oracle(942))
+    with pytest.raises(ErrorConexionOracle, match="ORA-00942") as excepcion:
+        explorador.explorar_local(instancia())
+    assert not isinstance(excepcion.value, ErrorInstanciaNoDisponible)
     assert conexion.cerrada

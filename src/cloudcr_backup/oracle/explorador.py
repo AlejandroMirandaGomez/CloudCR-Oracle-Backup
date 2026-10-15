@@ -58,9 +58,9 @@ def _inspeccionar(conexion: oracledb.Connection, oracle_home: str | None, destin
     try:
         return inspeccionar(conexion, oracle_home)
     except oracledb.Error as error:
-        traducido = traducir_instancia_no_disponible(error, destino)
-        if traducido is None:
-            raise
+        traducido = traducir_instancia_no_disponible(error, destino) or ErrorConexionOracle(
+            f"No se pudo leer la información de {destino}: {error}"
+        )
         raise traducido from error
 
 
