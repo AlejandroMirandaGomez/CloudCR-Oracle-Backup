@@ -288,22 +288,29 @@ diagnóstico con escenario sugerido → procedimiento (pasos y script RMAN) → 
 
 | N.° | Escenario (clase) | Explicación | Estrategia a considerar | Instrucciones (script que genera CloudCR) |
 |---|---|---|---|---|
-| 1 | `PERDIDA_DATAFILE_NO_CRITICO` (`datafile`, `tablespace`, `pdb`) | Falta o se dañó un datafile que no es de SYSTEM ni UNDO; el resto de la base sigue en servicio | ARCHIVELOG + respaldo de la base o del tablespace | `ALTER DATABASE DATAFILE n OFFLINE; RESTORE DATAFILE n; RECOVER DATAFILE n; ALTER DATABASE DATAFILE n ONLINE;` (en una PDB: cerrar y abrir la PDB) |
+| 1 | `PERDIDA_DATAFILE_NO_CRITICO` (`datafile`, `tablespace`, `pdb`) | Falta o se dañó un datafile que no es de SYSTEM ni UNDO; el resto de la base sigue en servicio | ARCHIVELOG + respaldo de la base o del tablespace | `ALTER DATABASE DATAFILE n OFFLINE; RESTORE DATAFILE n; RECOVER DATAFILE n; ALTER DATABASE DATAFILE n ONLINE;` (en una PDB: `ALTER PLUGGABLE DATABASE x CLOSE IMMEDIATE;` solo si está abierta, `RESTORE`/`RECOVER` y `ALTER PLUGGABLE DATABASE x OPEN;`; el SYSTEM o el UNDO de una PDB dejan la PDB en `MOUNTED` y se recuperan con ella cerrada, sin cerrarla otra vez) |
 | 2 | `PERDIDA_DATAFILE_CRITICO` (`datafile-critico`) | Datafile de SYSTEM o UNDO del contenedor raíz: Oracle no permite dejarlo OFFLINE con la base abierta | ARCHIVELOG + respaldo de la base completa | `STARTUP FORCE MOUNT; RESTORE DATAFILE n; RECOVER DATAFILE n; ALTER DATABASE OPEN;` |
-| 3 | `PERDIDA_CONTROL_FILE` (`controlfile`) | Se perdieron las copias del control file: la instancia no monta | Autobackup del control file o pieza respaldada por la estrategia | `STARTUP NOMOUNT; SET DBID …; RESTORE CONTROLFILE FROM AUTOBACKUP; ALTER DATABASE MOUNT; RECOVER DATABASE; ALTER DATABASE OPEN RESETLOGS;` |
-| 4 | `PERDIDA_MIEMBRO_REDOLOG` (`miembro-redolog`) | Un miembro de un grupo multiplexado está INVALID; el grupo sigue con el otro miembro | Multiplexar los redo logs (sección 11) | `ALTER SYSTEM SWITCH LOGFILE` si el grupo es CURRENT; `ALTER SYSTEM CHECKPOINT; ALTER DATABASE DROP LOGFILE MEMBER '…'; ALTER DATABASE ADD LOGFILE MEMBER '…' REUSE TO GROUP g;` |
-| 5 | `PERDIDA_GRUPO_REDOLOG_CURRENT` (`grupo-redolog-actual`) | Se perdieron todos los miembros del grupo CURRENT: su redo no existe; recuperación incompleta | ARCHIVELOG + respaldo de la base completa | `STARTUP FORCE MOUNT; SET UNTIL SEQUENCE s THREAD t; RESTORE DATABASE; RECOVER DATABASE; ALTER DATABASE OPEN RESETLOGS;` — equivale en RMAN a `RECOVER DATABASE UNTIL CANCEL` de SQL*Plus |
-| 6 | `CORRUPCION_DE_BLOQUE` (`corrupcion-bloque`) | Bloques dañados registrados en `V$DATABASE_BLOCK_CORRUPTION`; el datafile sigue en línea | ARCHIVELOG + respaldo que contenga esos bloques | `RECOVER DATAFILE n BLOCK b;` o `RECOVER CORRUPTION LIST;` |
+| 3 | `PERDIDA_CONTROL_FILE` (`controlfile`) | Se perdieron las copias del control file: la instancia no monta | Autobackup del control file o pieza respaldada por la estrategia | `STARTUP FORCE NOMOUNT; SET DBID …; RESTORE CONTROLFILE FROM AUTOBACKUP; ALTER DATABASE MOUNT; RESTORE DATABASE; RECOVER DATABASE; ALTER DATABASE OPEN RESETLOGS;` |
+| 4 | `PERDIDA_MIEMBRO_REDOLOG` (`miembro-redolog`) | Un miembro de un grupo multiplexado está INVALID o ya no existe en disco (Oracle solo lo avisa en el alert log); el grupo sigue con el otro miembro | Multiplexar los redo logs (sección 11) | Deja el grupo INACTIVE según su estado: `ALTER SYSTEM SWITCH LOGFILE; ALTER SYSTEM CHECKPOINT;` si es CURRENT, `ALTER SYSTEM CHECKPOINT;` si está ACTIVE y nada si ya está INACTIVE; luego `ALTER DATABASE DROP LOGFILE MEMBER '…'; ALTER DATABASE ADD LOGFILE MEMBER '…' REUSE TO GROUP g;` |
+| 5 | `PERDIDA_GRUPO_REDOLOG_CURRENT` (`grupo-redolog-actual`) | Se perdieron todos los miembros del grupo CURRENT: su redo no existe; recuperación incompleta | ARCHIVELOG + respaldo de la base completa | `STARTUP FORCE MOUNT; SET UNTIL SEQUENCE s THREAD t; RESTORE DATABASE; RECOVER DATABASE; ALTER DATABASE OPEN RESETLOGS;` — equivale en RMAN a `RECOVER DATABASE UNTIL CANCEL` de SQL*Plus. El procedimiento avisa de dos pasos que no se scriptan: intentar antes `ALTER DATABASE CLEAR UNARCHIVED LOGFILE GROUP g;` (con un grupo CURRENT perdido normalmente falla con ORA-01624) y, si el disco de los redo ya no existe, cambiar sus rutas con `ALTER DATABASE RENAME FILE` antes de abrir con `RESETLOGS` |
+| 6 | `CORRUPCION_DE_BLOQUE` (`corrupcion-bloque`) | Bloques dañados registrados en `V$DATABASE_BLOCK_CORRUPTION`; el datafile sigue en línea | ARCHIVELOG + respaldo que contenga esos bloques | `VALIDATE DATABASE; RECOVER CORRUPTION LIST; VALIDATE DATABASE;` o, con un bloque indicado, `RECOVER DATAFILE n BLOCK b; VALIDATE DATAFILE n;` |
 | 7 | `PERDIDA_SPFILE` (`spfile`) | Falta el SPFILE: la instancia no arranca | Autobackup del control file (incluye el SPFILE) | `STARTUP FORCE NOMOUNT; SET DBID …; RESTORE SPFILE FROM AUTOBACKUP; STARTUP FORCE NOMOUNT; ALTER DATABASE MOUNT; ALTER DATABASE OPEN;` |
-| 8 | `PERDIDA_TOTAL_SIN_ARCHIVELOG` (`total-noarchivelog`) | En NOARCHIVELOG solo se puede volver al último respaldo consistente | Respaldo en frío (modo `CONSISTENTE`) | `SHUTDOWN IMMEDIATE; STARTUP MOUNT; RESTORE DATABASE; RECOVER DATABASE NOREDO; ALTER DATABASE OPEN RESETLOGS;` |
+| 8 | `PERDIDA_TOTAL_SIN_ARCHIVELOG` (`total-noarchivelog`) | En NOARCHIVELOG solo se puede volver al último respaldo consistente | Respaldo en frío (modo `CONSISTENTE`) | `STARTUP FORCE MOUNT; RESTORE DATABASE; RECOVER DATABASE NOREDO; ALTER DATABASE OPEN RESETLOGS;`. Si también se perdió el control file (la instancia no monta, o se pide con `--objetivo controlfile`) empieza con `STARTUP FORCE NOMOUNT; SET DBID …; RESTORE CONTROLFILE FROM AUTOBACKUP; ALTER DATABASE MOUNT;` |
 
 Además se conserva `punto-en-tiempo` (`SET UNTIL TIME`), de la misma familia que el escenario 5 (recuperación
 incompleta) pero para volver a una hora exacta por otro motivo, por ejemplo un `DROP TABLE` accidental.
 
 **Qué se detecta automáticamente.** Con la instancia accesible: datafiles (`V$RECOVER_FILE`, `V$DATAFILE`, y si
-son de SYSTEM/UNDO), bloques (`V$DATABASE_BLOCK_CORRUPTION`) y miembros de redo inválidos (`V$LOGFILE`, `V$LOG`).
-Sin control file o sin SPFILE la instancia no monta o no arranca y no hay a qué consultar: ese mismo fallo de
-conexión se interpreta y se sugieren los escenarios 3 y 7. El calendario marca la **hora de la detección**, no
+son de SYSTEM/UNDO), bloques (`V$DATABASE_BLOCK_CORRUPTION`) y miembros de redo dañados o ausentes (`V$LOGFILE`,
+`V$LOG`). Oracle no marca `INVALID` un miembro cuyo archivo desapareció, así que cada miembro de `V$LOGFILE` se
+comprueba también en disco (la herramienta corre en el mismo servidor) y un grupo está perdido cuando todos sus
+miembros están dañados o ausentes. También se lee el estado de cada PDB (`V$PDBS`): una PDB en `MOUNTED`, como
+queda al perder su SYSTEM o su UNDO, no se vuelve a cerrar en el script. Si `V$CONTAINERS` no responde con la
+instancia solo montada, los archivos se consultan sin ese `JOIN`. Solo los errores de instancia no disponible
+(`ORA-01034`, `ORA-01033`, `ORA-12560`, `ORA-27101`) o base no montada (`ORA-01507`) cuentan como «sin conexión»:
+entonces no hay a qué consultar, porque falta el control file o el SPFILE o la instancia está caída, y se sugieren
+los escenarios 3 y 7. Cualquier otro error de consulta se informa como diagnóstico incompleto, sin sugerir esos
+escenarios y sin anotar ni cerrar fallas. El calendario marca la **hora de la detección**, no
 la de la caída (esa solo queda en el alert log).
 
 **Ejecución controlada.** Tres decisiones humanas, como en los respaldos: generar, aprobar (se fija el SHA-256
@@ -315,4 +322,8 @@ pausas dentro de un `cmdfile`: la confirmación es antes de ejecutar, no línea 
 (RMAN-06815): al terminar sin errores, CloudCR entra a la PDB y, solo si el tablespace o el datafile había quedado
 `OFFLINE`, lo pone `ONLINE`. El plan lo avisa y el resultado de la ejecución lo informa. Guion de la
 demostración: `docs/demo_control_correctivo.md`.
+
+Los escenarios que abren con `RESETLOGS` (3, 5, 8 y `punto-en-tiempo`) terminan con un recordatorio en el
+resultado: «Se abrió con RESETLOGS: haga un respaldo completo ahora.»; en el 8 se agrega que conviene volver a
+ARCHIVELOG. CloudCR no automatiza ese respaldo.
 

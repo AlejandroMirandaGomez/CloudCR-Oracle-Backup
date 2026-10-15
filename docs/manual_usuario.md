@@ -471,16 +471,24 @@ Escenarios (los 8 de clase, más `pdb` y `punto-en-tiempo`):
 |---|---|---|
 | `datafile` / `tablespace` / `pdb` | `PERDIDA_DATAFILE_NO_CRITICO` | file#, `PDB:TABLESPACE` o nombre de la PDB |
 | `datafile-critico` | `PERDIDA_DATAFILE_CRITICO` | file# del datafile de SYSTEM o UNDO |
-| `controlfile` | `PERDIDA_CONTROL_FILE` | — |
+| `controlfile` | `PERDIDA_CONTROL_FILE` | — (restaura el control file, los datafiles y recupera) |
 | `miembro-redolog` | `PERDIDA_MIEMBRO_REDOLOG` | `GRUPO:RUTA`, por ejemplo `2:C:\ORADATA\XE\REDO02B.LOG` |
 | `grupo-redolog-actual` | `PERDIDA_GRUPO_REDOLOG_CURRENT` | secuencia del grupo perdido, o `HILO:SECUENCIA` |
-| `corrupcion-bloque` | `CORRUPCION_DE_BLOQUE` | `FILE#:BLOQUE`; vacío = `RECOVER CORRUPTION LIST` |
+| `corrupcion-bloque` | `CORRUPCION_DE_BLOQUE` | `FILE#:BLOQUE`; vacío = `VALIDATE DATABASE` + `RECOVER CORRUPTION LIST` + `VALIDATE DATABASE` |
 | `spfile` | `PERDIDA_SPFILE` | — |
-| `total-noarchivelog` | `PERDIDA_TOTAL_SIN_ARCHIVELOG` | — |
+| `total-noarchivelog` | `PERDIDA_TOTAL_SIN_ARCHIVELOG` | — (`controlfile` si también se perdió el control file; se usa solo si la instancia no responde) |
 | `punto-en-tiempo` | (recuperación incompleta a una hora) | `--hasta` |
 
 Si el modo de archivado no permite un escenario, o si se pide `datafile` sobre un datafile de SYSTEM/UNDO del
-contenedor raíz, el comando lo explica en lugar de generar un script que Oracle rechazaría.
+contenedor raíz, el comando lo explica en lugar de generar un script que Oracle rechazaría. El SYSTEM o el UNDO de
+una PDB sí se recuperan con `datafile`: la PDB queda en `MOUNTED` al fallar y el script no la cierra otra vez.
+
+El diagnóstico detecta los miembros de redo log dañados (`INVALID`) y también los que ya no existen en disco,
+porque Oracle no marca `INVALID` un miembro perdido. En `grupo-redolog-actual` el procedimiento avisa que antes se
+puede intentar `ALTER DATABASE CLEAR UNARCHIVED LOGFILE GROUP g` (normalmente falla con ORA-01624) y que, si el
+disco de los redo ya no existe, hay que cambiar sus rutas con `ALTER DATABASE RENAME FILE` antes de ejecutar.
+Los escenarios que abren con `RESETLOGS` (`controlfile`, `grupo-redolog-actual`, `total-noarchivelog` y
+`punto-en-tiempo`) terminan recordando que hay que hacer un respaldo completo ahora.
 
 **Aprobar y ejecutar.** La ejecución funciona en cualquier ambiente y se bloquea si el procedimiento no
 está aprobado, si ya se ejecutó (cada procedimiento aprobado se ejecuta una sola vez) o si el `.rman` cambió

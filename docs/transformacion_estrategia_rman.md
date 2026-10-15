@@ -185,16 +185,16 @@ La ventana va **en línea, dentro del comando** (`REPORT OBSOLETE RECOVERY WINDO
 
 | Escenario | Requiere | Script |
 |---|---|---|
-| `pdb` | ARCHIVELOG | `ALTER PLUGGABLE DATABASE X CLOSE IMMEDIATE; RESTORE/RECOVER PLUGGABLE DATABASE X; … OPEN` |
-| `tablespace` | ARCHIVELOG | raíz: `OFFLINE IMMEDIATE → RESTORE → RECOVER → ONLINE`; en una PDB se cierra y abre la PDB |
-| `datafile` | ARCHIVELOG | igual, por file#; el archivo se toma de `V$RECOVER_FILE`/`V$DATAFILE` si no se indica |
-| `controlfile` | autobackup o pieza registrada | `STARTUP NOMOUNT; SET DBID; RESTORE CONTROLFILE FROM '<pieza>' (o FROM AUTOBACKUP); MOUNT; RECOVER; OPEN RESETLOGS` |
-| `total-noarchivelog` | respaldo consistente | `SHUTDOWN IMMEDIATE; STARTUP MOUNT; RESTORE DATABASE; RECOVER DATABASE NOREDO; OPEN RESETLOGS` |
+| `pdb` | ARCHIVELOG | `ALTER PLUGGABLE DATABASE X CLOSE IMMEDIATE;` (solo si está abierta) `RESTORE/RECOVER PLUGGABLE DATABASE X; … OPEN` |
+| `tablespace` | ARCHIVELOG | raíz: `OFFLINE IMMEDIATE → RESTORE → RECOVER → ONLINE`; en una PDB se cierra (si está abierta) y abre la PDB |
+| `datafile` | ARCHIVELOG | igual, por file#; el archivo se toma de `V$RECOVER_FILE`/`V$DATAFILE` si no se indica. El SYSTEM o el UNDO de una PDB dejan la PDB en `MOUNTED` y se recuperan sin cerrarla otra vez |
+| `controlfile` | autobackup o pieza registrada | `STARTUP FORCE NOMOUNT; SET DBID; RESTORE CONTROLFILE FROM '<pieza>' (o FROM AUTOBACKUP); MOUNT; RESTORE DATABASE; RECOVER DATABASE; OPEN RESETLOGS` |
+| `total-noarchivelog` | respaldo consistente | `STARTUP FORCE MOUNT; RESTORE DATABASE; RECOVER DATABASE NOREDO; OPEN RESETLOGS`; con el control file perdido (instancia sin conexión o `--objetivo controlfile`) antepone `STARTUP FORCE NOMOUNT; SET DBID; RESTORE CONTROLFILE …; MOUNT` |
 | `punto-en-tiempo` | ARCHIVELOG continuo | `SET UNTIL TIME …; RESTORE DATABASE; RECOVER DATABASE; OPEN RESETLOGS` |
 | `datafile-critico` | ARCHIVELOG | `STARTUP FORCE MOUNT; RESTORE DATAFILE n; RECOVER DATAFILE n; ALTER DATABASE OPEN` (SYSTEM/UNDO del contenedor raíz) |
-| `miembro-redolog` | grupo multiplexado | `SWITCH LOGFILE` si es CURRENT; `CHECKPOINT; DROP LOGFILE MEMBER '…'; ADD LOGFILE MEMBER '…' REUSE TO GROUP g` |
-| `grupo-redolog-actual` | ARCHIVELOG | `STARTUP FORCE MOUNT; SET UNTIL SEQUENCE s THREAD t; RESTORE DATABASE; RECOVER DATABASE; OPEN RESETLOGS` (equivale a `UNTIL CANCEL`) |
-| `corrupcion-bloque` | ARCHIVELOG | `RECOVER DATAFILE n BLOCK b` o `RECOVER CORRUPTION LIST` |
+| `miembro-redolog` | grupo multiplexado | `SWITCH LOGFILE; CHECKPOINT` si el grupo es CURRENT, `CHECKPOINT` si está ACTIVE y nada si está INACTIVE; `DROP LOGFILE MEMBER '…'; ADD LOGFILE MEMBER '…' REUSE TO GROUP g` |
+| `grupo-redolog-actual` | ARCHIVELOG | `STARTUP FORCE MOUNT; SET UNTIL SEQUENCE s THREAD t; RESTORE DATABASE; RECOVER DATABASE; OPEN RESETLOGS` (equivale a `UNTIL CANCEL`); avisa del `CLEAR UNARCHIVED LOGFILE` previo y del `RENAME FILE` si el disco de los redo ya no existe, que no entran en el script |
+| `corrupcion-bloque` | ARCHIVELOG | `VALIDATE DATABASE; RECOVER CORRUPTION LIST; VALIDATE DATABASE` o, con un bloque indicado, `RECOVER DATAFILE n BLOCK b; VALIDATE DATAFILE n` |
 | `spfile` | autobackup o pieza registrada | `STARTUP FORCE NOMOUNT; SET DBID; RESTORE SPFILE FROM AUTOBACKUP; STARTUP FORCE NOMOUNT; MOUNT; OPEN` |
 
 Si el escenario no es posible con el modo actual (por ejemplo, `datafile` en NOARCHIVELOG), el comando
